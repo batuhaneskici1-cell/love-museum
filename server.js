@@ -59,8 +59,19 @@ io.on('connection', (socket) => {
       return;
     }
 
-    if (room.guest) {
+    if (room.guest && room.guest !== socket.id) {
       socket.emit('error', { message: 'Oda dolu!' });
+      return;
+    }
+
+    // Allow rejoining
+    if (room.guest === socket.id) {
+      socket.join(roomCode);
+      socket.emit('room_joined', { 
+        roomCode, 
+        isHost: false,
+        position: { x: 2, y: 0, z: 8 }
+      });
       return;
     }
 

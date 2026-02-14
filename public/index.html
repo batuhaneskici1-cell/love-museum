@@ -1,0 +1,1259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aşkımızın Müzesi 💕 - Multiplayer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital@0;1&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Playfair Display', serif;
+      overflow: hidden;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #ffecd2 100%);
+    }
+
+    #menu-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(255, 182, 193, 0.95));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    #menu-screen.hidden {
+      display: none;
+    }
+
+    .menu-title {
+      font-size: 72px;
+      font-weight: 900;
+      color: white;
+      text-shadow: 4px 4px 20px rgba(0, 0, 0, 0.3);
+      margin-bottom: 20px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .menu-subtitle {
+      font-size: 28px;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 60px;
+      font-style: italic;
+    }
+
+    .menu-buttons {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .menu-btn {
+      padding: 20px 50px;
+      font-size: 24px;
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .menu-btn:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-create {
+      background: linear-gradient(135deg, #ff1493, #ff69b4);
+      color: white;
+    }
+
+    .btn-join {
+      background: white;
+      color: #ff1493;
+    }
+
+    .room-input-container {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .room-input-container.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .room-code-input {
+      padding: 15px 30px;
+      font-size: 32px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      text-align: center;
+      border: 4px solid white;
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #ff1493;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      width: 300px;
+    }
+
+    .room-code-display {
+      background: white;
+      padding: 30px 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .room-code-display h3 {
+      color: #ff1493;
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+
+    .room-code {
+      font-size: 56px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      color: #ff1493;
+      letter-spacing: 8px;
+      margin-bottom: 15px;
+    }
+
+    .waiting-text {
+      font-size: 18px;
+      color: #666;
+      font-style: italic;
+    }
+
+    .error-message {
+      background: rgba(255, 50, 50, 0.9);
+      color: white;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 18px;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+      animation: shake 0.5s;
+    }
+
+    #game-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: none;
+    }
+
+    #game-container.active {
+      display: block;
+    }
+
+    .hud {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(255, 182, 193, 0.95));
+      padding: 20px 40px;
+      border-radius: 20px;
+      text-align: center;
+      color: white;
+      box-shadow: 0 10px 30px rgba(255, 105, 180, 0.4);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+    }
+
+    .hud h1 {
+      margin: 0 0 10px 0;
+      font-size: 36px;
+      font-weight: bold;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    .hud p {
+      margin: 0;
+      font-size: 18px;
+      opacity: 0.9;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 30px;
+      left: 30px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+      max-width: 300px;
+      z-index: 100;
+    }
+
+    .controls h3 {
+      margin: 0 0 15px 0;
+      color: #ff1493;
+      font-size: 20px;
+    }
+
+    .controls p {
+      margin: 5px 0;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .message-indicator {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      background: rgba(255, 105, 180, 0.95);
+      padding: 15px 25px;
+      border-radius: 15px;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 0 5px 20px rgba(255, 105, 180, 0.5);
+      display: none;
+      z-index: 100;
+    }
+
+    .message-indicator.show {
+      display: block;
+      animation: pulse 2s infinite;
+    }
+
+    .message-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+    }
+
+    .message-popup.show {
+      display: flex;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .message-content {
+      background: linear-gradient(135deg, #ff69b4, #ffb6c1);
+      padding: 50px;
+      border-radius: 30px;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(255, 105, 180, 0.6);
+    }
+
+    .message-content .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+
+    .message-content p {
+      font-size: 28px;
+      color: white;
+      margin: 0;
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .message-content .close-hint {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 30px;
+    }
+
+    .photo-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+    }
+
+    .photo-popup.show {
+      display: flex;
+    }
+
+    .photo-content {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      max-width: 80vw;
+      max-height: 80vh;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    }
+
+    .photo-frame {
+      width: 600px;
+      height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 24px;
+      color: white;
+      font-weight: bold;
+      flex-direction: column;
+    }
+
+    .photo-frame .hint {
+      font-size: 14px;
+      margin-top: 10px;
+      opacity: 0.8;
+    }
+
+    .partner-status {
+      position: absolute;
+      top: 120px;
+      right: 30px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 25px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+    }
+
+    .partner-status h4 {
+      margin: 0 0 10px 0;
+      color: #ff1493;
+      font-size: 16px;
+    }
+
+    .partner-status .status {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .partner-status .connected {
+      color: #00cc00;
+    }
+
+    .partner-status .waiting {
+      color: #ff9900;
+    }
+
+    .character-card:hover > div {
+      transform: scale(1.05);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+  </style>
+</head>
+<body>
+  <!-- Menu Screen -->
+  <div id="menu-screen">
+    <h1 class="menu-title">💕 Aşkımızın Müzesi 💕</h1>
+    <p class="menu-subtitle">Sevgililer Günü Özel Hediyesi</p>
+    
+    <div class="menu-buttons">
+      <button class="menu-btn btn-create" onclick="createRoom()">Oda Oluştur</button>
+      <button class="menu-btn btn-join" onclick="showJoinInput()">Odaya Katıl</button>
+    </div>
+
+    <div id="join-input" class="room-input-container">
+      <input type="text" class="room-code-input" id="room-code-input" placeholder="ODA KODU" maxlength="6">
+      <button class="menu-btn btn-create" onclick="joinRoom()">Katıl</button>
+    </div>
+
+    <div id="room-display" class="room-input-container">
+      <div class="room-code-display">
+        <h3>Oda Kodun:</h3>
+        <div class="room-code" id="room-code-text"></div>
+        <p class="waiting-text">Sevgilinin katılmasını bekliyorsun... 💖</p>
+      </div>
+    </div>
+
+    <div id="error-msg" class="error-message"></div>
+  </div>
+
+  <!-- Character Selection Screen -->
+  <div id="character-screen" style="display: none;">
+    <h1 class="menu-title">Karakterini Seç 👥</h1>
+    
+    <div style="display: flex; gap: 50px; justify-content: center; align-items: center; margin-top: 50px;">
+      <!-- Batuhan Character -->
+      <div class="character-card" onclick="selectCharacter('batuhan')">
+        <div style="width: 200px; height: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s;">
+          <div style="font-size: 100px; margin-bottom: 20px;">🧑</div>
+          <h2 style="color: white; font-size: 36px; margin: 0;">Batuhan</h2>
+          <p style="color: rgba(255,255,255,0.8); font-size: 18px; margin-top: 10px;">Siyah Saç</p>
+        </div>
+      </div>
+
+      <!-- Merve Character -->
+      <div class="character-card" onclick="selectCharacter('merve')">
+        <div style="width: 200px; height: 300px; background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s;">
+          <div style="font-size: 100px; margin-bottom: 20px;">👧</div>
+          <h2 style="color: white; font-size: 36px; margin: 0;">Merve</h2>
+          <p style="color: rgba(255,255,255,0.8); font-size: 18px; margin-top: 10px;">Kahverengi Saç</p>
+        </div>
+      </div>
+    </div>
+
+    <p style="color: white; font-size: 20px; margin-top: 50px; text-align: center;">
+      Karakterini seç ve müzeye gir! 💕
+    </p>
+  </div>
+
+  <!-- Game Container -->
+  <div id="game-container">
+    <div class="hud">
+      <h1>Aşkımızın Müzesi ❤️</h1>
+      <p>Mutlu Sevgililer Günü, Canım! 💕</p>
+    </div>
+
+    <div class="controls">
+      <h3>Kontroller 🎮</h3>
+      <p><strong>W A S D</strong> - Hareket Et</p>
+      <p><strong>Fare</strong> - Etrafa Bak</p>
+      <p><strong>E</strong> - Mesajı Oku</p>
+      <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
+    </div>
+
+    <div class="partner-status">
+      <h4>Partner Durumu:</h4>
+      <p class="status waiting" id="partner-status">Bekleniyor...</p>
+    </div>
+
+    <div class="message-indicator" id="message-indicator">
+      💌 E tuşuna bas ve mesajı oku!
+    </div>
+
+    <div class="message-popup" id="message-popup">
+      <div class="message-content">
+        <div class="icon">💕</div>
+        <p id="message-text"></p>
+        <p class="close-hint">(Kapatmak için tıkla)</p>
+      </div>
+    </div>
+
+    <div class="photo-popup" id="photo-popup">
+      <div class="photo-content">
+        <div class="photo-frame" id="photo-frame">
+          <div>📷 Fotoğraf #<span id="photo-number"></span></div>
+          <div class="hint">(Kendi fotoğrafını buraya ekleyebilirsin)</div>
+        </div>
+        <p style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+          Kapatmak için tıkla
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Socket.io connection
+    const socket = io();
+    
+    let scene, camera, renderer;
+    let playerGroup, partnerGroup;
+    let keys = {};
+    let mouseX = 0;
+    let yaw = 0;
+    let isHost = false;
+    let roomCode = '';
+    let partnerConnected = false;
+    let photoFrames = [];
+    let messages = [];
+    let nearMessage = null;
+    let selectedCharacter = null;
+    let pendingAction = null; // 'create' or 'join'
+
+    const moveSpeed = 0.1;
+
+    // Socket events
+    socket.on('room_created', (data) => {
+      roomCode = data.roomCode;
+      isHost = data.isHost;
+      document.getElementById('room-code-text').textContent = roomCode;
+      document.getElementById('room-display').classList.add('active');
+    });
+
+    socket.on('room_joined', (data) => {
+      roomCode = data.roomCode;
+      isHost = data.isHost;
+      document.getElementById('menu-screen').classList.add('hidden');
+      document.getElementById('character-screen').style.display = 'flex';
+      document.getElementById('character-screen').style.flexDirection = 'column';
+      document.getElementById('character-screen').style.alignItems = 'center';
+      document.getElementById('character-screen').style.justifyContent = 'center';
+      document.getElementById('character-screen').style.position = 'fixed';
+      document.getElementById('character-screen').style.top = '0';
+      document.getElementById('character-screen').style.left = '0';
+      document.getElementById('character-screen').style.width = '100vw';
+      document.getElementById('character-screen').style.height = '100vh';
+      document.getElementById('character-screen').style.background = 'linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(255, 182, 193, 0.95))';
+      document.getElementById('character-screen').style.zIndex = '1000';
+    });
+
+    socket.on('partner_joined', () => {
+      partnerConnected = true;
+      document.getElementById('partner-status').textContent = 'Bağlandı! 💚';
+      document.getElementById('partner-status').classList.remove('waiting');
+      document.getElementById('partner-status').classList.add('connected');
+      
+      // If we're waiting, show character selection
+      if (!selectedCharacter) {
+        document.getElementById('menu-screen').classList.add('hidden');
+        document.getElementById('character-screen').style.display = 'flex';
+        document.getElementById('character-screen').style.flexDirection = 'column';
+        document.getElementById('character-screen').style.alignItems = 'center';
+        document.getElementById('character-screen').style.justifyContent = 'center';
+        document.getElementById('character-screen').style.position = 'fixed';
+        document.getElementById('character-screen').style.top = '0';
+        document.getElementById('character-screen').style.left = '0';
+        document.getElementById('character-screen').style.width = '100vw';
+        document.getElementById('character-screen').style.height = '100vh';
+        document.getElementById('character-screen').style.background = 'linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(255, 182, 193, 0.95))';
+        document.getElementById('character-screen').style.zIndex = '1000';
+      }
+    });
+
+    socket.on('partner_moved', (data) => {
+      if (partnerGroup) {
+        partnerGroup.position.set(data.position.x, data.position.y, data.position.z);
+        partnerGroup.rotation.y = data.rotation;
+      }
+    });
+
+    socket.on('partner_disconnected', () => {
+      partnerConnected = false;
+      document.getElementById('partner-status').textContent = 'Ayrıldı 💔';
+      document.getElementById('partner-status').classList.remove('connected');
+      document.getElementById('partner-status').classList.add('waiting');
+      if (partnerGroup) {
+        partnerGroup.visible = false;
+      }
+    });
+
+    socket.on('error', (data) => {
+      showError(data.message);
+    });
+
+    // Menu functions
+    function createRoom() {
+      pendingAction = 'create';
+      socket.emit('create_room');
+    }
+
+    function showJoinInput() {
+      document.getElementById('join-input').classList.add('active');
+      document.getElementById('room-code-input').focus();
+    }
+
+    function joinRoom() {
+      const code = document.getElementById('room-code-input').value.toUpperCase();
+      if (code.length === 6) {
+        pendingAction = 'join';
+        socket.emit('join_room', code);
+      } else {
+        showError('Geçersiz oda kodu!');
+      }
+    }
+
+    function selectCharacter(character) {
+      selectedCharacter = character;
+      startGame();
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error-msg');
+      errorEl.textContent = message;
+      errorEl.classList.add('show');
+      setTimeout(() => {
+        errorEl.classList.remove('show');
+      }, 3000);
+    }
+
+    function startGame() {
+      if (!selectedCharacter) return;
+      
+      document.getElementById('menu-screen').classList.add('hidden');
+      document.getElementById('character-screen').style.display = 'none';
+      document.getElementById('game-container').classList.add('active');
+      initThreeJS();
+    }
+
+    // Three.js setup
+    function initThreeJS() {
+      const container = document.getElementById('game-container');
+      
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0xffe6f0);
+      scene.fog = new THREE.Fog(0xffe6f0, 1, 50);
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 1.6, 8);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0xffd4e5, 0.6);
+      scene.add(ambientLight);
+
+      const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      mainLight.position.set(5, 10, 5);
+      mainLight.castShadow = true;
+      mainLight.shadow.mapSize.width = 2048;
+      mainLight.shadow.mapSize.height = 2048;
+      scene.add(mainLight);
+
+      const spotlight1 = new THREE.SpotLight(0xff69b4, 1, 20, Math.PI / 6);
+      spotlight1.position.set(-8, 8, 0);
+      spotlight1.castShadow = true;
+      scene.add(spotlight1);
+
+      const spotlight2 = new THREE.SpotLight(0xffb6c1, 1, 20, Math.PI / 6);
+      spotlight2.position.set(8, 8, 0);
+      spotlight2.castShadow = true;
+      scene.add(spotlight2);
+
+      // Floor
+      const floorGeometry = new THREE.PlaneGeometry(30, 40);
+      const floorMaterial = new THREE.MeshStandardMaterial({
+        color: 0xf5e6e8,
+        roughness: 0.3,
+        metalness: 0.1
+      });
+      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+      floor.rotation.x = -Math.PI / 2;
+      floor.receiveShadow = true;
+      scene.add(floor);
+
+      // Walls
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        color: 0xfff0f5,
+        roughness: 0.8
+      });
+
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 40), wallMaterial);
+      leftWall.position.set(-15, 3, 0);
+      leftWall.receiveShadow = true;
+      leftWall.castShadow = true;
+      scene.add(leftWall);
+
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 40), wallMaterial);
+      rightWall.position.set(15, 3, 0);
+      rightWall.receiveShadow = true;
+      rightWall.castShadow = true;
+      scene.add(rightWall);
+
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(30, 6, 0.3), wallMaterial);
+      backWall.position.set(0, 3, -20);
+      backWall.receiveShadow = true;
+      scene.add(backWall);
+
+      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(30, 40), wallMaterial);
+      ceiling.rotation.x = Math.PI / 2;
+      ceiling.position.y = 6;
+      ceiling.receiveShadow = true;
+      scene.add(ceiling);
+
+      // Photo frames
+      createPhotoFrames();
+
+      // Hidden messages
+      createMessages();
+
+      // Floating hearts
+      createFloatingHearts();
+
+      // Characters
+      createCharacters();
+
+      // Controls
+      setupControls();
+
+      // Start animation
+      animate();
+    }
+
+    function createPhotoFrames() {
+      const framePositions = [
+        // Left wall
+        { x: -14.5, y: 2.5, z: -15, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 2.5, z: -10, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 2.5, z: -5, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 2.5, z: 0, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 2.5, z: 5, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 4, z: -12, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 4, z: -7, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 4, z: -2, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 4, z: 3, rot: [0, Math.PI / 2, 0] },
+        { x: -14.5, y: 4, z: 8, rot: [0, Math.PI / 2, 0] },
+        // Right wall
+        { x: 14.5, y: 2.5, z: -15, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 2.5, z: -10, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 2.5, z: -5, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 2.5, z: 0, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 2.5, z: 5, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 4, z: -12, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 4, z: -7, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 4, z: -2, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 4, z: 3, rot: [0, -Math.PI / 2, 0] },
+        { x: 14.5, y: 4, z: 8, rot: [0, -Math.PI / 2, 0] }
+      ];
+
+      framePositions.forEach((pos, index) => {
+        // Frame
+        const frameGeo = new THREE.BoxGeometry(1.2, 1.6, 0.1);
+        const frameMat = new THREE.MeshStandardMaterial({
+          color: 0x8b4513,
+          roughness: 0.5,
+          metalness: 0.3
+        });
+        const frame = new THREE.Mesh(frameGeo, frameMat);
+        frame.position.set(pos.x, pos.y, pos.z);
+        frame.rotation.set(...pos.rot);
+        frame.castShadow = true;
+        scene.add(frame);
+
+        // Photo
+        const photoGeo = new THREE.PlaneGeometry(1, 1.4);
+        const photoMat = new THREE.MeshStandardMaterial({
+          color: new THREE.Color().setHSL(Math.random(), 0.5, 0.7),
+          emissive: new THREE.Color().setHSL(Math.random(), 0.3, 0.2)
+        });
+        const photo = new THREE.Mesh(photoGeo, photoMat);
+        photo.position.set(
+          pos.x + (pos.rot[1] === Math.PI / 2 ? -0.06 : pos.rot[1] === -Math.PI / 2 ? 0.06 : 0),
+          pos.y,
+          pos.z
+        );
+        photo.rotation.set(...pos.rot);
+        photo.userData = { type: 'photo', index: index + 1 };
+        scene.add(photo);
+        photoFrames.push(photo);
+
+        // Heart above frame
+        const heartShape = new THREE.Shape();
+        const x = 0, y = 0;
+        heartShape.moveTo(x, y);
+        heartShape.bezierCurveTo(x, y - 0.1, x - 0.1, x - 0.15, x - 0.15, y - 0.15);
+        heartShape.bezierCurveTo(x - 0.2, y - 0.15, x - 0.2, y - 0.05, x - 0.2, y);
+        heartShape.bezierCurveTo(x - 0.2, y + 0.05, x - 0.15, y + 0.1, x, y + 0.2);
+        heartShape.bezierCurveTo(x + 0.15, y + 0.1, x + 0.2, y + 0.05, x + 0.2, y);
+        heartShape.bezierCurveTo(x + 0.2, y - 0.05, x + 0.2, y - 0.15, x + 0.15, y - 0.15);
+        heartShape.bezierCurveTo(x + 0.1, y - 0.15, x, y - 0.1, x, y);
+
+        const heartGeo = new THREE.ShapeGeometry(heartShape);
+        const heartMat = new THREE.MeshStandardMaterial({
+          color: 0xff1493,
+          emissive: 0xff69b4,
+          emissiveIntensity: 0.5
+        });
+        const heart = new THREE.Mesh(heartGeo, heartMat);
+        heart.position.set(pos.x, pos.y + 1, pos.z);
+        heart.rotation.set(...pos.rot);
+        scene.add(heart);
+      });
+    }
+
+    function createMessages() {
+      const messageData = [
+        { x: -10, z: -15, text: "Seninle geçirdiğim her an, hayatımın en güzel anı ❤️" },
+        { x: 10, z: -10, text: "İlk buluşmamızı hatırlıyor musun? Kalbim hâlâ aynı hızla atıyor 💕" },
+        { x: -5, z: -5, text: "Gülüşün benim en sevdiğim ses 🌹" },
+        { x: 5, z: 0, text: "Seninle her gün Sevgililer Günü 💝" },
+        { x: 0, z: 5, text: "Seni seviyorum, bugün ve her zaman 💖" }
+      ];
+
+      messageData.forEach((msgData, index) => {
+        const envelopeGeo = new THREE.BoxGeometry(0.3, 0.2, 0.15);
+        const envelopeMat = new THREE.MeshStandardMaterial({
+          color: 0xffb6c1,
+          emissive: 0xff69b4,
+          emissiveIntensity: 0.3
+        });
+        const envelope = new THREE.Mesh(envelopeGeo, envelopeMat);
+        envelope.position.set(msgData.x, 0.15, msgData.z);
+        envelope.castShadow = true;
+        envelope.userData = { 
+          type: 'message', 
+          text: msgData.text, 
+          index,
+          baseY: 0.15
+        };
+        scene.add(envelope);
+        messages.push(envelope);
+      });
+    }
+
+    function createFloatingHearts() {
+      for (let i = 0; i < 15; i++) {
+        const heartShape = new THREE.Shape();
+        const x = 0, y = 0;
+        heartShape.moveTo(x, y);
+        heartShape.bezierCurveTo(x, y - 0.05, x - 0.05, y - 0.08, x - 0.08, y - 0.08);
+        heartShape.bezierCurveTo(x - 0.1, y - 0.08, x - 0.1, y - 0.03, x - 0.1, y);
+        heartShape.bezierCurveTo(x - 0.1, y + 0.03, x - 0.08, y + 0.05, x, y + 0.1);
+        heartShape.bezierCurveTo(x + 0.08, y + 0.05, x + 0.1, y + 0.03, x + 0.1, y);
+        heartShape.bezierCurveTo(x + 0.1, y - 0.03, x + 0.1, y - 0.08, x + 0.08, y - 0.08);
+        heartShape.bezierCurveTo(x + 0.05, y - 0.08, x, y - 0.05, x, y);
+
+        const heartGeo = new THREE.ShapeGeometry(heartShape);
+        const heartMat = new THREE.MeshStandardMaterial({
+          color: 0xff1493,
+          emissive: 0xff69b4,
+          emissiveIntensity: 0.8,
+          transparent: true,
+          opacity: 0.6
+        });
+        const heart = new THREE.Mesh(heartGeo, heartMat);
+        heart.position.set(
+          Math.random() * 20 - 10,
+          Math.random() * 5 + 1,
+          Math.random() * 30 - 15
+        );
+        heart.rotation.y = Math.random() * Math.PI;
+        heart.userData = { floatOffset: Math.random() * Math.PI * 2 };
+        scene.add(heart);
+      }
+    }
+
+    function createCharacters() {
+      // Determine which character is which
+      const isBatuhan = (isHost && selectedCharacter === 'batuhan') || (!isHost && selectedCharacter === 'batuhan');
+      const playerIsBatuhan = selectedCharacter === 'batuhan';
+      
+      // Player character
+      playerGroup = new THREE.Group();
+      
+      // Legs
+      const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8);
+      const legMat = new THREE.MeshStandardMaterial({ 
+        color: playerIsBatuhan ? 0x2c5f9e : 0xffc0cb
+      });
+      const leftLeg = new THREE.Mesh(legGeo, legMat);
+      leftLeg.position.set(-0.15, 0.4, 0);
+      leftLeg.castShadow = true;
+      playerGroup.add(leftLeg);
+      
+      const rightLeg = new THREE.Mesh(legGeo, legMat);
+      rightLeg.position.set(0.15, 0.4, 0);
+      rightLeg.castShadow = true;
+      playerGroup.add(rightLeg);
+
+      // Body (torso)
+      const bodyGeo = new THREE.CylinderGeometry(0.25, 0.3, 0.7, 8);
+      const bodyMat = new THREE.MeshStandardMaterial({ 
+        color: playerIsBatuhan ? 0x4a90e2 : 0xff69b4
+      });
+      const body = new THREE.Mesh(bodyGeo, bodyMat);
+      body.position.y = 1.15;
+      body.castShadow = true;
+      playerGroup.add(body);
+
+      // Arms
+      const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
+      const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
+      
+      const leftArm = new THREE.Mesh(armGeo, armMat);
+      leftArm.position.set(-0.35, 1.15, 0);
+      leftArm.rotation.z = Math.PI / 6;
+      leftArm.castShadow = true;
+      playerGroup.add(leftArm);
+      
+      const rightArm = new THREE.Mesh(armGeo, armMat);
+      rightArm.position.set(0.35, 1.15, 0);
+      rightArm.rotation.z = -Math.PI / 6;
+      rightArm.castShadow = true;
+      playerGroup.add(rightArm);
+
+      // Neck
+      const neckGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.15, 8);
+      const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
+      const neck = new THREE.Mesh(neckGeo, neckMat);
+      neck.position.y = 1.55;
+      neck.castShadow = true;
+      playerGroup.add(neck);
+
+      // Head
+      const headGeo = new THREE.SphereGeometry(0.25, 16, 16);
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
+      const head = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 1.75;
+      head.castShadow = true;
+      playerGroup.add(head);
+
+      // Hair
+      const hairGeo = new THREE.SphereGeometry(0.27, 16, 16);
+      const hairMat = new THREE.MeshStandardMaterial({ 
+        color: playerIsBatuhan ? 0x1a1a1a : 0x6b4423
+      });
+      const hair = new THREE.Mesh(hairGeo, hairMat);
+      hair.position.y = 1.85;
+      hair.scale.set(1, 1.15, 1);
+      hair.castShadow = true;
+      playerGroup.add(hair);
+
+      // Hair details (bangs)
+      if (!playerIsBatuhan) {
+        const bangGeo = new THREE.SphereGeometry(0.15, 12, 12);
+        const bang1 = new THREE.Mesh(bangGeo, hairMat);
+        bang1.position.set(-0.1, 1.75, 0.23);
+        bang1.scale.set(0.8, 1.2, 0.6);
+        playerGroup.add(bang1);
+        
+        const bang2 = new THREE.Mesh(bangGeo, hairMat);
+        bang2.position.set(0.1, 1.75, 0.23);
+        bang2.scale.set(0.8, 1.2, 0.6);
+        playerGroup.add(bang2);
+      }
+
+      // Eyes
+      const eyeGeo = new THREE.SphereGeometry(0.04, 8, 8);
+      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      leftEye.position.set(-0.08, 1.78, 0.22);
+      playerGroup.add(leftEye);
+      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      rightEye.position.set(0.08, 1.78, 0.22);
+      playerGroup.add(rightEye);
+
+      // Smile
+      const smileGeo = new THREE.TorusGeometry(0.08, 0.015, 8, 16, Math.PI);
+      const smileMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
+      const smile = new THREE.Mesh(smileGeo, smileMat);
+      smile.position.set(0, 1.65, 0.23);
+      smile.rotation.x = Math.PI;
+      playerGroup.add(smile);
+
+      // Shoes
+      const shoeGeo = new THREE.BoxGeometry(0.15, 0.1, 0.25);
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+      const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
+      leftShoe.position.set(-0.15, 0.05, 0.05);
+      leftShoe.castShadow = true;
+      playerGroup.add(leftShoe);
+      
+      const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
+      rightShoe.position.set(0.15, 0.05, 0.05);
+      rightShoe.castShadow = true;
+      playerGroup.add(rightShoe);
+
+      // Name tag
+      const canvas = document.createElement('canvas');
+      canvas.width = 256;
+      canvas.height = 64;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.fillRect(0, 0, 256, 64);
+      ctx.fillStyle = '#ff1493';
+      ctx.font = 'bold 32px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(playerIsBatuhan ? 'Batuhan' : 'Merve', 128, 42);
+      
+      const nameTexture = new THREE.CanvasTexture(canvas);
+      const nameMat = new THREE.SpriteMaterial({ map: nameTexture });
+      const nameSprite = new THREE.Sprite(nameMat);
+      nameSprite.position.y = 2.3;
+      nameSprite.scale.set(1, 0.25, 1);
+      playerGroup.add(nameSprite);
+
+      playerGroup.position.set(isHost ? 0 : 2, 0, 8);
+      scene.add(playerGroup);
+
+      // Partner character
+      partnerGroup = new THREE.Group();
+      const partnerIsBatuhan = !playerIsBatuhan;
+      
+      // Partner Legs
+      const pLegMat = new THREE.MeshStandardMaterial({ 
+        color: partnerIsBatuhan ? 0x2c5f9e : 0xffc0cb
+      });
+      const pLeftLeg = new THREE.Mesh(legGeo, pLegMat);
+      pLeftLeg.position.set(-0.15, 0.4, 0);
+      pLeftLeg.castShadow = true;
+      partnerGroup.add(pLeftLeg);
+      
+      const pRightLeg = new THREE.Mesh(legGeo, pLegMat);
+      pRightLeg.position.set(0.15, 0.4, 0);
+      pRightLeg.castShadow = true;
+      partnerGroup.add(pRightLeg);
+
+      // Partner Body
+      const pBodyMat = new THREE.MeshStandardMaterial({ 
+        color: partnerIsBatuhan ? 0x4a90e2 : 0xff69b4
+      });
+      const pBody = new THREE.Mesh(bodyGeo, pBodyMat);
+      pBody.position.y = 1.15;
+      pBody.castShadow = true;
+      partnerGroup.add(pBody);
+
+      // Partner Arms
+      const pLeftArm = new THREE.Mesh(armGeo, armMat);
+      pLeftArm.position.set(-0.35, 1.15, 0);
+      pLeftArm.rotation.z = Math.PI / 6;
+      pLeftArm.castShadow = true;
+      partnerGroup.add(pLeftArm);
+      
+      const pRightArm = new THREE.Mesh(armGeo, armMat);
+      pRightArm.position.set(0.35, 1.15, 0);
+      pRightArm.rotation.z = -Math.PI / 6;
+      pRightArm.castShadow = true;
+      partnerGroup.add(pRightArm);
+
+      // Partner Neck
+      const pNeck = new THREE.Mesh(neckGeo, neckMat);
+      pNeck.position.y = 1.55;
+      pNeck.castShadow = true;
+      partnerGroup.add(pNeck);
+
+      // Partner Head
+      const pHead = new THREE.Mesh(headGeo, headMat);
+      pHead.position.y = 1.75;
+      pHead.castShadow = true;
+      partnerGroup.add(pHead);
+
+      // Partner Hair
+      const pHairMat = new THREE.MeshStandardMaterial({ 
+        color: partnerIsBatuhan ? 0x1a1a1a : 0x6b4423
+      });
+      const pHair = new THREE.Mesh(hairGeo, pHairMat);
+      pHair.position.y = 1.85;
+      pHair.scale.set(1, partnerIsBatuhan ? 1.1 : 1.15, 1);
+      pHair.castShadow = true;
+      partnerGroup.add(pHair);
+
+      // Partner Hair details
+      if (!partnerIsBatuhan) {
+        const pBang1 = new THREE.Mesh(bangGeo, pHairMat);
+        pBang1.position.set(-0.1, 1.75, 0.23);
+        pBang1.scale.set(0.8, 1.2, 0.6);
+        partnerGroup.add(pBang1);
+        
+        const pBang2 = new THREE.Mesh(bangGeo, pHairMat);
+        pBang2.position.set(0.1, 1.75, 0.23);
+        pBang2.scale.set(0.8, 1.2, 0.6);
+        partnerGroup.add(pBang2);
+      }
+
+      // Partner Eyes
+      const pLeftEye = new THREE.Mesh(eyeGeo, eyeMat);
+      pLeftEye.position.set(-0.08, 1.78, 0.22);
+      partnerGroup.add(pLeftEye);
+      const pRightEye = new THREE.Mesh(eyeGeo, eyeMat);
+      pRightEye.position.set(0.08, 1.78, 0.22);
+      partnerGroup.add(pRightEye);
+
+      // Partner Smile
+      const pSmile = new THREE.Mesh(smileGeo, smileMat);
+      pSmile.position.set(0, 1.65, 0.23);
+      pSmile.rotation.x = Math.PI;
+      partnerGroup.add(pSmile);
+
+      // Partner Shoes
+      const pLeftShoe = new THREE.Mesh(shoeGeo, shoeMat);
+      pLeftShoe.position.set(-0.15, 0.05, 0.05);
+      pLeftShoe.castShadow = true;
+      partnerGroup.add(pLeftShoe);
+      
+      const pRightShoe = new THREE.Mesh(shoeGeo, shoeMat);
+      pRightShoe.position.set(0.15, 0.05, 0.05);
+      pRightShoe.castShadow = true;
+      partnerGroup.add(pRightShoe);
+
+      // Partner name tag
+      const pCanvas = document.createElement('canvas');
+      pCanvas.width = 256;
+      pCanvas.height = 64;
+      const pCtx = pCanvas.getContext('2d');
+      pCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      pCtx.fillRect(0, 0, 256, 64);
+      pCtx.fillStyle = '#ff1493';
+      pCtx.font = 'bold 32px Arial';
+      pCtx.textAlign = 'center';
+      pCtx.fillText(partnerIsBatuhan ? 'Batuhan' : 'Merve', 128, 42);
+      
+      const pNameTexture = new THREE.CanvasTexture(pCanvas);
+      const pNameMat = new THREE.SpriteMaterial({ map: pNameTexture });
+      const pNameSprite = new THREE.Sprite(pNameMat);
+      pNameSprite.position.y = 2.3;
+      pNameSprite.scale.set(1, 0.25, 1);
+      partnerGroup.add(pNameSprite);
+
+      partnerGroup.position.set(isHost ? 2 : 0, 0, 8);
+      partnerGroup.visible = partnerConnected;
+      scene.add(partnerGroup);
+    }
+
+    function setupControls() {
+      window.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+      });
+
+      window.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+        yaw = -mouseX * Math.PI * 0.3;
+      });
+
+      window.addEventListener('click', (e) => {
+        const mouse = new THREE.Vector2();
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(photoFrames);
+
+        if (intersects.length > 0) {
+          const photo = intersects[0].object;
+          showPhoto(photo.userData.index);
+        }
+
+        // Close popups
+        if (e.target.classList.contains('message-popup') || e.target.classList.contains('photo-popup')) {
+          document.getElementById('message-popup').classList.remove('show');
+          document.getElementById('photo-popup').classList.remove('show');
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+
+    function showPhoto(index) {
+      const colors = ['#ff69b4', '#ffb6c1', '#ffc0cb', '#ff1493', '#db7093'];
+      const color1 = colors[index % colors.length];
+      const color2 = colors[(index + 1) % colors.length];
+      
+      const photoFrame = document.getElementById('photo-frame');
+      photoFrame.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+      
+      document.getElementById('photo-number').textContent = index;
+      document.getElementById('photo-popup').classList.add('show');
+    }
+
+    let time = 0;
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 16;
+
+      // Player movement
+      const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(moveSpeed);
+      const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(moveSpeed);
+
+      if (keys['w']) playerGroup.position.add(forward.clone().negate());
+      if (keys['s']) playerGroup.position.add(forward);
+      if (keys['a']) playerGroup.position.add(right.clone().negate());
+      if (keys['d']) playerGroup.position.add(right);
+
+      // Boundaries
+      playerGroup.position.x = Math.max(-13, Math.min(13, playerGroup.position.x));
+      playerGroup.position.z = Math.max(-18, Math.min(15, playerGroup.position.z));
+
+      // Camera follow
+      camera.position.x = playerGroup.position.x;
+      camera.position.z = playerGroup.position.z + 2;
+      camera.rotation.y = yaw;
+
+      // Send position to server
+      socket.emit('update_position', {
+        position: {
+          x: playerGroup.position.x,
+          y: playerGroup.position.y,
+          z: playerGroup.position.z
+        },
+        rotation: yaw
+      });
+
+      // Animate messages
+      messages.forEach((msg, i) => {
+        msg.position.y = msg.userData.baseY + Math.sin(time * 0.002 + i) * 0.1;
+        msg.rotation.y += 0.01;
+      });
+
+      // Check near message
+      nearMessage = null;
+      messages.forEach((msg) => {
+        const dist = playerGroup.position.distanceTo(msg.position);
+        if (dist < 1.5) nearMessage = msg.userData;
+      });
+
+      if (nearMessage) {
+        document.getElementById('message-indicator').classList.add('show');
+        if (keys['e']) {
+          document.getElementById('message-text').textContent = nearMessage.text;
+          document.getElementById('message-popup').classList.add('show');
+        }
+      } else {
+        document.getElementById('message-indicator').classList.remove('show');
+      }
+
+      // Animate floating hearts
+      scene.children.forEach((child) => {
+        if (child.userData.floatOffset !== undefined) {
+          child.position.y += Math.sin(time * 0.001 + child.userData.floatOffset) * 0.002;
+          child.rotation.y += 0.01;
+        }
+      });
+
+      renderer.render(scene, camera);
+    }
+  </script>
+</body>
+</html>
