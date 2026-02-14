@@ -494,6 +494,21 @@
         </p>
       </div>
     </div>
+
+    <!-- Password Popup for Museum Door -->
+    <div id="password-popup" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+      <div style="background: linear-gradient(135deg, #ff69b4, #ffb6c1); padding: 50px; border-radius: 30px; max-width: 600px; text-align: center; box-shadow: 0 20px 60px rgba(255, 105, 180, 0.6);">
+        <div style="font-size: 60px; margin-bottom: 20px;">🔐</div>
+        <h2 style="color: white; font-size: 32px; margin: 0 0 30px 0;">Müze Girişi</h2>
+        <p style="color: white; font-size: 24px; margin-bottom: 30px;">Kocanın adı ne?</p>
+        <input type="text" id="password-input" placeholder="Cevap..." style="padding: 15px 30px; font-size: 24px; border: 3px solid white; border-radius: 15px; width: 80%; text-align: center; margin-bottom: 20px;" onkeypress="if(event.key==='Enter') checkPassword()">
+        <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+          <button onclick="checkPassword()" style="padding: 15px 40px; font-size: 20px; background: white; color: #ff1493; border: none; border-radius: 50px; cursor: pointer; font-weight: bold;">Giriş Yap</button>
+          <button onclick="closePasswordPopup()" style="padding: 15px 40px; font-size: 20px; background: rgba(255,255,255,0.3); color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold;">İptal</button>
+        </div>
+        <p id="password-error" style="color: #ffeeee; margin-top: 20px; font-size: 18px; display: none;"></p>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -635,6 +650,51 @@
       }, 3000);
     }
 
+    function checkPassword() {
+      const input = document.getElementById('password-input').value.toLowerCase().trim();
+      const errorEl = document.getElementById('password-error');
+      
+      if (input === 'batuhan') {
+        // Doğru şifre!
+        closePasswordPopup();
+        enterMuseum();
+      } else {
+        // Yanlış şifre
+        errorEl.textContent = '❌ Yanlış cevap! Tekrar dene.';
+        errorEl.style.display = 'block';
+        document.getElementById('password-input').value = '';
+        setTimeout(() => {
+          errorEl.style.display = 'none';
+        }, 2000);
+      }
+    }
+
+    function closePasswordPopup() {
+      document.getElementById('password-popup').style.display = 'none';
+      document.getElementById('password-input').value = '';
+      document.getElementById('password-error').style.display = 'none';
+    }
+
+    function enterMuseum() {
+      window.insideMuseum = true;
+      window.museumDoor.userData.locked = false;
+      
+      // Müze içini göster
+      window.museumInterior.visible = true;
+      
+      // Karakteri müzenin içine ışınla
+      playerGroup.position.set(0, 0, 15);
+      
+      // Kamerayı ayarla
+      camera.position.set(0, 2, 18);
+      
+      // Dış ortamı gizle (performans için)
+      scene.background = new THREE.Color(0xffe6f0);
+      scene.fog = new THREE.Fog(0xffe6f0, 1, 50);
+      
+      console.log('Müzeye hoş geldiniz!');
+    }
+
     function startGame() {
       if (!selectedCharacter) return;
       
@@ -649,11 +709,11 @@
       const container = document.getElementById('game-container');
       
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xffe6f0);
-      scene.fog = new THREE.Fog(0xffe6f0, 1, 50);
+      scene.background = new THREE.Color(0x87CEEB); // Mavi gökyüzü
+      scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
 
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 1.6, 8);
+      camera.position.set(0, 2, 15); // Dışarıda başla
 
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -661,38 +721,186 @@
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(renderer.domElement);
 
-      // Lighting
-      const ambientLight = new THREE.AmbientLight(0xffd4e5, 0.6);
+      // Lighting - GÜNEŞ IŞIĞI
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
       scene.add(ambientLight);
 
-      const mainLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      mainLight.position.set(5, 10, 5);
-      mainLight.castShadow = true;
-      mainLight.shadow.mapSize.width = 2048;
-      mainLight.shadow.mapSize.height = 2048;
-      scene.add(mainLight);
+      const sunLight = new THREE.DirectionalLight(0xfff5e1, 1.5);
+      sunLight.position.set(30, 50, 30);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 4096;
+      sunLight.shadow.mapSize.height = 4096;
+      sunLight.shadow.camera.left = -60;
+      sunLight.shadow.camera.right = 60;
+      sunLight.shadow.camera.top = 60;
+      sunLight.shadow.camera.bottom = -60;
+      sunLight.shadow.camera.far = 200;
+      scene.add(sunLight);
 
-      const spotlight1 = new THREE.SpotLight(0xff69b4, 1, 20, Math.PI / 6);
-      spotlight1.position.set(-8, 8, 0);
-      spotlight1.castShadow = true;
-      scene.add(spotlight1);
-
-      const spotlight2 = new THREE.SpotLight(0xffb6c1, 1, 20, Math.PI / 6);
-      spotlight2.position.set(8, 8, 0);
-      spotlight2.castShadow = true;
-      scene.add(spotlight2);
-
-      // Floor
-      const floorGeometry = new THREE.PlaneGeometry(30, 40);
-      const floorMaterial = new THREE.MeshStandardMaterial({
-        color: 0xf5e6e8,
-        roughness: 0.3,
-        metalness: 0.1
+      // YEŞİL ÇİMEN ZEMIN
+      const groundGeo = new THREE.PlaneGeometry(200, 200);
+      const groundMat = new THREE.MeshStandardMaterial({ 
+        color: 0x5a8f3a,
+        roughness: 0.9
       });
-      const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-      floor.rotation.x = -Math.PI / 2;
-      floor.receiveShadow = true;
-      scene.add(floor);
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+
+      // AĞAÇLAR
+      for (let i = 0; i < 25; i++) {
+        const trunkHeight = 2 + Math.random() * 2;
+        const trunk = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.3, 0.4, trunkHeight, 8),
+          new THREE.MeshStandardMaterial({ color: 0x4a3520 })
+        );
+        
+        const leavesSize = 1.2 + Math.random() * 1;
+        const leaves = new THREE.Mesh(
+          new THREE.SphereGeometry(leavesSize, 8, 8),
+          new THREE.MeshStandardMaterial({ color: 0x2d5016 })
+        );
+        
+        // Rastgele pozisyon ama müze alanından uzak
+        let x = Math.random() * 120 - 60;
+        let z = Math.random() * 120 - 60;
+        
+        // Müze çevresinden uzak tut
+        if (Math.abs(x) < 25 && z > -35 && z < 10) {
+          x += x > 0 ? 30 : -30;
+        }
+        
+        trunk.position.set(x, trunkHeight / 2, z);
+        leaves.position.set(x, trunkHeight + leavesSize * 0.8, z);
+        
+        trunk.castShadow = true;
+        trunk.receiveShadow = true;
+        leaves.castShadow = true;
+        
+        scene.add(trunk);
+        scene.add(leaves);
+      }
+
+      // BULUTLAR
+      for (let i = 0; i < 12; i++) {
+        const cloud = new THREE.Group();
+        for (let j = 0; j < 4; j++) {
+          const sphere = new THREE.Mesh(
+            new THREE.SphereGeometry(Math.random() * 1.5 + 1, 8, 8),
+            new THREE.MeshBasicMaterial({ 
+              color: 0xffffff, 
+              transparent: true, 
+              opacity: 0.7 
+            })
+          );
+          sphere.position.set(
+            Math.random() * 5 - 2.5, 
+            Math.random() * 1.5, 
+            Math.random() * 3 - 1.5
+          );
+          cloud.add(sphere);
+        }
+        cloud.position.set(
+          Math.random() * 150 - 75,
+          30 + Math.random() * 20,
+          Math.random() * 150 - 75
+        );
+        scene.add(cloud);
+      }
+
+      // MÜZE BİNASI
+      const museumGroup = new THREE.Group();
+      
+      // Ana duvarlar
+      const wallMat = new THREE.MeshStandardMaterial({ 
+        color: 0xf0e5d8, 
+        roughness: 0.8 
+      });
+      const mainWalls = new THREE.Mesh(
+        new THREE.BoxGeometry(28, 7, 38),
+        wallMat
+      );
+      mainWalls.position.y = 3.5;
+      mainWalls.castShadow = true;
+      mainWalls.receiveShadow = true;
+      museumGroup.add(mainWalls);
+
+      // Çatı
+      const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
+      const roof = new THREE.Mesh(
+        new THREE.ConeGeometry(20, 3, 4),
+        roofMat
+      );
+      roof.position.y = 8.5;
+      roof.rotation.y = Math.PI / 4;
+      roof.castShadow = true;
+      museumGroup.add(roof);
+
+      // Kapı çerçevesi
+      const doorFrameGeo = new THREE.BoxGeometry(3.2, 4.2, 0.3);
+      const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
+      const doorFrame = new THREE.Mesh(doorFrameGeo, doorFrameMat);
+      doorFrame.position.set(0, 2.1, 19.15);
+      museumGroup.add(doorFrame);
+
+      // KAPI (Kapalı ve Kilitli)
+      const doorGeo = new THREE.BoxGeometry(3, 4, 0.2);
+      const doorMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
+      const door = new THREE.Mesh(doorGeo, doorMat);
+      door.position.set(0, 2, 19.2);
+      door.castShadow = true;
+      door.userData = { type: 'museum_door', locked: true };
+      museumGroup.add(door);
+      window.museumDoor = door;
+
+      // Kapı kolu
+      const handleGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8);
+      const handleMat = new THREE.MeshStandardMaterial({ 
+        color: 0xffd700, 
+        metalness: 0.9,
+        roughness: 0.1
+      });
+      const handle = new THREE.Mesh(handleGeo, handleMat);
+      handle.rotation.z = Math.PI / 2;
+      handle.position.set(1, 2, 19.3);
+      museumGroup.add(handle);
+
+      // KIRMIZI HALI
+      const carpetGeo = new THREE.PlaneGeometry(4, 8);
+      const carpetMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 });
+      const carpet = new THREE.Mesh(carpetGeo, carpetMat);
+      carpet.rotation.x = -Math.PI / 2;
+      carpet.position.set(0, 0.01, 23);
+      carpet.receiveShadow = true;
+      museumGroup.add(carpet);
+
+      // Tabela
+      const signCanvas = document.createElement('canvas');
+      signCanvas.width = 1024;
+      signCanvas.height = 256;
+      const signCtx = signCanvas.getContext('2d');
+      signCtx.fillStyle = '#8B4513';
+      signCtx.fillRect(0, 0, 1024, 256);
+      signCtx.fillStyle = '#FFD700';
+      signCtx.font = 'bold 80px Arial';
+      signCtx.textAlign = 'center';
+      signCtx.fillText('💕 Aşkımızın Müzesi 💕', 512, 150);
+      
+      const signTexture = new THREE.CanvasTexture(signCanvas);
+      const signGeo = new THREE.PlaneGeometry(10, 2.5);
+      const signMat = new THREE.MeshBasicMaterial({ map: signTexture });
+      const sign = new THREE.Mesh(signGeo, signMat);
+      sign.position.set(0, 6.5, 19.3);
+      museumGroup.add(sign);
+
+      scene.add(museumGroup);
+      window.museumGroup = museumGroup;
+
+      // MÜZENİN İÇİ (Başlangıçta görünmez, kapı açıldığında aktif)
+      window.insideMuseum = false;
+      window.museumInterior = new THREE.Group();
+      window.museumInterior.visible = false;
 
       // Walls
       const wallMaterial = new THREE.MeshStandardMaterial({
@@ -700,28 +908,57 @@
         roughness: 0.8
       });
 
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 40), wallMaterial);
-      leftWall.position.set(-15, 3, 0);
+      // MÜZENİN İÇİ - Duvarlar (görünmez başlar)
+      const interiorFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(26, 36),
+        new THREE.MeshStandardMaterial({ color: 0xf5e6e8, roughness: 0.3 })
+      );
+      interiorFloor.rotation.x = -Math.PI / 2;
+      interiorFloor.receiveShadow = true;
+      interiorFloor.position.y = 0.01;
+      window.museumInterior.add(interiorFloor);
+
+      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 36), wallMaterial);
+      leftWall.position.set(-13, 3, 0);
       leftWall.receiveShadow = true;
       leftWall.castShadow = true;
-      scene.add(leftWall);
+      window.museumInterior.add(leftWall);
 
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 40), wallMaterial);
-      rightWall.position.set(15, 3, 0);
+      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 36), wallMaterial);
+      rightWall.position.set(13, 3, 0);
       rightWall.receiveShadow = true;
       rightWall.castShadow = true;
-      scene.add(rightWall);
+      window.museumInterior.add(rightWall);
 
-      const backWall = new THREE.Mesh(new THREE.BoxGeometry(30, 6, 0.3), wallMaterial);
-      backWall.position.set(0, 3, -20);
+      const backWall = new THREE.Mesh(new THREE.BoxGeometry(26, 6, 0.3), wallMaterial);
+      backWall.position.set(0, 3, -18);
       backWall.receiveShadow = true;
-      scene.add(backWall);
+      window.museumInterior.add(backWall);
 
-      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(30, 40), wallMaterial);
-      ceiling.rotation.x = Math.PI / 2;
-      ceiling.position.y = 6;
-      ceiling.receiveShadow = true;
-      scene.add(ceiling);
+      const interiorCeiling = new THREE.Mesh(
+        new THREE.PlaneGeometry(26, 36),
+        wallMaterial
+      );
+      interiorCeiling.rotation.x = Math.PI / 2;
+      interiorCeiling.position.y = 6;
+      interiorCeiling.receiveShadow = true;
+      window.museumInterior.add(interiorCeiling);
+
+      // İç aydınlatma
+      const interiorAmbient = new THREE.AmbientLight(0xffd4e5, 0.6);
+      window.museumInterior.add(interiorAmbient);
+
+      const interiorSpot1 = new THREE.SpotLight(0xff69b4, 1, 20, Math.PI / 6);
+      interiorSpot1.position.set(-8, 5, 0);
+      interiorSpot1.castShadow = true;
+      window.museumInterior.add(interiorSpot1);
+
+      const interiorSpot2 = new THREE.SpotLight(0xffb6c1, 1, 20, Math.PI / 6);
+      interiorSpot2.position.set(8, 5, 0);
+      interiorSpot2.castShadow = true;
+      window.museumInterior.add(interiorSpot2);
+
+      scene.add(window.museumInterior);
 
       // Photo frames
       createPhotoFrames();
@@ -919,21 +1156,29 @@
       body.castShadow = true;
       playerGroup.add(body);
 
-      // KOLLAR - DAHA YAKIN
-      const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8);
+      // KOLLAR - DAHA GERÇEKÇİ VE YAPIŞIK
+      const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
       const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       
+      // Sol kol - omuzdan başlasın
+      const leftArmPivot = new THREE.Group();
       const leftArm = new THREE.Mesh(armGeo, armMat);
-      leftArm.position.set(-0.24, 0.9, 0); // Daha yakın
+      leftArm.position.y = -0.25; // Pivot noktasından aşağı
       leftArm.castShadow = true;
-      playerGroup.add(leftArm);
-      playerGroup.leftArm = leftArm;
+      leftArmPivot.add(leftArm);
+      leftArmPivot.position.set(-0.22, 1.05, 0); // Omuz pozisyonu
+      playerGroup.add(leftArmPivot);
+      playerGroup.leftArm = leftArmPivot;
       
+      // Sağ kol - omuzdan başlasın
+      const rightArmPivot = new THREE.Group();
       const rightArm = new THREE.Mesh(armGeo, armMat);
-      rightArm.position.set(0.24, 0.9, 0); // Daha yakın
+      rightArm.position.y = -0.25; // Pivot noktasından aşağı
       rightArm.castShadow = true;
-      playerGroup.add(rightArm);
-      playerGroup.rightArm = rightArm;
+      rightArmPivot.add(rightArm);
+      rightArmPivot.position.set(0.22, 1.05, 0); // Omuz pozisyonu
+      playerGroup.add(rightArmPivot);
+      playerGroup.rightArm = rightArmPivot;
 
       // BOYUN
       const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
@@ -1046,7 +1291,7 @@
       nameSprite.scale.set(0.8, 0.2, 1);
       playerGroup.add(nameSprite);
 
-      playerGroup.position.set(0, 0, 5);
+      playerGroup.position.set(0, 0, 30); // DIŞARIDA BAŞLA
       scene.add(playerGroup);
 
       // PARTNER CHARACTER - AYNI YAPIDA
@@ -1076,16 +1321,22 @@
       pBody.castShadow = true;
       partnerGroup.add(pBody);
 
-      // Partner Kollar
+      // Partner Kollar - GERÇEKÇİ
+      const pLeftArmPivot = new THREE.Group();
       const pLeftArm = new THREE.Mesh(armGeo, armMat);
-      pLeftArm.position.set(-0.24, 0.9, 0);
+      pLeftArm.position.y = -0.25;
       pLeftArm.castShadow = true;
-      partnerGroup.add(pLeftArm);
+      pLeftArmPivot.add(pLeftArm);
+      pLeftArmPivot.position.set(-0.22, 1.05, 0);
+      partnerGroup.add(pLeftArmPivot);
       
+      const pRightArmPivot = new THREE.Group();
       const pRightArm = new THREE.Mesh(armGeo, armMat);
-      pRightArm.position.set(0.24, 0.9, 0);
+      pRightArm.position.y = -0.25;
       pRightArm.castShadow = true;
-      partnerGroup.add(pRightArm);
+      pRightArmPivot.add(pRightArm);
+      pRightArmPivot.position.set(0.22, 1.05, 0);
+      partnerGroup.add(pRightArmPivot);
 
       // Partner Boyun
       const pNeck = new THREE.Mesh(neckGeo, neckMat);
@@ -1182,7 +1433,7 @@
       pNameSprite.scale.set(0.8, 0.2, 1);
       partnerGroup.add(pNameSprite);
 
-      partnerGroup.position.set(2, 0, 5);
+      partnerGroup.position.set(3, 0, 30); // DIŞARIDA BAŞLA
       partnerGroup.visible = partnerConnected;
       scene.add(partnerGroup);
     }
@@ -1332,9 +1583,15 @@
         playerGroup.userData.onGround = true;
       }
 
-      // Boundaries
-      playerGroup.position.x = Math.max(-13, Math.min(13, playerGroup.position.x));
-      playerGroup.position.z = Math.max(-18, Math.min(15, playerGroup.position.z));
+      // Boundaries - Dış ortam için geniş
+      if (!window.insideMuseum) {
+        playerGroup.position.x = Math.max(-50, Math.min(50, playerGroup.position.x));
+        playerGroup.position.z = Math.max(-50, Math.min(50, playerGroup.position.z));
+      } else {
+        // Müze içi
+        playerGroup.position.x = Math.max(-12, Math.min(12, playerGroup.position.x));
+        playerGroup.position.z = Math.max(-17, Math.min(17, playerGroup.position.z));
+      }
 
       // Animation - DANS VE YÜRÜME
       if (isDancing) {
@@ -1415,14 +1672,35 @@
         if (dist < 1.5) nearMessage = msg.userData;
       });
 
+      // KAPI ETKİLEŞİMİ
+      let nearDoor = false;
+      if (window.museumDoor && !window.insideMuseum) {
+        const doorPos = new THREE.Vector3(0, 0, 19);
+        const distToDoor = playerGroup.position.distanceTo(doorPos);
+        
+        if (distToDoor < 3) {
+          nearDoor = true;
+          if (keys['e']) {
+            document.getElementById('password-popup').style.display = 'flex';
+            setTimeout(() => {
+              document.getElementById('password-input').focus();
+            }, 100);
+          }
+        }
+      }
+
       if (nearMessage) {
         document.getElementById('message-indicator').classList.add('show');
         if (keys['e']) {
           document.getElementById('message-text').textContent = nearMessage.text;
           document.getElementById('message-popup').classList.add('show');
         }
+      } else if (nearDoor) {
+        document.getElementById('message-indicator').textContent = '🔐 E tuşuna bas - Müzeye Gir';
+        document.getElementById('message-indicator').classList.add('show');
       } else {
         document.getElementById('message-indicator').classList.remove('show');
+        document.getElementById('message-indicator').textContent = '💌 E tuşuna bas ve mesajı oku!';
       }
 
       // Animate floating hearts
