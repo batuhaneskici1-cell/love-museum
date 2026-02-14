@@ -462,9 +462,15 @@
       <p><strong>SPACE</strong> - Zıpla</p>
       <p><strong>Q</strong> - Dans Et 💃</p>
       <p><strong>E</strong> - Mesajı Oku / Kapıya Gir</p>
+      <p><strong>M</strong> - Müzik Aç/Kapat 🎵</p>
       <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
       <p><strong>ESC</strong> - Fareyi Serbest Bırak</p>
     </div>
+
+    <!-- Background Music -->
+    <audio id="background-music" loop>
+      <source src="music/piano.mp3" type="audio/mpeg">
+    </audio>
 
     <div class="partner-status">
       <h4>Partner Durumu:</h4>
@@ -702,6 +708,15 @@
       document.getElementById('character-screen').style.display = 'none';
       document.getElementById('game-container').classList.add('active');
       initThreeJS();
+      
+      // Müziği başlatmayı dene (kullanıcı etkileşimi sonrası)
+      setTimeout(() => {
+        const music = document.getElementById('background-music');
+        music.volume = 0.3; // Ses seviyesi %30
+        music.play().catch(e => {
+          console.log('Müzik başlatılamadı. M tuşuna basarak başlatabilirsiniz.');
+        });
+      }, 500);
     }
 
     // Three.js setup
@@ -807,6 +822,170 @@
           Math.random() * 150 - 75
         );
         scene.add(cloud);
+      }
+
+      // NEHİR - Müzenin sağ tarafında
+      const riverCurve = new THREE.QuadraticBezierCurve3(
+        new THREE.Vector3(35, 0.02, -60),
+        new THREE.Vector3(40, 0.02, 0),
+        new THREE.Vector3(35, 0.02, 60)
+      );
+      const riverPoints = riverCurve.getPoints(50);
+      const riverShape = new THREE.Shape();
+      
+      riverPoints.forEach((point, i) => {
+        const width = 6 + Math.sin(i * 0.2) * 1;
+        if (i === 0) {
+          riverShape.moveTo(point.x - width/2, point.z);
+        } else {
+          riverShape.lineTo(point.x - width/2, point.z);
+        }
+      });
+      
+      for (let i = riverPoints.length - 1; i >= 0; i--) {
+        const point = riverPoints[i];
+        const width = 6 + Math.sin(i * 0.2) * 1;
+        riverShape.lineTo(point.x + width/2, point.z);
+      }
+      
+      const riverGeo = new THREE.ShapeGeometry(riverShape);
+      const riverMat = new THREE.MeshStandardMaterial({ 
+        color: 0x4a90e2,
+        transparent: true,
+        opacity: 0.7,
+        metalness: 0.3,
+        roughness: 0.2
+      });
+      const river = new THREE.Mesh(riverGeo, riverMat);
+      river.rotation.x = -Math.PI / 2;
+      river.position.y = 0.02;
+      river.receiveShadow = true;
+      scene.add(river);
+
+      // KÖPRÜ - Nehir üzerinde
+      const bridgeGeo = new THREE.BoxGeometry(8, 0.3, 3);
+      const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
+      const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
+      bridge.position.set(40, 0.3, 0);
+      bridge.castShadow = true;
+      bridge.receiveShadow = true;
+      scene.add(bridge);
+
+      // Köprü난간ları
+      for (let side of [-1.5, 1.5]) {
+        for (let i = 0; i < 5; i++) {
+          const post = new THREE.Mesh(
+            new THREE.BoxGeometry(0.1, 0.8, 0.1),
+            bridgeMat
+          );
+          post.position.set(40 + (i - 2) * 1.8, 0.7, side);
+          post.castShadow = true;
+          scene.add(post);
+        }
+      }
+
+      // UÇAN KELEBEKLER
+      window.butterflies = [];
+      for (let i = 0; i < 10; i++) {
+        const butterflyGroup = new THREE.Group();
+        
+        // Kanatlar
+        const wingGeo = new THREE.CircleGeometry(0.15, 6);
+        const wingMat = new THREE.MeshBasicMaterial({ 
+          color: new THREE.Color().setHSL(Math.random(), 0.7, 0.6),
+          side: THREE.DoubleSide
+        });
+        
+        const leftWing = new THREE.Mesh(wingGeo, wingMat);
+        leftWing.position.x = -0.1;
+        butterflyGroup.add(leftWing);
+        
+        const rightWing = new THREE.Mesh(wingGeo, wingMat);
+        rightWing.position.x = 0.1;
+        butterflyGroup.add(rightWing);
+        
+        butterflyGroup.position.set(
+          Math.random() * 60 - 30,
+          1 + Math.random() * 3,
+          Math.random() * 60 - 30
+        );
+        
+        butterflyGroup.userData = {
+          speed: 0.02 + Math.random() * 0.03,
+          wingSpeed: 5 + Math.random() * 5,
+          path: Math.random() * Math.PI * 2
+        };
+        
+        scene.add(butterflyGroup);
+        window.butterflies.push(butterflyGroup);
+      }
+
+      // UÇAN KUŞLAR
+      window.birds = [];
+      for (let i = 0; i < 8; i++) {
+        const birdGroup = new THREE.Group();
+        
+        // Basit kuş şekli (V şeklinde)
+        const birdGeo = new THREE.ConeGeometry(0.1, 0.3, 4);
+        const birdMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+        const body = new THREE.Mesh(birdGeo, birdMat);
+        body.rotation.x = Math.PI / 2;
+        birdGroup.add(body);
+        
+        birdGroup.position.set(
+          Math.random() * 100 - 50,
+          10 + Math.random() * 15,
+          Math.random() * 100 - 50
+        );
+        
+        birdGroup.userData = {
+          speed: 0.05 + Math.random() * 0.05,
+          angle: Math.random() * Math.PI * 2,
+          radius: 30 + Math.random() * 20
+        };
+        
+        scene.add(birdGroup);
+        window.birds.push(birdGroup);
+      }
+
+      // ÇİÇEKLER - Yere serpiştirilmiş
+      for (let i = 0; i < 30; i++) {
+        const flowerGroup = new THREE.Group();
+        
+        // Çiçek taç yaprakları
+        const petalCount = 5 + Math.floor(Math.random() * 3);
+        const petalColor = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
+        
+        for (let j = 0; j < petalCount; j++) {
+          const petal = new THREE.Mesh(
+            new THREE.CircleGeometry(0.15, 8),
+            new THREE.MeshBasicMaterial({ color: petalColor, side: THREE.DoubleSide })
+          );
+          const angle = (j / petalCount) * Math.PI * 2;
+          petal.position.set(Math.cos(angle) * 0.15, 0, Math.sin(angle) * 0.15);
+          petal.rotation.x = -Math.PI / 2;
+          flowerGroup.add(petal);
+        }
+        
+        // Çiçek merkezi
+        const center = new THREE.Mesh(
+          new THREE.CircleGeometry(0.08, 8),
+          new THREE.MeshBasicMaterial({ color: 0xffeb3b, side: THREE.DoubleSide })
+        );
+        center.rotation.x = -Math.PI / 2;
+        center.position.y = 0.01;
+        flowerGroup.add(center);
+        
+        // Rastgele pozisyon ama yoldan uzak
+        let x = Math.random() * 80 - 40;
+        let z = Math.random() * 80 - 40;
+        
+        if (Math.abs(x) < 20 && z > -30 && z < 5) {
+          x += x > 0 ? 25 : -25;
+        }
+        
+        flowerGroup.position.set(x, 0.05, z);
+        scene.add(flowerGroup);
       }
 
       // MÜZE BİNASI
@@ -1156,7 +1335,21 @@
       body.castShadow = true;
       playerGroup.add(body);
 
-      // KOLLAR - DAHA GERÇEKÇİ VE YAPIŞIK
+      // ETEK (Sadece kız karakter için) - Kolların altında
+      if (!playerIsBatuhan) {
+        const skirtGeo = new THREE.CylinderGeometry(0.32, 0.42, 0.35, 12);
+        const skirtMat = new THREE.MeshStandardMaterial({ 
+          color: 0xff69b4,
+          side: THREE.DoubleSide
+        });
+        const skirt = new THREE.Mesh(skirtGeo, skirtMat);
+        skirt.position.y = 0.58; // Daha aşağı
+        skirt.castShadow = true;
+        playerGroup.add(skirt);
+        playerGroup.skirt = skirt; // Dans animasyonu için
+      }
+
+      // KOLLAR - DAHA GERÇEKÇİ VE YAPIŞIK (Eteğin ÜZERİNDE render edilsin)
       const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
       const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       
@@ -1181,6 +1374,8 @@
       playerGroup.rightArm = rightArmPivot;
 
       // BOYUN
+      const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
+      const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
       const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       const neck = new THREE.Mesh(neckGeo, neckMat);
@@ -1321,7 +1516,20 @@
       pBody.castShadow = true;
       partnerGroup.add(pBody);
 
-      // Partner Kollar - GERÇEKÇİ
+      // Partner ETEK (Sadece kız karakter için) - Kolların altında
+      if (!partnerIsBatuhan) {
+        const pSkirtGeo = new THREE.CylinderGeometry(0.32, 0.42, 0.35, 12);
+        const pSkirtMat = new THREE.MeshStandardMaterial({ 
+          color: 0xff69b4,
+          side: THREE.DoubleSide
+        });
+        const pSkirt = new THREE.Mesh(pSkirtGeo, pSkirtMat);
+        pSkirt.position.y = 0.58; // Daha aşağı
+        pSkirt.castShadow = true;
+        partnerGroup.add(pSkirt);
+      }
+
+      // Partner Kollar - GERÇEKÇİ (Eteğin üzerinde)
       const pLeftArmPivot = new THREE.Group();
       const pLeftArm = new THREE.Mesh(armGeo, armMat);
       pLeftArm.position.y = -0.25;
@@ -1339,6 +1547,7 @@
       partnerGroup.add(pRightArmPivot);
 
       // Partner Boyun
+      const pNeck = new THREE.Mesh(neckGeo, neckMat);
       const pNeck = new THREE.Mesh(neckGeo, neckMat);
       pNeck.position.y = 1.26;
       pNeck.castShadow = true;
@@ -1568,6 +1777,22 @@
         isDancing = false;
       }
       
+      // MÜZİK KONTROL (M tuşu)
+      if (keys['m'] && !window.musicToggleCooldown) {
+        const music = document.getElementById('background-music');
+        if (music.paused) {
+          music.play().catch(e => console.log('Müzik çalınamadı:', e));
+          console.log('🎵 Müzik başlatıldı');
+        } else {
+          music.pause();
+          console.log('🔇 Müzik durduruldu');
+        }
+        window.musicToggleCooldown = true;
+        setTimeout(() => {
+          window.musicToggleCooldown = false;
+        }, 500);
+      }
+      
       // Yerçekimi
       if (!playerGroup.userData.velocityY) playerGroup.userData.velocityY = 0;
       if (!playerGroup.userData.onGround) {
@@ -1595,20 +1820,39 @@
 
       // Animation - DANS VE YÜRÜME
       if (isDancing) {
-        // DANS ANİMASYONU 💃
+        // GELİŞMİŞ DANS ANİMASYONU 💃
+        const danceSpeed = time * 0.012;
+        
         if (playerGroup.leftArm && playerGroup.rightArm) {
-          playerGroup.leftArm.rotation.x = Math.sin(time * 0.01) * 0.8;
-          playerGroup.leftArm.rotation.z = Math.sin(time * 0.008) * 0.5;
-          playerGroup.rightArm.rotation.x = Math.sin(time * 0.01 + Math.PI) * 0.8;
-          playerGroup.rightArm.rotation.z = Math.sin(time * 0.008 + Math.PI) * -0.5;
+          // Kolları yukarı kaldır ve salla
+          playerGroup.leftArm.rotation.z = Math.sin(danceSpeed) * 0.6 + 0.3;
+          playerGroup.leftArm.rotation.x = Math.sin(danceSpeed * 1.5) * 0.4;
+          playerGroup.leftArm.rotation.y = Math.cos(danceSpeed * 0.8) * 0.3;
+          
+          playerGroup.rightArm.rotation.z = Math.sin(danceSpeed + Math.PI) * 0.6 - 0.3;
+          playerGroup.rightArm.rotation.x = Math.sin(danceSpeed * 1.5 + Math.PI) * 0.4;
+          playerGroup.rightArm.rotation.y = Math.cos(danceSpeed * 0.8 + Math.PI) * 0.3;
         }
         
-        // Vücut salla
-        playerGroup.rotation.y += Math.sin(time * 0.01) * 0.01;
+        // Vücudu sağ-sol salla
+        const bodySwing = Math.sin(danceSpeed * 2) * 0.15;
+        playerGroup.rotation.y = bodySwing;
+        playerGroup.rotation.z = Math.sin(danceSpeed * 1.5) * 0.05;
+        
+        // Yukarı aşağı zıpla
+        playerGroup.position.y = Math.abs(Math.sin(danceSpeed * 3)) * 0.2;
         
         // Etek salla (eğer varsa)
         if (playerGroup.skirt) {
-          playerGroup.skirt.rotation.y = Math.sin(time * 0.015) * 0.3;
+          playerGroup.skirt.rotation.y = Math.sin(danceSpeed * 2.5) * 0.4;
+          playerGroup.skirt.scale.x = 1 + Math.sin(danceSpeed * 3) * 0.1;
+          playerGroup.skirt.scale.z = 1 + Math.sin(danceSpeed * 3) * 0.1;
+        }
+        
+        // Bacaklar da hareket etsin
+        if (playerGroup.leftLeg && playerGroup.rightLeg) {
+          playerGroup.leftLeg.rotation.x = Math.sin(danceSpeed * 2) * 0.2;
+          playerGroup.rightLeg.rotation.x = Math.sin(danceSpeed * 2 + Math.PI) * 0.2;
         }
       } else if (isMoving) {
         // YÜRÜME ANİMASYONU
@@ -1628,13 +1872,32 @@
         // Durduğunda normal pozisyon
         if (playerGroup.leftArm && playerGroup.rightArm) {
           playerGroup.leftArm.rotation.x = 0;
+          playerGroup.leftArm.rotation.y = 0;
           playerGroup.leftArm.rotation.z = 0;
           playerGroup.rightArm.rotation.x = 0;
+          playerGroup.rightArm.rotation.y = 0;
           playerGroup.rightArm.rotation.z = 0;
         }
         if (playerGroup.leftLeg && playerGroup.rightLeg) {
           playerGroup.leftLeg.rotation.x = 0;
           playerGroup.rightLeg.rotation.x = 0;
+        }
+        
+        // Vücut rotasyonunu sıfırla
+        if (playerGroup.rotation.z !== 0) {
+          playerGroup.rotation.z *= 0.9; // Yumuşak geçiş
+        }
+        
+        // Yere in
+        if (playerGroup.position.y > 0 && !playerGroup.userData.velocityY) {
+          playerGroup.position.y = Math.max(0, playerGroup.position.y - 0.05);
+        }
+        
+        // Eteği normale döndür
+        if (playerGroup.skirt) {
+          playerGroup.skirt.rotation.y *= 0.9;
+          playerGroup.skirt.scale.x = 1;
+          playerGroup.skirt.scale.z = 1;
         }
       }
 
@@ -1681,6 +1944,11 @@
         if (distToDoor < 3) {
           nearDoor = true;
           if (keys['e']) {
+            // Pointer lock'u kapat
+            if (document.pointerLockElement) {
+              document.exitPointerLock();
+            }
+            
             document.getElementById('password-popup').style.display = 'flex';
             setTimeout(() => {
               document.getElementById('password-input').focus();
@@ -1710,6 +1978,49 @@
           child.rotation.y += 0.01;
         }
       });
+
+      // KELEBEK ANİMASYONLARI
+      if (window.butterflies) {
+        window.butterflies.forEach((butterfly, i) => {
+          const data = butterfly.userData;
+          data.path += data.speed;
+          
+          // Sinüs dalgası ile uç
+          butterfly.position.x += Math.cos(data.path) * 0.05;
+          butterfly.position.z += Math.sin(data.path) * 0.05;
+          butterfly.position.y = 1.5 + Math.sin(data.path * 3) * 0.5;
+          
+          // Kanat çırpma
+          if (butterfly.children[0] && butterfly.children[1]) {
+            const wingAngle = Math.sin(time * data.wingSpeed * 0.001) * 0.5;
+            butterfly.children[0].rotation.y = -wingAngle;
+            butterfly.children[1].rotation.y = wingAngle;
+          }
+          
+          // Yönlendir
+          butterfly.rotation.y = data.path;
+          
+          // Sınırlar içinde tut
+          if (Math.abs(butterfly.position.x) > 50) butterfly.position.x *= -0.9;
+          if (Math.abs(butterfly.position.z) > 50) butterfly.position.z *= -0.9;
+        });
+      }
+
+      // KUŞ ANİMASYONLARI
+      if (window.birds) {
+        window.birds.forEach((bird) => {
+          const data = bird.userData;
+          data.angle += data.speed * 0.01;
+          
+          // Dairesel uçuş
+          bird.position.x = Math.cos(data.angle) * data.radius;
+          bird.position.z = Math.sin(data.angle) * data.radius;
+          bird.position.y = 15 + Math.sin(data.angle * 3) * 3;
+          
+          // Yönlendir
+          bird.rotation.y = data.angle + Math.PI / 2;
+        });
+      }
 
       renderer.render(scene, camera);
     }
