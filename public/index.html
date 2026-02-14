@@ -943,15 +943,15 @@
       hair.castShadow = true;
       playerGroup.add(hair);
 
-      // Hair details (bangs)
+      // Hair details (bangs) for Merve
       if (!playerIsBatuhan) {
-        const bangGeo = new THREE.SphereGeometry(0.15, 12, 12);
-        const bang1 = new THREE.Mesh(bangGeo, hairMat);
+        const playerBangGeo = new THREE.SphereGeometry(0.15, 12, 12);
+        const bang1 = new THREE.Mesh(playerBangGeo, hairMat);
         bang1.position.set(-0.1, 1.75, 0.23);
         bang1.scale.set(0.8, 1.2, 0.6);
         playerGroup.add(bang1);
         
-        const bang2 = new THREE.Mesh(bangGeo, hairMat);
+        const bang2 = new THREE.Mesh(playerBangGeo, hairMat);
         bang2.position.set(0.1, 1.75, 0.23);
         bang2.scale.set(0.8, 1.2, 0.6);
         playerGroup.add(bang2);
@@ -1072,14 +1072,15 @@
       pHair.castShadow = true;
       partnerGroup.add(pHair);
 
-      // Partner Hair details
+      // Partner Hair details (bangs) for Merve
       if (!partnerIsBatuhan) {
-        const pBang1 = new THREE.Mesh(bangGeo, pHairMat);
+        const partnerBangGeo = new THREE.SphereGeometry(0.15, 12, 12);
+        const pBang1 = new THREE.Mesh(partnerBangGeo, pHairMat);
         pBang1.position.set(-0.1, 1.75, 0.23);
         pBang1.scale.set(0.8, 1.2, 0.6);
         partnerGroup.add(pBang1);
         
-        const pBang2 = new THREE.Mesh(bangGeo, pHairMat);
+        const pBang2 = new THREE.Mesh(partnerBangGeo, pHairMat);
         pBang2.position.set(0.1, 1.75, 0.23);
         pBang2.scale.set(0.8, 1.2, 0.6);
         partnerGroup.add(pBang2);
