@@ -457,9 +457,11 @@
 
     <div class="controls">
       <h3>Kontroller 🎮</h3>
-      <p><strong>W A S D</strong> - Hareket Et (Karakter otomatik döner)</p>
+      <p><strong>W A S D</strong> - Hareket Et</p>
       <p><strong>Fare</strong> - Kamera Döndür (Ekrana tıkla)</p>
-      <p><strong>E</strong> - Mesajı Oku</p>
+      <p><strong>SPACE</strong> - Zıpla</p>
+      <p><strong>Q</strong> - Dans Et 💃</p>
+      <p><strong>E</strong> - Mesajı Oku / Kapıya Gir</p>
       <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
       <p><strong>ESC</strong> - Fareyi Serbest Bırak</p>
     </div>
@@ -513,6 +515,7 @@
     let nearMessage = null;
     let selectedCharacter = null;
     let pendingAction = null; // 'create' or 'join'
+    let isDancing = false;
 
     const moveSpeed = 0.1;
 
@@ -997,6 +1000,20 @@
       smile.rotation.x = Math.PI / 2;
       playerGroup.add(smile);
 
+      // ETEK (Sadece kız karakter için)
+      if (!playerIsBatuhan) {
+        const skirtGeo = new THREE.CylinderGeometry(0.35, 0.45, 0.4, 12);
+        const skirtMat = new THREE.MeshStandardMaterial({ 
+          color: 0xff69b4,
+          side: THREE.DoubleSide
+        });
+        const skirt = new THREE.Mesh(skirtGeo, skirtMat);
+        skirt.position.y = 0.7;
+        skirt.castShadow = true;
+        playerGroup.add(skirt);
+        playerGroup.skirt = skirt; // Dans animasyonu için
+      }
+
       // AYAKKABILAR
       const shoeGeo = new THREE.BoxGeometry(0.12, 0.08, 0.2);
       const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
@@ -1122,6 +1139,19 @@
       pSmile.rotation.x = Math.PI / 2;
       partnerGroup.add(pSmile);
 
+      // Partner ETEK (Sadece kız karakter için)
+      if (!partnerIsBatuhan) {
+        const pSkirtGeo = new THREE.CylinderGeometry(0.35, 0.45, 0.4, 12);
+        const pSkirtMat = new THREE.MeshStandardMaterial({ 
+          color: 0xff69b4,
+          side: THREE.DoubleSide
+        });
+        const pSkirt = new THREE.Mesh(pSkirtGeo, pSkirtMat);
+        pSkirt.position.y = 0.7;
+        pSkirt.castShadow = true;
+        partnerGroup.add(pSkirt);
+      }
+
       // Partner Ayakkabılar
       const pLeftShoe = new THREE.Mesh(shoeGeo, shoeMat);
       pLeftShoe.position.set(-0.12, 0.04, 0.05);
@@ -1239,42 +1269,97 @@
       time += 16;
       walkCycle += 0.1;
 
-      // Player movement - YENİ SİSTEM
+      // Player movement - KAMERA YÖNÜNE GÖRE
       const isMoving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
       
-      let moveX = 0;
-      let moveZ = 0;
-      
-      if (keys['w']) moveZ += 1;  // İLERİ
-      if (keys['s']) moveZ -= 1;  // GERİ
-      if (keys['a']) moveX -= 1;  // SOL
-      if (keys['d']) moveX += 1;  // SAĞ
-
-      // Normalize diagonal movement
-      if (moveX !== 0 && moveZ !== 0) {
-        moveX *= 0.707;
-        moveZ *= 0.707;
-      }
-
-      // Apply movement
       if (isMoving) {
-        playerGroup.position.x += moveX * moveSpeed;
-        playerGroup.position.z += moveZ * moveSpeed;
+        // Kamera yönüne göre hareket
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
         
-        // Character rotation - sadece hareket ederken
-        const angle = Math.atan2(moveX, moveZ);
-        playerGroup.rotation.y = angle;
+        const right = new THREE.Vector3();
+        right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+        
+        if (keys['w']) {
+          playerGroup.position.x += forward.x * moveSpeed;
+          playerGroup.position.z += forward.z * moveSpeed;
+        }
+        if (keys['s']) {
+          playerGroup.position.x -= forward.x * moveSpeed;
+          playerGroup.position.z -= forward.z * moveSpeed;
+        }
+        if (keys['a']) {
+          playerGroup.position.x -= right.x * moveSpeed;
+          playerGroup.position.z -= right.z * moveSpeed;
+        }
+        if (keys['d']) {
+          playerGroup.position.x += right.x * moveSpeed;
+          playerGroup.position.z += right.z * moveSpeed;
+        }
+        
+        // Karakter hareket yönüne dönsün
+        const moveAngle = Math.atan2(forward.x, forward.z);
+        playerGroup.rotation.y = moveAngle;
+      }
+      
+      // ZIPLAMA
+      if (keys[' '] && playerGroup.userData.onGround) {
+        playerGroup.userData.velocityY = 0.15;
+        playerGroup.userData.onGround = false;
+      }
+      
+      // DANS
+      if (keys['q']) {
+        isDancing = true;
+      } else {
+        isDancing = false;
+      }
+      
+      // Yerçekimi
+      if (!playerGroup.userData.velocityY) playerGroup.userData.velocityY = 0;
+      if (!playerGroup.userData.onGround) {
+        playerGroup.userData.velocityY -= 0.008;
+        playerGroup.position.y += playerGroup.userData.velocityY;
+        
+        if (playerGroup.position.y <= 0) {
+          playerGroup.position.y = 0;
+          playerGroup.userData.velocityY = 0;
+          playerGroup.userData.onGround = true;
+        }
+      } else {
+        playerGroup.userData.onGround = true;
       }
 
       // Boundaries
       playerGroup.position.x = Math.max(-13, Math.min(13, playerGroup.position.x));
       playerGroup.position.z = Math.max(-18, Math.min(15, playerGroup.position.z));
 
-      // Walking animation - KOL VE BACAK
-      if (isMoving) {
+      // Animation - DANS VE YÜRÜME
+      if (isDancing) {
+        // DANS ANİMASYONU 💃
+        if (playerGroup.leftArm && playerGroup.rightArm) {
+          playerGroup.leftArm.rotation.x = Math.sin(time * 0.01) * 0.8;
+          playerGroup.leftArm.rotation.z = Math.sin(time * 0.008) * 0.5;
+          playerGroup.rightArm.rotation.x = Math.sin(time * 0.01 + Math.PI) * 0.8;
+          playerGroup.rightArm.rotation.z = Math.sin(time * 0.008 + Math.PI) * -0.5;
+        }
+        
+        // Vücut salla
+        playerGroup.rotation.y += Math.sin(time * 0.01) * 0.01;
+        
+        // Etek salla (eğer varsa)
+        if (playerGroup.skirt) {
+          playerGroup.skirt.rotation.y = Math.sin(time * 0.015) * 0.3;
+        }
+      } else if (isMoving) {
+        // YÜRÜME ANİMASYONU
         if (playerGroup.leftArm && playerGroup.rightArm) {
           playerGroup.leftArm.rotation.x = Math.sin(walkCycle) * 0.5;
+          playerGroup.leftArm.rotation.z = 0;
           playerGroup.rightArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
+          playerGroup.rightArm.rotation.z = 0;
         }
         
         // BACAK ANİMASYONU
@@ -1286,7 +1371,9 @@
         // Durduğunda normal pozisyon
         if (playerGroup.leftArm && playerGroup.rightArm) {
           playerGroup.leftArm.rotation.x = 0;
+          playerGroup.leftArm.rotation.z = 0;
           playerGroup.rightArm.rotation.x = 0;
+          playerGroup.rightArm.rotation.z = 0;
         }
         if (playerGroup.leftLeg && playerGroup.rightLeg) {
           playerGroup.leftLeg.rotation.x = 0;
@@ -1294,21 +1381,15 @@
         }
       }
 
-      // Third-person camera - arkadan takip
-      const cameraDistance = 4.5; // DAHA UZAK
+      // Third-person camera - SABİT TAKİP
+      const cameraDistance = 4.5;
       const cameraHeight = 2.5;
-      const cameraAngle = yaw;
       
-      const targetX = playerGroup.position.x - Math.sin(cameraAngle) * cameraDistance * Math.cos(pitch);
-      const targetY = playerGroup.position.y + cameraHeight + Math.sin(pitch) * 2;
-      const targetZ = playerGroup.position.z - Math.cos(cameraAngle) * cameraDistance * Math.cos(pitch);
+      camera.position.x = playerGroup.position.x - Math.sin(yaw) * cameraDistance * Math.cos(pitch);
+      camera.position.y = playerGroup.position.y + cameraHeight + Math.sin(pitch) * 2;
+      camera.position.z = playerGroup.position.z - Math.cos(yaw) * cameraDistance * Math.cos(pitch);
       
-      // Smooth camera movement
-      camera.position.x += (targetX - camera.position.x) * 0.1;
-      camera.position.y += (targetY - camera.position.y) * 0.1;
-      camera.position.z += (targetZ - camera.position.z) * 0.1;
-      
-      // Camera look at player (slightly above)
+      // Camera look at player
       camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z);
 
       // Send position to server
