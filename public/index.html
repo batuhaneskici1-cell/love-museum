@@ -502,7 +502,9 @@
     let playerGroup, partnerGroup;
     let keys = {};
     let mouseX = 0;
+    let mouseY = 0;
     let yaw = 0;
+    let pitch = 0.3; // Kamera açısı (yukarı/aşağı)
     let isHost = false;
     let roomCode = '';
     let partnerConnected = false;
@@ -525,6 +527,8 @@
     socket.on('room_joined', (data) => {
       roomCode = data.roomCode;
       isHost = data.isHost;
+      partnerConnected = true; // Katılan kişi de partner'ı görebilmeli!
+      
       document.getElementById('menu-screen').classList.add('hidden');
       document.getElementById('character-screen').style.display = 'flex';
       document.getElementById('character-screen').style.flexDirection = 'column';
@@ -882,10 +886,10 @@
       // Determine which character is which
       const playerIsBatuhan = selectedCharacter === 'batuhan';
       
-      // Player character - DÜZGİN VERSİYON
+      // Player character
       playerGroup = new THREE.Group();
       
-      // BACAKLAR
+      // BACAKLAR - Animasyon için ayrı sakla
       const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
       const legMat = new THREE.MeshStandardMaterial({ 
         color: playerIsBatuhan ? 0x2c5f9e : 0xffc0cb
@@ -894,11 +898,13 @@
       leftLeg.position.set(-0.12, 0.3, 0);
       leftLeg.castShadow = true;
       playerGroup.add(leftLeg);
+      playerGroup.leftLeg = leftLeg; // Animasyon için
       
       const rightLeg = new THREE.Mesh(legGeo, legMat);
       rightLeg.position.set(0.12, 0.3, 0);
       rightLeg.castShadow = true;
       playerGroup.add(rightLeg);
+      playerGroup.rightLeg = rightLeg; // Animasyon için
 
       // GÖVDE
       const bodyGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8);
@@ -910,21 +916,21 @@
       body.castShadow = true;
       playerGroup.add(body);
 
-      // KOLLAR
+      // KOLLAR - DAHA YAKIN
       const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8);
       const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       
       const leftArm = new THREE.Mesh(armGeo, armMat);
-      leftArm.position.set(-0.28, 0.9, 0);
+      leftArm.position.set(-0.24, 0.9, 0); // Daha yakın
       leftArm.castShadow = true;
       playerGroup.add(leftArm);
-      playerGroup.leftArm = leftArm; // Animasyon için
+      playerGroup.leftArm = leftArm;
       
       const rightArm = new THREE.Mesh(armGeo, armMat);
-      rightArm.position.set(0.28, 0.9, 0);
+      rightArm.position.set(0.24, 0.9, 0); // Daha yakın
       rightArm.castShadow = true;
       playerGroup.add(rightArm);
-      playerGroup.rightArm = rightArm; // Animasyon için
+      playerGroup.rightArm = rightArm;
 
       // BOYUN
       const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
@@ -942,7 +948,7 @@
       head.castShadow = true;
       playerGroup.add(head);
 
-      // SAÇ
+      // SAÇ - Kız için uzun saç
       const hairGeo = new THREE.SphereGeometry(0.21, 16, 16);
       const hairMat = new THREE.MeshStandardMaterial({ 
         color: playerIsBatuhan ? 0x1a1a1a : 0x6b4423
@@ -952,6 +958,24 @@
       hair.scale.set(1.05, 1.1, 1.05);
       hair.castShadow = true;
       playerGroup.add(hair);
+
+      // KIZ İÇİN UZUN SAÇ (Ponytail)
+      if (!playerIsBatuhan) {
+        const ponytailGeo = new THREE.SphereGeometry(0.12, 12, 12);
+        // Arka saç (ponytail)
+        const ponytail = new THREE.Mesh(ponytailGeo, hairMat);
+        ponytail.position.set(0, 1.35, -0.18);
+        ponytail.scale.set(0.8, 1.4, 0.8);
+        ponytail.castShadow = true;
+        playerGroup.add(ponytail);
+        
+        // Saç uçları
+        const ponytailEnd = new THREE.Mesh(ponytailGeo, hairMat);
+        ponytailEnd.position.set(0, 1.1, -0.2);
+        ponytailEnd.scale.set(0.6, 1.2, 0.6);
+        ponytailEnd.castShadow = true;
+        playerGroup.add(ponytailEnd);
+      }
 
       // GÖZLER
       const eyeGeo = new THREE.SphereGeometry(0.03, 8, 8);
@@ -964,13 +988,7 @@
       playerGroup.add(rightEye);
 
       // GÜLÜMSEME
-      const smileCurve = new THREE.EllipseCurve(
-        0, 0,
-        0.08, 0.05,
-        Math.PI, 2 * Math.PI,
-        false,
-        0
-      );
+      const smileCurve = new THREE.EllipseCurve(0, 0, 0.08, 0.05, Math.PI, 2 * Math.PI, false, 0);
       const smilePoints = smileCurve.getPoints(20);
       const smileGeometry = new THREE.BufferGeometry().setFromPoints(smilePoints);
       const smileMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
@@ -1043,12 +1061,12 @@
 
       // Partner Kollar
       const pLeftArm = new THREE.Mesh(armGeo, armMat);
-      pLeftArm.position.set(-0.28, 0.9, 0);
+      pLeftArm.position.set(-0.24, 0.9, 0);
       pLeftArm.castShadow = true;
       partnerGroup.add(pLeftArm);
       
       const pRightArm = new THREE.Mesh(armGeo, armMat);
-      pRightArm.position.set(0.28, 0.9, 0);
+      pRightArm.position.set(0.24, 0.9, 0);
       pRightArm.castShadow = true;
       partnerGroup.add(pRightArm);
 
@@ -1073,6 +1091,22 @@
       pHair.scale.set(1.05, 1.1, 1.05);
       pHair.castShadow = true;
       partnerGroup.add(pHair);
+
+      // Partner Kız Saçı
+      if (!partnerIsBatuhan) {
+        const partnerPonytailGeo = new THREE.SphereGeometry(0.12, 12, 12);
+        const pPonytail = new THREE.Mesh(partnerPonytailGeo, pHairMat);
+        pPonytail.position.set(0, 1.35, -0.18);
+        pPonytail.scale.set(0.8, 1.4, 0.8);
+        pPonytail.castShadow = true;
+        partnerGroup.add(pPonytail);
+        
+        const pPonytailEnd = new THREE.Mesh(partnerPonytailGeo, pHairMat);
+        pPonytailEnd.position.set(0, 1.1, -0.2);
+        pPonytailEnd.scale.set(0.6, 1.2, 0.6);
+        pPonytailEnd.castShadow = true;
+        partnerGroup.add(pPonytailEnd);
+      }
 
       // Partner Gözler
       const pLeftEye = new THREE.Mesh(eyeGeo, eyeMat);
@@ -1135,9 +1169,15 @@
       window.addEventListener('mousemove', (e) => {
         if (document.pointerLockElement === renderer.domElement) {
           yaw -= e.movementX * 0.002;
+          pitch -= e.movementY * 0.002;
+          
+          // Limit pitch
+          pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch));
         } else {
           mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+          mouseY = (e.clientY / window.innerHeight) * 2 - 1;
           yaw = -mouseX * Math.PI * 0.5;
+          pitch = -mouseY * 0.3;
         }
       });
 
@@ -1205,10 +1245,10 @@
       let moveX = 0;
       let moveZ = 0;
       
-      if (keys['w']) moveZ -= 1;
-      if (keys['s']) moveZ += 1;
-      if (keys['a']) moveX -= 1;
-      if (keys['d']) moveX += 1;
+      if (keys['w']) moveZ += 1;  // İLERİ
+      if (keys['s']) moveZ -= 1;  // GERİ
+      if (keys['a']) moveX -= 1;  // SOL
+      if (keys['d']) moveX += 1;  // SAĞ
 
       // Normalize diagonal movement
       if (moveX !== 0 && moveZ !== 0) {
@@ -1230,31 +1270,46 @@
       playerGroup.position.x = Math.max(-13, Math.min(13, playerGroup.position.x));
       playerGroup.position.z = Math.max(-18, Math.min(15, playerGroup.position.z));
 
-      // Walking animation
-      if (isMoving && playerGroup.leftArm && playerGroup.rightArm) {
-        playerGroup.leftArm.rotation.x = Math.sin(walkCycle) * 0.5;
-        playerGroup.rightArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
-      } else if (playerGroup.leftArm && playerGroup.rightArm) {
-        playerGroup.leftArm.rotation.x = 0;
-        playerGroup.rightArm.rotation.x = 0;
+      // Walking animation - KOL VE BACAK
+      if (isMoving) {
+        if (playerGroup.leftArm && playerGroup.rightArm) {
+          playerGroup.leftArm.rotation.x = Math.sin(walkCycle) * 0.5;
+          playerGroup.rightArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
+        }
+        
+        // BACAK ANİMASYONU
+        if (playerGroup.leftLeg && playerGroup.rightLeg) {
+          playerGroup.leftLeg.rotation.x = Math.sin(walkCycle) * 0.4;
+          playerGroup.rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.4;
+        }
+      } else {
+        // Durduğunda normal pozisyon
+        if (playerGroup.leftArm && playerGroup.rightArm) {
+          playerGroup.leftArm.rotation.x = 0;
+          playerGroup.rightArm.rotation.x = 0;
+        }
+        if (playerGroup.leftLeg && playerGroup.rightLeg) {
+          playerGroup.leftLeg.rotation.x = 0;
+          playerGroup.rightLeg.rotation.x = 0;
+        }
       }
 
       // Third-person camera - arkadan takip
-      const cameraDistance = 3;
-      const cameraHeight = 2;
+      const cameraDistance = 4.5; // DAHA UZAK
+      const cameraHeight = 2.5;
       const cameraAngle = yaw;
       
-      const targetX = playerGroup.position.x - Math.sin(cameraAngle) * cameraDistance;
-      const targetY = playerGroup.position.y + cameraHeight;
-      const targetZ = playerGroup.position.z - Math.cos(cameraAngle) * cameraDistance;
+      const targetX = playerGroup.position.x - Math.sin(cameraAngle) * cameraDistance * Math.cos(pitch);
+      const targetY = playerGroup.position.y + cameraHeight + Math.sin(pitch) * 2;
+      const targetZ = playerGroup.position.z - Math.cos(cameraAngle) * cameraDistance * Math.cos(pitch);
       
       // Smooth camera movement
       camera.position.x += (targetX - camera.position.x) * 0.1;
       camera.position.y += (targetY - camera.position.y) * 0.1;
       camera.position.z += (targetZ - camera.position.z) * 0.1;
       
-      // Camera look at player
-      camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1, playerGroup.position.z);
+      // Camera look at player (slightly above)
+      camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z);
 
       // Send position to server
       socket.emit('update_position', {
