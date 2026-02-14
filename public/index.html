@@ -457,10 +457,11 @@
 
     <div class="controls">
       <h3>Kontroller 🎮</h3>
-      <p><strong>W A S D</strong> - Hareket Et</p>
-      <p><strong>Fare</strong> - Etrafa Bak</p>
+      <p><strong>W A S D</strong> - Hareket Et (Karakter otomatik döner)</p>
+      <p><strong>Fare</strong> - Kamera Döndür (Ekrana tıkla)</p>
       <p><strong>E</strong> - Mesajı Oku</p>
       <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
+      <p><strong>ESC</strong> - Fareyi Serbest Bırak</p>
     </div>
 
     <div class="partner-status">
@@ -544,6 +545,11 @@
       document.getElementById('partner-status').classList.remove('waiting');
       document.getElementById('partner-status').classList.add('connected');
       
+      // Make partner visible immediately
+      if (partnerGroup) {
+        partnerGroup.visible = true;
+      }
+      
       // If we're waiting, show character selection
       if (!selectedCharacter) {
         document.getElementById('menu-screen').classList.add('hidden');
@@ -565,6 +571,11 @@
       if (partnerGroup) {
         partnerGroup.position.set(data.position.x, data.position.y, data.position.z);
         partnerGroup.rotation.y = data.rotation;
+        
+        // Make sure partner is visible
+        if (!partnerGroup.visible && partnerConnected) {
+          partnerGroup.visible = true;
+        }
       }
     });
 
@@ -869,126 +880,119 @@
 
     function createCharacters() {
       // Determine which character is which
-      const isBatuhan = (isHost && selectedCharacter === 'batuhan') || (!isHost && selectedCharacter === 'batuhan');
       const playerIsBatuhan = selectedCharacter === 'batuhan';
       
-      // Player character
+      // Player character - DÜZGİN VERSİYON
       playerGroup = new THREE.Group();
       
-      // Legs
-      const legGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 8);
+      // BACAKLAR
+      const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
       const legMat = new THREE.MeshStandardMaterial({ 
         color: playerIsBatuhan ? 0x2c5f9e : 0xffc0cb
       });
       const leftLeg = new THREE.Mesh(legGeo, legMat);
-      leftLeg.position.set(-0.15, 0.4, 0);
+      leftLeg.position.set(-0.12, 0.3, 0);
       leftLeg.castShadow = true;
       playerGroup.add(leftLeg);
       
       const rightLeg = new THREE.Mesh(legGeo, legMat);
-      rightLeg.position.set(0.15, 0.4, 0);
+      rightLeg.position.set(0.12, 0.3, 0);
       rightLeg.castShadow = true;
       playerGroup.add(rightLeg);
 
-      // Body (torso)
-      const bodyGeo = new THREE.CylinderGeometry(0.25, 0.3, 0.7, 8);
+      // GÖVDE
+      const bodyGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8);
       const bodyMat = new THREE.MeshStandardMaterial({ 
         color: playerIsBatuhan ? 0x4a90e2 : 0xff69b4
       });
       const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 1.15;
+      body.position.y = 0.9;
       body.castShadow = true;
       playerGroup.add(body);
 
-      // Arms
-      const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
+      // KOLLAR
+      const armGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8);
       const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       
       const leftArm = new THREE.Mesh(armGeo, armMat);
-      leftArm.position.set(-0.35, 1.15, 0);
-      leftArm.rotation.z = Math.PI / 6;
+      leftArm.position.set(-0.28, 0.9, 0);
       leftArm.castShadow = true;
       playerGroup.add(leftArm);
+      playerGroup.leftArm = leftArm; // Animasyon için
       
       const rightArm = new THREE.Mesh(armGeo, armMat);
-      rightArm.position.set(0.35, 1.15, 0);
-      rightArm.rotation.z = -Math.PI / 6;
+      rightArm.position.set(0.28, 0.9, 0);
       rightArm.castShadow = true;
       playerGroup.add(rightArm);
+      playerGroup.rightArm = rightArm; // Animasyon için
 
-      // Neck
-      const neckGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.15, 8);
+      // BOYUN
+      const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
       const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       const neck = new THREE.Mesh(neckGeo, neckMat);
-      neck.position.y = 1.55;
+      neck.position.y = 1.26;
       neck.castShadow = true;
       playerGroup.add(neck);
 
-      // Head
-      const headGeo = new THREE.SphereGeometry(0.25, 16, 16);
+      // KAFA
+      const headGeo = new THREE.SphereGeometry(0.2, 16, 16);
       const headMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       const head = new THREE.Mesh(headGeo, headMat);
-      head.position.y = 1.75;
+      head.position.y = 1.42;
       head.castShadow = true;
       playerGroup.add(head);
 
-      // Hair
-      const hairGeo = new THREE.SphereGeometry(0.27, 16, 16);
+      // SAÇ
+      const hairGeo = new THREE.SphereGeometry(0.21, 16, 16);
       const hairMat = new THREE.MeshStandardMaterial({ 
         color: playerIsBatuhan ? 0x1a1a1a : 0x6b4423
       });
       const hair = new THREE.Mesh(hairGeo, hairMat);
-      hair.position.y = 1.85;
-      hair.scale.set(1, 1.15, 1);
+      hair.position.y = 1.5;
+      hair.scale.set(1.05, 1.1, 1.05);
       hair.castShadow = true;
       playerGroup.add(hair);
 
-      // Hair details (bangs) for Merve
-      if (!playerIsBatuhan) {
-        const playerBangGeo = new THREE.SphereGeometry(0.15, 12, 12);
-        const bang1 = new THREE.Mesh(playerBangGeo, hairMat);
-        bang1.position.set(-0.1, 1.75, 0.23);
-        bang1.scale.set(0.8, 1.2, 0.6);
-        playerGroup.add(bang1);
-        
-        const bang2 = new THREE.Mesh(playerBangGeo, hairMat);
-        bang2.position.set(0.1, 1.75, 0.23);
-        bang2.scale.set(0.8, 1.2, 0.6);
-        playerGroup.add(bang2);
-      }
-
-      // Eyes
-      const eyeGeo = new THREE.SphereGeometry(0.04, 8, 8);
+      // GÖZLER
+      const eyeGeo = new THREE.SphereGeometry(0.03, 8, 8);
       const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
       const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(-0.08, 1.78, 0.22);
+      leftEye.position.set(-0.06, 1.45, 0.18);
       playerGroup.add(leftEye);
       const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(0.08, 1.78, 0.22);
+      rightEye.position.set(0.06, 1.45, 0.18);
       playerGroup.add(rightEye);
 
-      // Smile
-      const smileGeo = new THREE.TorusGeometry(0.08, 0.015, 8, 16, Math.PI);
-      const smileMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
-      const smile = new THREE.Mesh(smileGeo, smileMat);
-      smile.position.set(0, 1.65, 0.23);
-      smile.rotation.x = Math.PI;
+      // GÜLÜMSEME
+      const smileCurve = new THREE.EllipseCurve(
+        0, 0,
+        0.08, 0.05,
+        Math.PI, 2 * Math.PI,
+        false,
+        0
+      );
+      const smilePoints = smileCurve.getPoints(20);
+      const smileGeometry = new THREE.BufferGeometry().setFromPoints(smilePoints);
+      const smileMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+      const smile = new THREE.Line(smileGeometry, smileMaterial);
+      smile.position.set(0, 1.36, 0.18);
+      smile.rotation.x = Math.PI / 2;
       playerGroup.add(smile);
 
-      // Shoes
-      const shoeGeo = new THREE.BoxGeometry(0.15, 0.1, 0.25);
+      // AYAKKABILAR
+      const shoeGeo = new THREE.BoxGeometry(0.12, 0.08, 0.2);
       const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
       const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      leftShoe.position.set(-0.15, 0.05, 0.05);
+      leftShoe.position.set(-0.12, 0.04, 0.05);
       leftShoe.castShadow = true;
       playerGroup.add(leftShoe);
       
       const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      rightShoe.position.set(0.15, 0.05, 0.05);
+      rightShoe.position.set(0.12, 0.04, 0.05);
       rightShoe.castShadow = true;
       playerGroup.add(rightShoe);
 
-      // Name tag
+      // İSİM ETİKETİ
       const canvas = document.createElement('canvas');
       canvas.width = 256;
       canvas.height = 64;
@@ -1003,115 +1007,99 @@
       const nameTexture = new THREE.CanvasTexture(canvas);
       const nameMat = new THREE.SpriteMaterial({ map: nameTexture });
       const nameSprite = new THREE.Sprite(nameMat);
-      nameSprite.position.y = 2.3;
-      nameSprite.scale.set(1, 0.25, 1);
+      nameSprite.position.y = 1.8;
+      nameSprite.scale.set(0.8, 0.2, 1);
       playerGroup.add(nameSprite);
 
-      playerGroup.position.set(isHost ? 0 : 2, 0, 8);
+      playerGroup.position.set(0, 0, 5);
       scene.add(playerGroup);
 
-      // Partner character
+      // PARTNER CHARACTER - AYNI YAPIDA
       partnerGroup = new THREE.Group();
       const partnerIsBatuhan = !playerIsBatuhan;
       
-      // Partner Legs
+      // Partner Bacaklar
       const pLegMat = new THREE.MeshStandardMaterial({ 
         color: partnerIsBatuhan ? 0x2c5f9e : 0xffc0cb
       });
       const pLeftLeg = new THREE.Mesh(legGeo, pLegMat);
-      pLeftLeg.position.set(-0.15, 0.4, 0);
+      pLeftLeg.position.set(-0.12, 0.3, 0);
       pLeftLeg.castShadow = true;
       partnerGroup.add(pLeftLeg);
       
       const pRightLeg = new THREE.Mesh(legGeo, pLegMat);
-      pRightLeg.position.set(0.15, 0.4, 0);
+      pRightLeg.position.set(0.12, 0.3, 0);
       pRightLeg.castShadow = true;
       partnerGroup.add(pRightLeg);
 
-      // Partner Body
+      // Partner Gövde
       const pBodyMat = new THREE.MeshStandardMaterial({ 
         color: partnerIsBatuhan ? 0x4a90e2 : 0xff69b4
       });
       const pBody = new THREE.Mesh(bodyGeo, pBodyMat);
-      pBody.position.y = 1.15;
+      pBody.position.y = 0.9;
       pBody.castShadow = true;
       partnerGroup.add(pBody);
 
-      // Partner Arms
+      // Partner Kollar
       const pLeftArm = new THREE.Mesh(armGeo, armMat);
-      pLeftArm.position.set(-0.35, 1.15, 0);
-      pLeftArm.rotation.z = Math.PI / 6;
+      pLeftArm.position.set(-0.28, 0.9, 0);
       pLeftArm.castShadow = true;
       partnerGroup.add(pLeftArm);
       
       const pRightArm = new THREE.Mesh(armGeo, armMat);
-      pRightArm.position.set(0.35, 1.15, 0);
-      pRightArm.rotation.z = -Math.PI / 6;
+      pRightArm.position.set(0.28, 0.9, 0);
       pRightArm.castShadow = true;
       partnerGroup.add(pRightArm);
 
-      // Partner Neck
+      // Partner Boyun
       const pNeck = new THREE.Mesh(neckGeo, neckMat);
-      pNeck.position.y = 1.55;
+      pNeck.position.y = 1.26;
       pNeck.castShadow = true;
       partnerGroup.add(pNeck);
 
-      // Partner Head
+      // Partner Kafa
       const pHead = new THREE.Mesh(headGeo, headMat);
-      pHead.position.y = 1.75;
+      pHead.position.y = 1.42;
       pHead.castShadow = true;
       partnerGroup.add(pHead);
 
-      // Partner Hair
+      // Partner Saç
       const pHairMat = new THREE.MeshStandardMaterial({ 
         color: partnerIsBatuhan ? 0x1a1a1a : 0x6b4423
       });
       const pHair = new THREE.Mesh(hairGeo, pHairMat);
-      pHair.position.y = 1.85;
-      pHair.scale.set(1, partnerIsBatuhan ? 1.1 : 1.15, 1);
+      pHair.position.y = 1.5;
+      pHair.scale.set(1.05, 1.1, 1.05);
       pHair.castShadow = true;
       partnerGroup.add(pHair);
 
-      // Partner Hair details (bangs) for Merve
-      if (!partnerIsBatuhan) {
-        const partnerBangGeo = new THREE.SphereGeometry(0.15, 12, 12);
-        const pBang1 = new THREE.Mesh(partnerBangGeo, pHairMat);
-        pBang1.position.set(-0.1, 1.75, 0.23);
-        pBang1.scale.set(0.8, 1.2, 0.6);
-        partnerGroup.add(pBang1);
-        
-        const pBang2 = new THREE.Mesh(partnerBangGeo, pHairMat);
-        pBang2.position.set(0.1, 1.75, 0.23);
-        pBang2.scale.set(0.8, 1.2, 0.6);
-        partnerGroup.add(pBang2);
-      }
-
-      // Partner Eyes
+      // Partner Gözler
       const pLeftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      pLeftEye.position.set(-0.08, 1.78, 0.22);
+      pLeftEye.position.set(-0.06, 1.45, 0.18);
       partnerGroup.add(pLeftEye);
       const pRightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      pRightEye.position.set(0.08, 1.78, 0.22);
+      pRightEye.position.set(0.06, 1.45, 0.18);
       partnerGroup.add(pRightEye);
 
-      // Partner Smile
-      const pSmile = new THREE.Mesh(smileGeo, smileMat);
-      pSmile.position.set(0, 1.65, 0.23);
-      pSmile.rotation.x = Math.PI;
+      // Partner Gülümseme
+      const pSmile = new THREE.Line(smileGeometry, smileMaterial);
+      pSmile.position.set(0, 1.36, 0.18);
+      pSmile.rotation.x = Math.PI / 2;
       partnerGroup.add(pSmile);
 
-      // Partner Shoes
+      // Partner Ayakkabılar
       const pLeftShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      pLeftShoe.position.set(-0.15, 0.05, 0.05);
+      pLeftShoe.position.set(-0.12, 0.04, 0.05);
       pLeftShoe.castShadow = true;
       partnerGroup.add(pLeftShoe);
       
       const pRightShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      pRightShoe.position.set(0.15, 0.05, 0.05);
+      pRightShoe.position.set(0.12, 0.04, 0.05);
       pRightShoe.castShadow = true;
       partnerGroup.add(pRightShoe);
 
-      // Partner name tag
+      // Partner İsim
       const pCanvas = document.createElement('canvas');
       pCanvas.width = 256;
       pCanvas.height = 64;
@@ -1126,11 +1114,11 @@
       const pNameTexture = new THREE.CanvasTexture(pCanvas);
       const pNameMat = new THREE.SpriteMaterial({ map: pNameTexture });
       const pNameSprite = new THREE.Sprite(pNameMat);
-      pNameSprite.position.y = 2.3;
-      pNameSprite.scale.set(1, 0.25, 1);
+      pNameSprite.position.y = 1.8;
+      pNameSprite.scale.set(0.8, 0.2, 1);
       partnerGroup.add(pNameSprite);
 
-      partnerGroup.position.set(isHost ? 2 : 0, 0, 8);
+      partnerGroup.position.set(2, 0, 5);
       partnerGroup.visible = partnerConnected;
       scene.add(partnerGroup);
     }
@@ -1145,8 +1133,23 @@
       });
 
       window.addEventListener('mousemove', (e) => {
-        mouseX = (e.clientX / window.innerWidth) * 2 - 1;
-        yaw = -mouseX * Math.PI * 0.3;
+        if (document.pointerLockElement === renderer.domElement) {
+          yaw -= e.movementX * 0.002;
+        } else {
+          mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+          yaw = -mouseX * Math.PI * 0.5;
+        }
+      });
+
+      // Pointer lock for better camera control
+      renderer.domElement.addEventListener('click', () => {
+        renderer.domElement.requestPointerLock();
+      });
+
+      document.addEventListener('pointerlockchange', () => {
+        if (!document.pointerLockElement) {
+          // Pointer lock exited
+        }
       });
 
       window.addEventListener('click', (e) => {
@@ -1190,27 +1193,68 @@
     }
 
     let time = 0;
+    let walkCycle = 0;
     function animate() {
       requestAnimationFrame(animate);
       time += 16;
+      walkCycle += 0.1;
 
-      // Player movement
-      const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw)).multiplyScalar(moveSpeed);
-      const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw)).multiplyScalar(moveSpeed);
+      // Player movement - YENİ SİSTEM
+      const isMoving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
+      
+      let moveX = 0;
+      let moveZ = 0;
+      
+      if (keys['w']) moveZ -= 1;
+      if (keys['s']) moveZ += 1;
+      if (keys['a']) moveX -= 1;
+      if (keys['d']) moveX += 1;
 
-      if (keys['w']) playerGroup.position.add(forward.clone().negate());
-      if (keys['s']) playerGroup.position.add(forward);
-      if (keys['a']) playerGroup.position.add(right.clone().negate());
-      if (keys['d']) playerGroup.position.add(right);
+      // Normalize diagonal movement
+      if (moveX !== 0 && moveZ !== 0) {
+        moveX *= 0.707;
+        moveZ *= 0.707;
+      }
+
+      // Apply movement
+      if (isMoving) {
+        playerGroup.position.x += moveX * moveSpeed;
+        playerGroup.position.z += moveZ * moveSpeed;
+        
+        // Character rotation - sadece hareket ederken
+        const angle = Math.atan2(moveX, moveZ);
+        playerGroup.rotation.y = angle;
+      }
 
       // Boundaries
       playerGroup.position.x = Math.max(-13, Math.min(13, playerGroup.position.x));
       playerGroup.position.z = Math.max(-18, Math.min(15, playerGroup.position.z));
 
-      // Camera follow
-      camera.position.x = playerGroup.position.x;
-      camera.position.z = playerGroup.position.z + 2;
-      camera.rotation.y = yaw;
+      // Walking animation
+      if (isMoving && playerGroup.leftArm && playerGroup.rightArm) {
+        playerGroup.leftArm.rotation.x = Math.sin(walkCycle) * 0.5;
+        playerGroup.rightArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
+      } else if (playerGroup.leftArm && playerGroup.rightArm) {
+        playerGroup.leftArm.rotation.x = 0;
+        playerGroup.rightArm.rotation.x = 0;
+      }
+
+      // Third-person camera - arkadan takip
+      const cameraDistance = 3;
+      const cameraHeight = 2;
+      const cameraAngle = yaw;
+      
+      const targetX = playerGroup.position.x - Math.sin(cameraAngle) * cameraDistance;
+      const targetY = playerGroup.position.y + cameraHeight;
+      const targetZ = playerGroup.position.z - Math.cos(cameraAngle) * cameraDistance;
+      
+      // Smooth camera movement
+      camera.position.x += (targetX - camera.position.x) * 0.1;
+      camera.position.y += (targetY - camera.position.y) * 0.1;
+      camera.position.z += (targetZ - camera.position.z) * 0.1;
+      
+      // Camera look at player
+      camera.lookAt(playerGroup.position.x, playerGroup.position.y + 1, playerGroup.position.z);
 
       // Send position to server
       socket.emit('update_position', {
@@ -1219,7 +1263,7 @@
           y: playerGroup.position.y,
           z: playerGroup.position.z
         },
-        rotation: yaw
+        rotation: playerGroup.rotation.y
       });
 
       // Animate messages
