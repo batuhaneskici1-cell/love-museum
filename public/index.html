@@ -8,7 +8,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
-  <script src="https://cdn.rawgit.com/mrdoob/three.js/r128/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/FBXLoader.js"></script>
   <style>
     * {
       margin: 0;
@@ -1644,42 +1644,6 @@
             console.log('🎬 Walk animasyonu - Root motion temizlendi');
           }
           
-          // YENİ START/STOP YÜRÜME ANİMASYONU (opsiyonel)
-          // Eğer mWalkStartStop.fbx varsa onu kullan, yoksa mWalk.fbx kullan
-          let walkStartStopAction;
-          loader.load('/mWalkStartStop.fbx',
-            function(walkStartStopFbx) {
-              console.log('✅ mWalkStartStop.fbx yüklendi! (start/stop animasyon)');
-              if (walkStartStopFbx.animations && walkStartStopFbx.animations.length > 0) {
-                // ROOT MOTION TRACK'İNİ KALDIR!
-                const walkStartStopClip = walkStartStopFbx.animations[0];
-                walkStartStopClip.tracks = walkStartStopClip.tracks.filter(track => {
-                  return !track.name.includes('.position');
-                });
-                
-                walkStartStopAction = animMixer.clipAction(walkStartStopClip);
-                walkStartStopAction.setLoop(THREE.LoopOnce); // TEK SEFERLIK!
-                walkStartStopAction.clampWhenFinished = true; // Son frame'de kal
-                console.log('🚶 Start/Stop Walk animasyonu - Root motion temizlendi');
-                
-                // Orijinal walk'u bu animasyonla değiştir
-                walkAction = walkStartStopAction;
-                
-                if (isPlayer) {
-                  playerGroup.userData.walkAction = walkAction;
-                  playerGroup.userData.walkIsStartStop = true;
-                } else {
-                  partnerGroup.userData.walkAction = walkAction;
-                  partnerGroup.userData.walkIsStartStop = true;
-                }
-              }
-            },
-            undefined,
-            function(error) {
-              console.log('ℹ️ mWalkStartStop.fbx bulunamadı, normal yürüme kullanılıyor');
-            }
-          );
-          
           // Mixer'ı global değişkene ata
           if (isPlayer) {
             mixer = animMixer;
@@ -2541,14 +2505,6 @@
           targetAnimation = 'idle';
         }
         
-        // START/STOP WALK ANİMASYONU İÇİN ÖZEL KONTROL
-        if (playerGroup.userData.walkIsStartStop && targetAnimation === 'walk' && walkAction) {
-          // Start/stop animasyonunu her W basıldığında baştan başlat
-          if (currentAnimation !== 'walk') {
-            walkAction.reset();
-          }
-        }
-        
         // Animasyon değiştiyse geçiş yap
         if (currentAnimation !== targetAnimation) {
           console.log('🎬 Animasyon değişti:', currentAnimation, '→', targetAnimation);
@@ -2580,16 +2536,29 @@
             danceAction.fadeIn(fadeDuration);
           } else if (targetAnimation === 'run' && runAction) {
             runAction.enabled = true;
-            runAction.reset().setEffectiveWeight(0).setEffectiveTimeScale(runAnimSpeed).play();
+            // ❌ RESET YOK!
+            if (!runAction.isRunning()) {
+              runAction.time = runAction.getClip().duration * 0.3;
+            }
+            runAction.setEffectiveWeight(0).setEffectiveTimeScale(runAnimSpeed).play();
             runAction.fadeIn(fadeDuration);
           } else if (targetAnimation === 'walk' && walkAction) {
             walkAction.enabled = true;
-            walkAction.reset().setEffectiveWeight(0).setEffectiveTimeScale(walkAnimSpeed).play();
+            // ❌ RESET YOK! T-pose'a neden oluyor!
+            // İlk kez başlatılıyorsa ortadan başla
+            if (!walkAction.isRunning()) {
+              walkAction.time = walkAction.getClip().duration * 0.3; // %30'dan başla
+            }
+            walkAction.setEffectiveWeight(0).setEffectiveTimeScale(walkAnimSpeed).play();
             walkAction.fadeIn(fadeDuration);
           } else if (targetAnimation === 'idle' && idleAction) {
             if (!idleAction.enabled) {
               idleAction.enabled = true;
-              idleAction.reset().setEffectiveWeight(0).play();
+              // ❌ RESET YOK!
+              if (!idleAction.isRunning()) {
+                idleAction.time = idleAction.getClip().duration * 0.3;
+              }
+              idleAction.setEffectiveWeight(0).play();
             }
             idleAction.fadeIn(fadeDuration);
           }
