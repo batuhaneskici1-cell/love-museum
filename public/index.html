@@ -1555,10 +1555,9 @@
           const animMixer = new THREE.AnimationMixer(fbxModel);
           
           // YÜRÜME animasyonunu sakla
-          let walkAction, runAction, danceAction;
+          let walkAction, runAction, danceAction, idleAction;
           if (fbxModel.animations && fbxModel.animations.length > 0) {
             walkAction = animMixer.clipAction(fbxModel.animations[0]);
-            walkAction.play();
           }
           
           // Mixer'ı global değişkene ata
@@ -1597,6 +1596,26 @@
                   partnerGroup.userData.danceAction = danceAction;
                 }
               }
+            }
+          );
+          
+          // IDLE animasyonunu yükle (OPSİYONEL)
+          loader.load('/mIdle.fbx',
+            function(idleFbx) {
+              console.log('✅ mIdle.fbx yüklendi!');
+              if (idleFbx.animations && idleFbx.animations.length > 0) {
+                idleAction = animMixer.clipAction(idleFbx.animations[0]);
+                idleAction.play(); // Idle default olarak oynar
+                if (isPlayer) {
+                  playerGroup.userData.idleAction = idleAction;
+                } else {
+                  partnerGroup.userData.idleAction = idleAction;
+                }
+              }
+            },
+            undefined,
+            function(error) {
+              console.log('ℹ️ mIdle.fbx bulunamadı (opsiyonel)');
             }
           );
           
@@ -2216,11 +2235,13 @@
         const walkAction = playerGroup.userData.walkAction;
         const runAction = playerGroup.userData.runAction;
         const danceAction = playerGroup.userData.danceAction;
+        const idleAction = playerGroup.userData.idleAction; // Opsiyonel
         
         // Önce tüm animasyonları durdur
         walkAction.stop();
         runAction.stop();
         danceAction.stop();
+        if (idleAction) idleAction.stop();
         
         // Duruma göre animasyonu başlat
         if (isDancing) {
@@ -2232,10 +2253,11 @@
         } else if (isMoving) {
           // YÜRÜME ANİMASYONU
           walkAction.play();
-        } else {
-          // DURMA - Yürüme animasyonunu yavaşça oynat
-          walkAction.play();
+        } else if (idleAction) {
+          // IDLE ANİMASYONU (varsa)
+          idleAction.play();
         }
+        // İdle yoksa ve duruyorsa → Hiçbir animasyon oynamaz
       }
       
       if (isMoving) {
