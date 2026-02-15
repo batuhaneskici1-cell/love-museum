@@ -2504,60 +2504,52 @@
           targetAnimation = 'idle';
         }
         
-        // Animasyon değiştiyse geçiş yap - T-POSE FLASH YOK!
+        // CROSSFADE SİSTEMİ - Stop YOK, T-pose YOK!
         if (currentAnimation !== targetAnimation && targetAnimation) {
-          console.log('🎬 Animasyon:', currentAnimation, '→', targetAnimation);
+          console.log('🎬 CrossFade:', currentAnimation, '→', targetAnimation);
           
-          // TÜM ANİMASYONLARI DURDUR
-          if (walkAction) {
-            walkAction.stop();
-            walkAction.enabled = false;
-          }
-          if (runAction) {
-            runAction.stop();
-            runAction.enabled = false;
-          }
-          if (danceAction) {
-            danceAction.stop();
-            danceAction.enabled = false;
-          }
-          if (idleAction) {
-            idleAction.stop();
-            idleAction.enabled = false;
-          }
+          // Hedef animasyonu bul
+          let targetAction = null;
+          if (targetAnimation === 'walk') targetAction = walkAction;
+          else if (targetAnimation === 'run') targetAction = runAction;
+          else if (targetAnimation === 'dance') targetAction = danceAction;
+          else if (targetAnimation === 'idle') targetAction = idleAction;
           
-          // YENİ ANİMASYONU BAŞLAT - RESET YOK, DIREKT TIME SET!
-          if (targetAnimation === 'walk' && walkAction) {
-            walkAction.enabled = true;
-            // RESET YOK! Direkt time set + play
-            walkAction.time = 0.3; // T-pose frame'ini atla
-            walkAction.setEffectiveWeight(1);
-            walkAction.setEffectiveTimeScale(walkAnimSpeed);
-            walkAction.play();
-            console.log('✅ Walk başladı');
-          } else if (targetAnimation === 'run' && runAction) {
-            runAction.enabled = true;
-            runAction.time = 0.2;
-            runAction.setEffectiveWeight(1);
-            runAction.setEffectiveTimeScale(runAnimSpeed);
-            runAction.play();
-            console.log('✅ Run başladı');
-          } else if (targetAnimation === 'dance' && danceAction) {
-            danceAction.enabled = true;
-            danceAction.time = 0; // Dans baştan başlasın
-            danceAction.setEffectiveWeight(1);
-            danceAction.play();
-            console.log('✅ Dance başladı');
-          } else if (targetAnimation === 'idle' && idleAction) {
-            idleAction.enabled = true;
-            idleAction.time = 0.2;
-            idleAction.setEffectiveWeight(1);
-            idleAction.play();
-            console.log('✅ Idle başladı');
-          } else if (targetAnimation === 'idle' && !idleAction) {
-            // IDLE YOKSA WALK'UN İLK FRAME'İNİ GÖSTER
-            console.log('⚠️ Idle yok, walk frame kullanılıyor');
-            if (walkAction) {
+          if (targetAction) {
+            // Eğer hedef animasyon çalmıyorsa başlat (weight 0'dan)
+            if (!targetAction.isRunning()) {
+              targetAction.enabled = true;
+              targetAction.time = 0.2; // T-pose frame'ini atla
+              if (targetAnimation === 'walk') targetAction.setEffectiveTimeScale(walkAnimSpeed);
+              if (targetAnimation === 'run') targetAction.setEffectiveTimeScale(runAnimSpeed);
+              targetAction.setEffectiveWeight(0); // Weight 0'dan başla
+              targetAction.play();
+            }
+            
+            // Mevcut animasyondan yeni animasyona CROSSFADE - Bu stop etmez!
+            if (currentAnimation && currentAnimation !== targetAnimation) {
+              let currentAction = null;
+              if (currentAnimation === 'walk') currentAction = walkAction;
+              else if (currentAnimation === 'run') currentAction = runAction;
+              else if (currentAnimation === 'dance') currentAction = danceAction;
+              else if (currentAnimation === 'idle') currentAction = idleAction;
+              
+              if (currentAction && currentAction.isRunning()) {
+                // CrossFade: Eski animasyon fade out, yeni fade in - HİÇ STOP YOK!
+                currentAction.crossFadeTo(targetAction, 0.15, false);
+              } else {
+                // Mevcut animasyon yoksa direkt başlat
+                targetAction.setEffectiveWeight(1);
+              }
+            } else {
+              // İlk animasyon
+              targetAction.setEffectiveWeight(1);
+            }
+            
+            currentAnimation = targetAnimation;
+            console.log('✅', targetAnimation, 'aktif');
+          }
+        }
               walkAction.enabled = true;
               walkAction.time = 0.1;
               walkAction.setEffectiveWeight(1);
