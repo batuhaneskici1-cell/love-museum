@@ -396,16 +396,15 @@
   <!-- Menu Screen -->
   <div id="menu-screen">
     <h1 class="menu-title">💕 Aşkımızın Müzesi 💕</h1>
-    <p class="menu-subtitle">Sevgililer Günü Özel Hediyesi</p>
     
     <div class="menu-buttons">
-      <button class="menu-btn btn-create" onclick="createRoom()">Oda Oluştur</button>
-      <button class="menu-btn btn-join" onclick="showJoinInput()">Odaya Katıl</button>
+      <button class="menu-btn btn-create" id="create-room-btn">Oda Oluştur</button>
+      <button class="menu-btn btn-join" id="join-room-btn">Odaya Katıl</button>
     </div>
 
     <div id="join-input" class="room-input-container">
       <input type="text" class="room-code-input" id="room-code-input" placeholder="ODA KODU" maxlength="6">
-      <button class="menu-btn btn-create" onclick="joinRoom()">Katıl</button>
+      <button class="menu-btn btn-create" id="join-submit-btn">Katıl</button>
     </div>
 
     <div id="room-display" class="room-input-container">
@@ -425,7 +424,7 @@
     
     <div style="display: flex; gap: 50px; justify-content: center; align-items: center; margin-top: 50px;">
       <!-- Batuhan Character -->
-      <div class="character-card" onclick="selectCharacter('batuhan')">
+      <div class="character-card" id="select-batuhan">
         <div style="width: 200px; height: 300px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s;">
           <div style="font-size: 100px; margin-bottom: 20px;">🧑</div>
           <h2 style="color: white; font-size: 36px; margin: 0;">Batuhan</h2>
@@ -434,7 +433,7 @@
       </div>
 
       <!-- Merve Character -->
-      <div class="character-card" onclick="selectCharacter('merve')">
+      <div class="character-card" id="select-merve">
         <div style="width: 200px; height: 300px; background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%); border-radius: 20px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.3s;">
           <div style="font-size: 100px; margin-bottom: 20px;">👧</div>
           <h2 style="color: white; font-size: 36px; margin: 0;">Merve</h2>
@@ -540,6 +539,23 @@
 
     const moveSpeed = 0.1;
 
+    // Event Listeners - Butonlara tıklama
+    document.addEventListener('DOMContentLoaded', () => {
+      // Menu butonları
+      document.getElementById('create-room-btn').addEventListener('click', createRoom);
+      document.getElementById('join-room-btn').addEventListener('click', showJoinInput);
+      document.getElementById('join-submit-btn').addEventListener('click', joinRoom);
+      
+      // Enter tuşu ile oda kodunu gönder
+      document.getElementById('room-code-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') joinRoom();
+      });
+      
+      // Karakter seçimi
+      document.getElementById('select-batuhan').addEventListener('click', () => selectCharacter('batuhan'));
+      document.getElementById('select-merve').addEventListener('click', () => selectCharacter('merve'));
+    });
+
     // Socket events
     socket.on('room_created', (data) => {
       roomCode = data.roomCode;
@@ -623,17 +639,20 @@
 
     // Menu functions
     function createRoom() {
+      console.log('🏠 Oda oluşturuluyor...');
       pendingAction = 'create';
       socket.emit('create_room');
     }
 
     function showJoinInput() {
+      console.log('🚪 Katılma ekranı açılıyor...');
       document.getElementById('join-input').classList.add('active');
       document.getElementById('room-code-input').focus();
     }
 
     function joinRoom() {
       const code = document.getElementById('room-code-input').value.toUpperCase();
+      console.log('🔑 Odaya katılmaya çalışıyor:', code);
       if (code.length === 6) {
         pendingAction = 'join';
         socket.emit('join_room', code);
@@ -643,6 +662,7 @@
     }
 
     function selectCharacter(character) {
+      console.log('👤 Karakter seçildi:', character);
       selectedCharacter = character;
       startGame();
     }
@@ -680,6 +700,10 @@
       document.getElementById('password-input').value = '';
       document.getElementById('password-error').style.display = 'none';
     }
+
+    // Global fonksiyonlar - HTML onclick için
+    window.checkPassword = checkPassword;
+    window.closePasswordPopup = closePasswordPopup;
 
     function enterMuseum() {
       window.insideMuseum = true;
