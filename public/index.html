@@ -493,9 +493,9 @@
     <div id="speed-hud" class="speed-hud hidden">
       <h4>⚙️ HIZ AYARLARI</h4>
       <div>🎬 Walk Anim: <span class="speed-value" id="walk-anim-speed">0.70</span></div>
-      <div>🚶 Walk Hareket: <span class="speed-value" id="walk-move-speed">0.030</span></div>
+      <div>🚶 Walk Hareket: <span class="speed-value" id="walk-move-speed">0.010</span></div>
       <div>🏃 Run Anim: <span class="speed-value" id="run-anim-speed">1.30</span></div>
-      <div>🏃 Run Hareket: <span class="speed-value" id="run-move-speed">0.070</span></div>
+      <div>🏃 Run Hareket: <span class="speed-value" id="run-move-speed">0.025</span></div>
       <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">
         1/2 Walk Anim | 3/4 Run Anim<br>
         5/6 Walk Hareket | 7/8 Run Hareket
@@ -2293,8 +2293,8 @@
     // ANİMASYON HIZ AYARLARI (Deneysel olarak ayarlandı)
     let walkAnimSpeed = 0.7;   // Yürüme animasyon hızı (yavaş)
     let runAnimSpeed = 1.3;    // Koşma animasyon hızı (hızlı)
-    let walkMoveSpeed = 0.03;  // Yürüme hareket hızı (yavaş)
-    let runMoveSpeed = 0.07;   // Koşma hareket hızı (orta)
+    let walkMoveSpeed = 0.010; // Yürüme hareket hızı (%65 YAVAŞLATILDI!)
+    let runMoveSpeed = 0.025;  // Koşma hareket hızı (%65 YAVAŞLATILDI!)
     let lastSpeedAdjust = 0;   // Son ayarlama zamanı
     
     function animate() {
