@@ -1644,42 +1644,6 @@
             console.log('🎬 Walk animasyonu - Root motion temizlendi');
           }
           
-          // YENİ START/STOP YÜRÜME ANİMASYONU (opsiyonel)
-          // Eğer mWalkStartStop.fbx varsa onu kullan, yoksa mWalk.fbx kullan
-          let walkStartStopAction;
-          loader.load('/mWalkStartStop.fbx',
-            function(walkStartStopFbx) {
-              console.log('✅ mWalkStartStop.fbx yüklendi! (start/stop animasyon)');
-              if (walkStartStopFbx.animations && walkStartStopFbx.animations.length > 0) {
-                // ROOT MOTION TRACK'İNİ KALDIR!
-                const walkStartStopClip = walkStartStopFbx.animations[0];
-                walkStartStopClip.tracks = walkStartStopClip.tracks.filter(track => {
-                  return !track.name.includes('.position');
-                });
-                
-                walkStartStopAction = animMixer.clipAction(walkStartStopClip);
-                walkStartStopAction.setLoop(THREE.LoopOnce); // TEK SEFERLIK!
-                walkStartStopAction.clampWhenFinished = true; // Son frame'de kal
-                console.log('🚶 Start/Stop Walk animasyonu - Root motion temizlendi');
-                
-                // Orijinal walk'u bu animasyonla değiştir
-                walkAction = walkStartStopAction;
-                
-                if (isPlayer) {
-                  playerGroup.userData.walkAction = walkAction;
-                  playerGroup.userData.walkIsStartStop = true;
-                } else {
-                  partnerGroup.userData.walkAction = walkAction;
-                  partnerGroup.userData.walkIsStartStop = true;
-                }
-              }
-            },
-            undefined,
-            function(error) {
-              console.log('ℹ️ mWalkStartStop.fbx bulunamadı, normal yürüme kullanılıyor');
-            }
-          );
-          
           // Mixer'ı global değişkene ata
           if (isPlayer) {
             mixer = animMixer;
@@ -2539,14 +2503,6 @@
           targetAnimation = 'walk';
         } else if (idleAction) {
           targetAnimation = 'idle';
-        }
-        
-        // START/STOP WALK ANİMASYONU İÇİN ÖZEL KONTROL
-        if (playerGroup.userData.walkIsStartStop && targetAnimation === 'walk' && walkAction) {
-          // Start/stop animasyonunu her W basıldığında baştan başlat
-          if (currentAnimation !== 'walk') {
-            walkAction.reset();
-          }
         }
         
         // Animasyon değiştiyse geçiş yap
