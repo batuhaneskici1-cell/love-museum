@@ -770,8 +770,8 @@
       ground.receiveShadow = true;
       scene.add(ground);
 
-      // AĞAÇLAR
-      for (let i = 0; i < 25; i++) {
+      // AĞAÇLAR - Daha fazla
+      for (let i = 0; i < 40; i++) {
         const trunkHeight = 2 + Math.random() * 2;
         const trunk = new THREE.Mesh(
           new THREE.CylinderGeometry(0.3, 0.4, trunkHeight, 8),
@@ -802,6 +802,102 @@
         
         scene.add(trunk);
         scene.add(leaves);
+      }
+
+      // ÇİMEN KÜMELERİ - Zemine detay
+      for (let i = 0; i < 200; i++) {
+        const grassClump = new THREE.Group();
+        
+        // Birkaç çimen yaprağı
+        for (let j = 0; j < 5; j++) {
+          const blade = new THREE.Mesh(
+            new THREE.ConeGeometry(0.02, 0.15 + Math.random() * 0.1, 3),
+            new THREE.MeshStandardMaterial({ 
+              color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.6, 0.3),
+              flatShading: true
+            })
+          );
+          blade.position.set(
+            (Math.random() - 0.5) * 0.1,
+            0.08,
+            (Math.random() - 0.5) * 0.1
+          );
+          blade.rotation.z = (Math.random() - 0.5) * 0.3;
+          grassClump.add(blade);
+        }
+        
+        let x = Math.random() * 100 - 50;
+        let z = Math.random() * 100 - 50;
+        
+        if (Math.abs(x) < 20 && z > -30 && z < 5) {
+          x += x > 0 ? 25 : -25;
+        }
+        
+        grassClump.position.set(x, 0, z);
+        scene.add(grassClump);
+      }
+
+      // UZAK DAĞLAR - Ufuk çizgisi
+      for (let i = 0; i < 8; i++) {
+        const mountainHeight = 15 + Math.random() * 10;
+        const mountain = new THREE.Mesh(
+          new THREE.ConeGeometry(15 + Math.random() * 10, mountainHeight, 4),
+          new THREE.MeshStandardMaterial({ 
+            color: 0x5a6c57,
+            flatShading: true
+          })
+        );
+        
+        const angle = (i / 8) * Math.PI * 2;
+        const distance = 120;
+        
+        mountain.position.set(
+          Math.cos(angle) * distance,
+          mountainHeight / 2 - 2,
+          Math.sin(angle) * distance
+        );
+        mountain.rotation.y = Math.random() * Math.PI * 2;
+        mountain.receiveShadow = true;
+        
+        scene.add(mountain);
+        
+        // Kar tepesi
+        const snow = new THREE.Mesh(
+          new THREE.ConeGeometry(8, 6, 4),
+          new THREE.MeshStandardMaterial({ color: 0xffffff })
+        );
+        snow.position.copy(mountain.position);
+        snow.position.y += mountainHeight / 2;
+        scene.add(snow);
+      }
+
+      // KAYALAR - Etrafta serpiştirilmiş
+      for (let i = 0; i < 30; i++) {
+        const rockSize = 0.3 + Math.random() * 0.5;
+        const rock = new THREE.Mesh(
+          new THREE.DodecahedronGeometry(rockSize, 0),
+          new THREE.MeshStandardMaterial({ 
+            color: 0x808080,
+            flatShading: true
+          })
+        );
+        
+        let x = Math.random() * 90 - 45;
+        let z = Math.random() * 90 - 45;
+        
+        if (Math.abs(x) < 20 && z > -30 && z < 5) {
+          x += x > 0 ? 25 : -25;
+        }
+        
+        rock.position.set(x, rockSize / 2, z);
+        rock.rotation.set(
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        );
+        rock.castShadow = true;
+        rock.receiveShadow = true;
+        scene.add(rock);
       }
 
       // BULUTLAR
@@ -955,8 +1051,8 @@
         window.birds.push(birdGroup);
       }
 
-      // ÇİÇEKLER - Yere serpiştirilmiş
-      for (let i = 0; i < 30; i++) {
+      // ÇİÇEKLER - Çok daha fazla! 100 çiçek
+      for (let i = 0; i < 100; i++) {
         const flowerGroup = new THREE.Group();
         
         // Çiçek taç yaprakları
@@ -995,13 +1091,13 @@
         scene.add(flowerGroup);
       }
 
-      // MÜZE BİNASI
+      // MÜZE BİNASI - GÜZELLEŞTİRİLMİŞ
       const museumGroup = new THREE.Group();
       
-      // Ana duvarlar
+      // Ana duvarlar - daha detaylı
       const wallMat = new THREE.MeshStandardMaterial({ 
-        color: 0xf0e5d8, 
-        roughness: 0.8 
+        color: 0xf5f0e8, 
+        roughness: 0.6
       });
       const mainWalls = new THREE.Mesh(
         new THREE.BoxGeometry(28, 7, 38),
@@ -1012,7 +1108,70 @@
       mainWalls.receiveShadow = true;
       museumGroup.add(mainWalls);
 
-      // Çatı
+      // PENCERELER - 6 tane
+      const windowMat = new THREE.MeshBasicMaterial({ 
+        color: 0x87ceeb,
+        transparent: true,
+        opacity: 0.7
+      });
+      
+      // Sol taraf pencereleri
+      for (let i = 0; i < 3; i++) {
+        const window1 = new THREE.Mesh(
+          new THREE.BoxGeometry(2, 2.5, 0.1),
+          windowMat
+        );
+        window1.position.set(-14.1, 4, -12 + i * 10);
+        museumGroup.add(window1);
+        
+        // Pencere çerçevesi
+        const frame = new THREE.Mesh(
+          new THREE.BoxGeometry(2.2, 2.7, 0.15),
+          new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+        );
+        frame.position.copy(window1.position);
+        frame.position.x -= 0.02;
+        museumGroup.add(frame);
+      }
+      
+      // Sağ taraf pencereleri
+      for (let i = 0; i < 3; i++) {
+        const window2 = new THREE.Mesh(
+          new THREE.BoxGeometry(2, 2.5, 0.1),
+          windowMat
+        );
+        window2.position.set(14.1, 4, -12 + i * 10);
+        museumGroup.add(window2);
+        
+        const frame = new THREE.Mesh(
+          new THREE.BoxGeometry(2.2, 2.7, 0.15),
+          new THREE.MeshStandardMaterial({ color: 0x8B4513 })
+        );
+        frame.position.copy(window2.position);
+        frame.position.x += 0.02;
+        museumGroup.add(frame);
+      }
+
+      // SÜTUNLAR - Giriş önünde
+      for (let side of [-2.5, 2.5]) {
+        const column = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.4, 0.5, 6, 12),
+          new THREE.MeshStandardMaterial({ color: 0xf5f0e8 })
+        );
+        column.position.set(side, 3, 19);
+        column.castShadow = true;
+        museumGroup.add(column);
+        
+        // Sütun başlığı
+        const capital = new THREE.Mesh(
+          new THREE.BoxGeometry(0.8, 0.4, 0.8),
+          new THREE.MeshStandardMaterial({ color: 0xe8dcc8 })
+        );
+        capital.position.set(side, 6.2, 19);
+        museumGroup.add(capital);
+      }
+
+      // Çatı - daha görkemli
       const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
       const roof = new THREE.Mesh(
         new THREE.ConeGeometry(20, 3, 4),
@@ -1022,15 +1181,32 @@
       roof.rotation.y = Math.PI / 4;
       roof.castShadow = true;
       museumGroup.add(roof);
+      
+      // Çatı süslemesi - tepe
+      const roofTop = new THREE.Mesh(
+        new THREE.SphereGeometry(0.5, 8, 8),
+        new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8 })
+      );
+      roofTop.position.y = 10;
+      museumGroup.add(roofTop);
 
-      // Kapı çerçevesi
-      const doorFrameGeo = new THREE.BoxGeometry(3.2, 4.2, 0.3);
+      // Kapı çerçevesi - daha süslü
+      const doorFrameGeo = new THREE.BoxGeometry(3.4, 4.4, 0.4);
       const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
       const doorFrame = new THREE.Mesh(doorFrameGeo, doorFrameMat);
       doorFrame.position.set(0, 2.1, 19.15);
       museumGroup.add(doorFrame);
+      
+      // Kapı üstü süsleme
+      const archTop = new THREE.Mesh(
+        new THREE.TorusGeometry(1.7, 0.15, 8, 16, Math.PI),
+        doorFrameMat
+      );
+      archTop.position.set(0, 4.3, 19.15);
+      archTop.rotation.x = Math.PI / 2;
+      museumGroup.add(archTop);
 
-      // KAPI (Kapalı ve Kilitli)
+      // KAPI (Kapalı ve Kilitli) - daha detaylı
       const doorGeo = new THREE.BoxGeometry(3, 4, 0.2);
       const doorMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
       const door = new THREE.Mesh(doorGeo, doorMat);
@@ -1039,46 +1215,86 @@
       door.userData = { type: 'museum_door', locked: true };
       museumGroup.add(door);
       window.museumDoor = door;
+      
+      // Kapı süslemeleri - çizgiler
+      for (let y of [1, 2, 3]) {
+        const line = new THREE.Mesh(
+          new THREE.BoxGeometry(2.6, 0.05, 0.05),
+          new THREE.MeshStandardMaterial({ color: 0x2a1a0a })
+        );
+        line.position.set(0, y, 19.25);
+        museumGroup.add(line);
+      }
 
-      // Kapı kolu
-      const handleGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.3, 8);
+      // Kapı kolu - daha belirgin
+      const handleGeo = new THREE.TorusGeometry(0.08, 0.03, 8, 16);
       const handleMat = new THREE.MeshStandardMaterial({ 
         color: 0xffd700, 
         metalness: 0.9,
         roughness: 0.1
       });
       const handle = new THREE.Mesh(handleGeo, handleMat);
-      handle.rotation.z = Math.PI / 2;
       handle.position.set(1, 2, 19.3);
+      handle.rotation.y = Math.PI / 2;
       museumGroup.add(handle);
 
-      // KIRMIZI HALI
-      const carpetGeo = new THREE.PlaneGeometry(4, 8);
+      // KIRMIZI HALI - daha uzun
+      const carpetGeo = new THREE.PlaneGeometry(4, 10);
       const carpetMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 });
       const carpet = new THREE.Mesh(carpetGeo, carpetMat);
       carpet.rotation.x = -Math.PI / 2;
-      carpet.position.set(0, 0.01, 23);
+      carpet.position.set(0, 0.01, 24);
       carpet.receiveShadow = true;
       museumGroup.add(carpet);
+      
+      // Halı kenarları - altın
+      for (let side of [-2, 2]) {
+        const border = new THREE.Mesh(
+          new THREE.BoxGeometry(0.1, 0.05, 10),
+          new THREE.MeshStandardMaterial({ color: 0xffd700 })
+        );
+        border.position.set(side, 0.02, 24);
+        museumGroup.add(border);
+      }
 
-      // Tabela
+      // Tabela - daha büyük
       const signCanvas = document.createElement('canvas');
       signCanvas.width = 1024;
       signCanvas.height = 256;
       const signCtx = signCanvas.getContext('2d');
-      signCtx.fillStyle = '#8B4513';
+      
+      // Tabela arkaplan - degrade
+      const gradient = signCtx.createLinearGradient(0, 0, 1024, 0);
+      gradient.addColorStop(0, '#8B4513');
+      gradient.addColorStop(0.5, '#A0522D');
+      gradient.addColorStop(1, '#8B4513');
+      signCtx.fillStyle = gradient;
       signCtx.fillRect(0, 0, 1024, 256);
+      
+      // Altın çerçeve
+      signCtx.strokeStyle = '#FFD700';
+      signCtx.lineWidth = 10;
+      signCtx.strokeRect(10, 10, 1004, 236);
+      
       signCtx.fillStyle = '#FFD700';
       signCtx.font = 'bold 80px Arial';
       signCtx.textAlign = 'center';
       signCtx.fillText('💕 Aşkımızın Müzesi 💕', 512, 150);
       
       const signTexture = new THREE.CanvasTexture(signCanvas);
-      const signGeo = new THREE.PlaneGeometry(10, 2.5);
+      const signGeo = new THREE.PlaneGeometry(12, 3);
       const signMat = new THREE.MeshBasicMaterial({ map: signTexture });
       const sign = new THREE.Mesh(signGeo, signMat);
-      sign.position.set(0, 6.5, 19.3);
+      sign.position.set(0, 6.8, 19.3);
       museumGroup.add(sign);
+      
+      // Tabela altına süsleme
+      const decoration = new THREE.Mesh(
+        new THREE.BoxGeometry(12.5, 0.3, 0.3),
+        new THREE.MeshStandardMaterial({ color: 0xffd700 })
+      );
+      decoration.position.set(0, 5.2, 19.3);
+      museumGroup.add(decoration);
 
       scene.add(museumGroup);
       window.museumGroup = museumGroup;
@@ -1342,15 +1558,15 @@
       body.castShadow = true;
       playerGroup.add(body);
 
-      // ETEK (Sadece kız karakter için) - Kolların altında
+      // ETEK (Sadece kız karakter için) - Daha YUKARI - kollar görünsün
       if (!playerIsBatuhan) {
-        const skirtGeo = new THREE.CylinderGeometry(0.32, 0.42, 0.35, 12);
+        const skirtGeo = new THREE.CylinderGeometry(0.28, 0.38, 0.3, 12);
         const skirtMat = new THREE.MeshStandardMaterial({ 
           color: 0xff69b4,
           side: THREE.DoubleSide
         });
         const skirt = new THREE.Mesh(skirtGeo, skirtMat);
-        skirt.position.y = 0.58; // Daha aşağı
+        skirt.position.y = 0.65; // Daha yukarı
         skirt.castShadow = true;
         playerGroup.add(skirt);
         playerGroup.skirt = skirt; // Dans animasyonu için
@@ -1425,25 +1641,82 @@
         playerGroup.add(ponytailEnd);
       }
 
-      // GÖZLER
-      const eyeGeo = new THREE.SphereGeometry(0.03, 8, 8);
-      const eyeMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
-      const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      leftEye.position.set(-0.06, 1.45, 0.18);
-      playerGroup.add(leftEye);
-      const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      rightEye.position.set(0.06, 1.45, 0.18);
-      playerGroup.add(rightEye);
+      // GÖZLER - DAHA BÜYÜK VE TATLI
+      const eyeWhiteGeo = new THREE.CircleGeometry(0.06, 16);
+      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+      
+      const leftEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      leftEyeWhite.position.set(-0.08, 1.46, 0.195);
+      leftEyeWhite.rotation.y = -0.1;
+      playerGroup.add(leftEyeWhite);
+      
+      const rightEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      rightEyeWhite.position.set(0.08, 1.46, 0.195);
+      rightEyeWhite.rotation.y = 0.1;
+      playerGroup.add(rightEyeWhite);
+      
+      // Göz bebekleri - parlak
+      const pupilGeo = new THREE.CircleGeometry(0.025, 12);
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x2c3e50 });
+      
+      const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      leftPupil.position.set(-0.08, 1.46, 0.196);
+      leftPupil.rotation.y = -0.1;
+      playerGroup.add(leftPupil);
+      
+      const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      rightPupil.position.set(0.08, 1.46, 0.196);
+      rightPupil.rotation.y = 0.1;
+      playerGroup.add(rightPupil);
+      
+      // Işıltı - gözlere canlılık
+      const shineGeo = new THREE.CircleGeometry(0.01, 8);
+      const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      
+      const leftShine = new THREE.Mesh(shineGeo, shineMat);
+      leftShine.position.set(-0.075, 1.47, 0.197);
+      leftShine.rotation.y = -0.1;
+      playerGroup.add(leftShine);
+      
+      const rightShine = new THREE.Mesh(shineGeo, shineMat);
+      rightShine.position.set(0.085, 1.47, 0.197);
+      rightShine.rotation.y = 0.1;
+      playerGroup.add(rightShine);
 
-      // GÜLÜMSEME
-      const smileCurve = new THREE.EllipseCurve(0, 0, 0.08, 0.05, Math.PI, 2 * Math.PI, false, 0);
-      const smilePoints = smileCurve.getPoints(20);
+      // GÜLÜMSEME - Daha büyük ve sevimli
+      const smileCurve = new THREE.EllipseCurve(
+        0, 0,
+        0.1, 0.06,
+        Math.PI * 0.9, Math.PI * 2.1,
+        false,
+        0
+      );
+      const smilePoints = smileCurve.getPoints(30);
       const smileGeometry = new THREE.BufferGeometry().setFromPoints(smilePoints);
-      const smileMaterial = new THREE.LineBasicMaterial({ color: 0x000000, linewidth: 2 });
+      const smileMaterial = new THREE.LineBasicMaterial({ color: 0xff69b4, linewidth: 3 });
       const smile = new THREE.Line(smileGeometry, smileMaterial);
-      smile.position.set(0, 1.36, 0.18);
+      smile.position.set(0, 1.35, 0.19);
       smile.rotation.x = Math.PI / 2;
       playerGroup.add(smile);
+      
+      // Yanaklar - allık
+      const cheekGeo = new THREE.CircleGeometry(0.04, 12);
+      const cheekMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffb6c1, 
+        transparent: true, 
+        opacity: 0.6,
+        side: THREE.DoubleSide
+      });
+      
+      const leftCheek = new THREE.Mesh(cheekGeo, cheekMat);
+      leftCheek.position.set(-0.13, 1.38, 0.18);
+      leftCheek.rotation.y = -0.3;
+      playerGroup.add(leftCheek);
+      
+      const rightCheek = new THREE.Mesh(cheekGeo, cheekMat);
+      rightCheek.position.set(0.13, 1.38, 0.18);
+      rightCheek.rotation.y = 0.3;
+      playerGroup.add(rightCheek);
 
       // ETEK (Sadece kız karakter için)
       if (!playerIsBatuhan) {
@@ -1521,15 +1794,15 @@
       pBody.castShadow = true;
       partnerGroup.add(pBody);
 
-      // Partner ETEK (Sadece kız karakter için) - Kolların altında
+      // Partner ETEK (Sadece kız karakter için) - Daha YUKARI
       if (!partnerIsBatuhan) {
-        const pSkirtGeo = new THREE.CylinderGeometry(0.32, 0.42, 0.35, 12);
+        const pSkirtGeo = new THREE.CylinderGeometry(0.28, 0.38, 0.3, 12);
         const pSkirtMat = new THREE.MeshStandardMaterial({ 
           color: 0xff69b4,
           side: THREE.DoubleSide
         });
         const pSkirt = new THREE.Mesh(pSkirtGeo, pSkirtMat);
-        pSkirt.position.y = 0.58; // Daha aşağı
+        pSkirt.position.y = 0.65;
         pSkirt.castShadow = true;
         partnerGroup.add(pSkirt);
       }
@@ -1589,19 +1862,52 @@
         partnerGroup.add(pPonytailEnd);
       }
 
-      // Partner Gözler
-      const pLeftEye = new THREE.Mesh(eyeGeo, eyeMat);
-      pLeftEye.position.set(-0.06, 1.45, 0.18);
-      partnerGroup.add(pLeftEye);
-      const pRightEye = new THREE.Mesh(eyeGeo, eyeMat);
-      pRightEye.position.set(0.06, 1.45, 0.18);
-      partnerGroup.add(pRightEye);
+      // Partner Gözler - TATLI
+      const pLeftEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      pLeftEyeWhite.position.set(-0.08, 1.46, 0.195);
+      pLeftEyeWhite.rotation.y = -0.1;
+      partnerGroup.add(pLeftEyeWhite);
+      
+      const pRightEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
+      pRightEyeWhite.position.set(0.08, 1.46, 0.195);
+      pRightEyeWhite.rotation.y = 0.1;
+      partnerGroup.add(pRightEyeWhite);
+      
+      const pLeftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      pLeftPupil.position.set(-0.08, 1.46, 0.196);
+      pLeftPupil.rotation.y = -0.1;
+      partnerGroup.add(pLeftPupil);
+      
+      const pRightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      pRightPupil.position.set(0.08, 1.46, 0.196);
+      pRightPupil.rotation.y = 0.1;
+      partnerGroup.add(pRightPupil);
+      
+      const pLeftShine = new THREE.Mesh(shineGeo, shineMat);
+      pLeftShine.position.set(-0.075, 1.47, 0.197);
+      pLeftShine.rotation.y = -0.1;
+      partnerGroup.add(pLeftShine);
+      
+      const pRightShine = new THREE.Mesh(shineGeo, shineMat);
+      pRightShine.position.set(0.085, 1.47, 0.197);
+      pRightShine.rotation.y = 0.1;
+      partnerGroup.add(pRightShine);
 
       // Partner Gülümseme
       const pSmile = new THREE.Line(smileGeometry, smileMaterial);
-      pSmile.position.set(0, 1.36, 0.18);
+      pSmile.position.set(0, 1.35, 0.19);
       pSmile.rotation.x = Math.PI / 2;
       partnerGroup.add(pSmile);
+      
+      const pLeftCheek = new THREE.Mesh(cheekGeo, cheekMat);
+      pLeftCheek.position.set(-0.13, 1.38, 0.18);
+      pLeftCheek.rotation.y = -0.3;
+      partnerGroup.add(pLeftCheek);
+      
+      const pRightCheek = new THREE.Mesh(cheekGeo, cheekMat);
+      pRightCheek.position.set(0.13, 1.38, 0.18);
+      pRightCheek.rotation.y = 0.3;
+      partnerGroup.add(pRightCheek);
 
       // Partner ETEK (Sadece kız karakter için)
       if (!partnerIsBatuhan) {
@@ -1824,39 +2130,51 @@
 
       // Animation - DANS VE YÜRÜME
       if (isDancing) {
-        // GELİŞMİŞ DANS ANİMASYONU 💃
-        const danceSpeed = time * 0.012;
+        // SÜPER DANS ANİMASYONU 💃🕺
+        const danceSpeed = time * 0.015;
+        const jumpHeight = Math.abs(Math.sin(danceSpeed * 4)) * 0.4; // Daha yüksek zıpla
         
         if (playerGroup.leftArm && playerGroup.rightArm) {
-          // Kolları yukarı kaldır ve salla
-          playerGroup.leftArm.rotation.z = Math.sin(danceSpeed) * 0.6 + 0.3;
-          playerGroup.leftArm.rotation.x = Math.sin(danceSpeed * 1.5) * 0.4;
-          playerGroup.leftArm.rotation.y = Math.cos(danceSpeed * 0.8) * 0.3;
+          // KOLLAR YUKARI KALKSIN!
+          playerGroup.leftArm.rotation.z = Math.PI * 0.7 + Math.sin(danceSpeed * 2) * 0.3; // Yukarı
+          playerGroup.leftArm.rotation.x = Math.sin(danceSpeed * 1.5) * 0.5;
+          playerGroup.leftArm.rotation.y = Math.cos(danceSpeed * 1.2) * 0.4;
           
-          playerGroup.rightArm.rotation.z = Math.sin(danceSpeed + Math.PI) * 0.6 - 0.3;
-          playerGroup.rightArm.rotation.x = Math.sin(danceSpeed * 1.5 + Math.PI) * 0.4;
-          playerGroup.rightArm.rotation.y = Math.cos(danceSpeed * 0.8 + Math.PI) * 0.3;
+          playerGroup.rightArm.rotation.z = -Math.PI * 0.7 + Math.sin(danceSpeed * 2 + Math.PI) * 0.3; // Yukarı
+          playerGroup.rightArm.rotation.x = Math.sin(danceSpeed * 1.5 + Math.PI) * 0.5;
+          playerGroup.rightArm.rotation.y = Math.cos(danceSpeed * 1.2 + Math.PI) * 0.4;
         }
         
-        // Vücudu sağ-sol salla
-        const bodySwing = Math.sin(danceSpeed * 2) * 0.15;
+        // Vücudu hızlıca sağ-sol salla
+        const bodySwing = Math.sin(danceSpeed * 3) * 0.25;
         playerGroup.rotation.y = bodySwing;
-        playerGroup.rotation.z = Math.sin(danceSpeed * 1.5) * 0.05;
+        playerGroup.rotation.z = Math.sin(danceSpeed * 2) * 0.08;
         
-        // Yukarı aşağı zıpla
-        playerGroup.position.y = Math.abs(Math.sin(danceSpeed * 3)) * 0.2;
+        // YUKARI AŞAĞI ZIPLAMA - çok belirgin
+        playerGroup.position.y = jumpHeight;
         
-        // Etek salla (eğer varsa)
+        // Etek ÇOK daha fazla sallan
         if (playerGroup.skirt) {
-          playerGroup.skirt.rotation.y = Math.sin(danceSpeed * 2.5) * 0.4;
-          playerGroup.skirt.scale.x = 1 + Math.sin(danceSpeed * 3) * 0.1;
-          playerGroup.skirt.scale.z = 1 + Math.sin(danceSpeed * 3) * 0.1;
+          playerGroup.skirt.rotation.y = Math.sin(danceSpeed * 3) * 0.6;
+          playerGroup.skirt.scale.x = 1 + Math.abs(Math.sin(danceSpeed * 4)) * 0.2;
+          playerGroup.skirt.scale.z = 1 + Math.abs(Math.sin(danceSpeed * 4)) * 0.2;
         }
         
-        // Bacaklar da hareket etsin
+        // Bacaklar da ZIPLAMA hareketi
         if (playerGroup.leftLeg && playerGroup.rightLeg) {
-          playerGroup.leftLeg.rotation.x = Math.sin(danceSpeed * 2) * 0.2;
-          playerGroup.rightLeg.rotation.x = Math.sin(danceSpeed * 2 + Math.PI) * 0.2;
+          const legBend = Math.sin(danceSpeed * 4) * 0.3;
+          playerGroup.leftLeg.rotation.x = legBend;
+          playerGroup.rightLeg.rotation.x = legBend;
+        }
+        
+        // Kafa da sallan
+        if (playerGroup.children) {
+          playerGroup.children.forEach(child => {
+            if (child.geometry && child.geometry.type === 'SphereGeometry' && child.position.y > 1.4) {
+              // Kafa sallama
+              child.rotation.z = Math.sin(danceSpeed * 2.5) * 0.1;
+            }
+          });
         }
       } else if (isMoving) {
         // YÜRÜME ANİMASYONU
