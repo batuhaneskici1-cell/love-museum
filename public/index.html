@@ -1710,6 +1710,11 @@
                   partnerGroup.userData.runAction = runAction;
                 }
               }
+            },
+            undefined,
+            function(error) {
+              console.error('❌ mRun.fbx YÜKLEME HATASI!', error);
+              alert('❌ HATA: mRun.fbx dosyası bulunamadı!\n\nDosya: public/mRun.fbx');
             }
           );
           
@@ -1734,6 +1739,11 @@
                   partnerGroup.userData.danceAction = danceAction;
                 }
               }
+            },
+            undefined,
+            function(error) {
+              console.error('❌ mDance.fbx YÜKLEME HATASI!', error);
+              alert('❌ HATA: mDance.fbx dosyası bulunamadı!\n\nDosya: public/mDance.fbx');
             }
           );
           
@@ -1786,7 +1796,8 @@
             },
             undefined,
             function(error) {
-              console.log('ℹ️ mIdle.fbx bulunamadı (opsiyonel)');
+              console.warn('⚠️ mIdle.fbx bulunamadı (opsiyonel)');
+              console.log('💡 Idle animasyonu olmadan da çalışabilir');
             }
           );
           
@@ -1815,7 +1826,13 @@
           console.log((xhr.loaded / xhr.total * 100) + '% yüklendi');
         },
         function(error) {
-          console.error('❌ FBX yükleme hatası:', error);
+          console.error('❌ mWalk.fbx YÜKLEME HATASI!');
+          console.error('Hata:', error);
+          console.error('⚠️ KONTROL ET:');
+          console.error('  1. Dosya public/mWalk.fbx konumunda mı?');
+          console.error('  2. Dosya adı tam olarak "mWalk.fbx" mi? (küçük m, büyük W)');
+          console.error('  3. Sunucu çalışıyor mu? (npm start)');
+          alert('❌ HATA: mWalk.fbx dosyası bulunamadı!\n\nDosyanın public/ klasöründe olduğundan emin olun.\nDosya adı: mWalk.fbx');
         }
       );
     }
