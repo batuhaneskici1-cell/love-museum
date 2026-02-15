@@ -539,23 +539,6 @@
 
     const moveSpeed = 0.1;
 
-    // Event Listeners - Butonlara tıklama
-    document.addEventListener('DOMContentLoaded', () => {
-      // Menu butonları
-      document.getElementById('create-room-btn').addEventListener('click', createRoom);
-      document.getElementById('join-room-btn').addEventListener('click', showJoinInput);
-      document.getElementById('join-submit-btn').addEventListener('click', joinRoom);
-      
-      // Enter tuşu ile oda kodunu gönder
-      document.getElementById('room-code-input').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') joinRoom();
-      });
-      
-      // Karakter seçimi
-      document.getElementById('select-batuhan').addEventListener('click', () => selectCharacter('batuhan'));
-      document.getElementById('select-merve').addEventListener('click', () => selectCharacter('merve'));
-    });
-
     // Socket events
     socket.on('room_created', (data) => {
       roomCode = data.roomCode;
@@ -1400,8 +1383,6 @@
       // BOYUN
       const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
       const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
-      const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
-      const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
       const neck = new THREE.Mesh(neckGeo, neckMat);
       neck.position.y = 1.26;
       neck.castShadow = true;
@@ -2048,6 +2029,53 @@
 
       renderer.render(scene, camera);
     }
+
+    // Event Listeners - DOM yüklendikten sonra
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('✅ DOM yüklendi, event listener\'lar ekleniyor...');
+      
+      // Menu butonları
+      const createBtn = document.getElementById('create-room-btn');
+      const joinBtn = document.getElementById('join-room-btn');
+      const submitBtn = document.getElementById('join-submit-btn');
+      
+      if (createBtn) {
+        createBtn.addEventListener('click', createRoom);
+        console.log('✅ Create button listener eklendi');
+      }
+      
+      if (joinBtn) {
+        joinBtn.addEventListener('click', showJoinInput);
+        console.log('✅ Join button listener eklendi');
+      }
+      
+      if (submitBtn) {
+        submitBtn.addEventListener('click', joinRoom);
+        console.log('✅ Submit button listener eklendi');
+      }
+      
+      // Enter tuşu ile oda kodunu gönder
+      const roomInput = document.getElementById('room-code-input');
+      if (roomInput) {
+        roomInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') joinRoom();
+        });
+      }
+      
+      // Karakter seçimi
+      const batuhanBtn = document.getElementById('select-batuhan');
+      const merveBtn = document.getElementById('select-merve');
+      
+      if (batuhanBtn) {
+        batuhanBtn.addEventListener('click', () => selectCharacter('batuhan'));
+        console.log('✅ Batuhan button listener eklendi');
+      }
+      
+      if (merveBtn) {
+        merveBtn.addEventListener('click', () => selectCharacter('merve'));
+        console.log('✅ Merve button listener eklendi');
+      }
+    });
   </script>
 </body>
 </html>
