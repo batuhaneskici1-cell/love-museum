@@ -747,11 +747,11 @@
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(renderer.domElement);
 
-      // Lighting - GÜNEŞ IŞIĞI
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+      // Lighting - GÜNEŞ IŞIĞI (daha yumuşak)
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Biraz daha parlak
       scene.add(ambientLight);
 
-      const sunLight = new THREE.DirectionalLight(0xfff5e1, 1.5);
+      const sunLight = new THREE.DirectionalLight(0xffffff, 1.0); // Daha az yoğun, beyaz ışık
       sunLight.position.set(30, 50, 30);
       sunLight.castShadow = true;
       sunLight.shadow.mapSize.width = 4096;
@@ -1350,16 +1350,16 @@
       interiorCeiling.receiveShadow = true;
       window.museumInterior.add(interiorCeiling);
 
-      // İç aydınlatma
-      const interiorAmbient = new THREE.AmbientLight(0xffd4e5, 0.6);
+      // İç aydınlatma (BEYAZ IŞIK - renkleri bozmaz)
+      const interiorAmbient = new THREE.AmbientLight(0xffffff, 0.7); // Beyaz
       window.museumInterior.add(interiorAmbient);
 
-      const interiorSpot1 = new THREE.SpotLight(0xff69b4, 1, 20, Math.PI / 6);
+      const interiorSpot1 = new THREE.SpotLight(0xffffff, 0.8, 20, Math.PI / 6); // Beyaz
       interiorSpot1.position.set(-8, 5, 0);
       interiorSpot1.castShadow = true;
       window.museumInterior.add(interiorSpot1);
 
-      const interiorSpot2 = new THREE.SpotLight(0xffb6c1, 1, 20, Math.PI / 6);
+      const interiorSpot2 = new THREE.SpotLight(0xffffff, 0.8, 20, Math.PI / 6); // Beyaz
       interiorSpot2.position.set(8, 5, 0);
       interiorSpot2.castShadow = true;
       window.museumInterior.add(interiorSpot2);
@@ -1544,13 +1544,14 @@
             if (child.isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
-              // Materialleri pembe yap
-              child.material = new THREE.MeshStandardMaterial({
-                color: 0xff69b4, // Pembe
-                skinning: child.isSkinnedMesh, // Animasyon için
-                roughness: 0.8,
-                metalness: 0.2
-              });
+              
+              // Debug: Materyal bilgilerini göster
+              if (child.material) {
+                console.log('📦 Mesh:', child.name, 'Materyal:', child.material.type, 'Renk:', child.material.color);
+              }
+              
+              // ORİJİNAL MATERYALLERİ KORU! (Ten rengi, kıyafet vs.)
+              // Hiçbir renk değişikliği yapma!
             }
           });
           
@@ -2279,13 +2280,13 @@
           
           // Yeni animasyonu başlat
           if (targetAnimation === 'dance') {
-            danceAction.reset().setEffectiveTimeScale(1.0).play();
+            danceAction.reset().play();
           } else if (targetAnimation === 'run') {
-            runAction.reset().setEffectiveTimeScale(1.2).play(); // Koşma biraz hızlı
+            runAction.reset().play();
           } else if (targetAnimation === 'walk') {
-            walkAction.reset().setEffectiveTimeScale(0.8).play(); // Yürüme biraz yavaş
+            walkAction.reset().play();
           } else if (targetAnimation === 'idle') {
-            idleAction.reset().setEffectiveTimeScale(1.0).play();
+            idleAction.reset().play();
           }
           
           currentAnimation = targetAnimation;
@@ -2293,8 +2294,8 @@
       }
       
       if (isMoving) {
-        // HAREKET HIZI (Animasyonla senkronize)
-        const currentSpeed = isRunning ? 0.10 : 0.05; // Koşma daha yavaş, kayma olmasın
+        // HAREKET HIZI (Animasyonla senkronize - ÇOK YAVAŞ!)
+        const currentSpeed = isRunning ? 0.08 : 0.04; // Çok daha yavaş!
         
         // Kamera yönüne göre hareket
         const forward = new THREE.Vector3();
