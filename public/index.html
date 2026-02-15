@@ -459,6 +459,7 @@
     <div class="controls">
       <h3>Kontroller 🎮</h3>
       <p><strong>W A S D</strong> - Hareket Et</p>
+      <p><strong>SHIFT</strong> - Koş 🏃‍♀️</p>
       <p><strong>Fare</strong> - Kamera Döndür (Ekrana tıkla)</p>
       <p><strong>SPACE</strong> - Zıpla</p>
       <p><strong>Q</strong> - Dans Et 💃</p>
@@ -541,7 +542,7 @@
     let pendingAction = null; // 'create' or 'join'
     let isDancing = false;
 
-    const moveSpeed = 0.1;
+    let moveSpeed = 0.1; // Yürüme hızı
 
     // Socket events
     socket.on('room_created', (data) => {
@@ -1529,13 +1530,14 @@
     }
 
 
-    // FBX KARAKTER YÜKLEME
+    // FBX KARAKTER YÜKLEME - TÜM ANİMASYONLARLA
     function loadFBXCharacter(parentGroup, isPlayer) {
       const loader = new THREE.FBXLoader();
       
-      loader.load('/Walk.fbx', 
+      // İlk olarak yürüme animasyonlu karakteri yükle
+      loader.load('/mWalk.fbx', 
         function(fbxModel) {
-          console.log('✅ Walk.fbx yüklendi!');
+          console.log('✅ mWalk.fbx yüklendi!');
           fbxModel.scale.set(0.01, 0.01, 0.01);
           fbxModel.position.y = 0;
           
@@ -1544,23 +1546,61 @@
               child.castShadow = true;
               child.receiveShadow = true;
               if (child.material) {
-                child.material.color.setHex(0xff69b4);
+                child.material.color.setHex(0xff69b4); // Pembe
               }
             }
           });
           
+          // Animation mixer oluştur
+          const animMixer = new THREE.AnimationMixer(fbxModel);
+          
+          // YÜRÜME animasyonunu sakla
+          let walkAction, runAction, danceAction;
           if (fbxModel.animations && fbxModel.animations.length > 0) {
-            const animMixer = new THREE.AnimationMixer(fbxModel);
-            const action = animMixer.clipAction(fbxModel.animations[0]);
-            action.play();
-            
-            if (isPlayer) {
-              mixer = animMixer;
-            } else {
-              partnerMixer = animMixer;
-            }
+            walkAction = animMixer.clipAction(fbxModel.animations[0]);
+            walkAction.play();
           }
           
+          // Mixer'ı global değişkene ata
+          if (isPlayer) {
+            mixer = animMixer;
+            playerGroup.userData.walkAction = walkAction;
+          } else {
+            partnerMixer = animMixer;
+            partnerGroup.userData.walkAction = walkAction;
+          }
+          
+          // KOŞMA animasyonunu yükle
+          loader.load('/mRun.fbx',
+            function(runFbx) {
+              console.log('✅ mRun.fbx yüklendi!');
+              if (runFbx.animations && runFbx.animations.length > 0) {
+                runAction = animMixer.clipAction(runFbx.animations[0]);
+                if (isPlayer) {
+                  playerGroup.userData.runAction = runAction;
+                } else {
+                  partnerGroup.userData.runAction = runAction;
+                }
+              }
+            }
+          );
+          
+          // DANS animasyonunu yükle
+          loader.load('/mDance.fbx',
+            function(danceFbx) {
+              console.log('✅ mDance.fbx yüklendi!');
+              if (danceFbx.animations && danceFbx.animations.length > 0) {
+                danceAction = animMixer.clipAction(danceFbx.animations[0]);
+                if (isPlayer) {
+                  playerGroup.userData.danceAction = danceAction;
+                } else {
+                  partnerGroup.userData.danceAction = danceAction;
+                }
+              }
+            }
+          );
+          
+          // İsim etiketi
           const canvas = document.createElement('canvas');
           canvas.width = 256;
           canvas.height = 64;
@@ -1852,6 +1892,46 @@
       // PARTNER BATUHAN İSE GEOMETRİK
       else {
       
+      // GEOMETRİLERİ TANIMLA
+      const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
+      const bodyGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8);
+      const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
+      const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
+      const headGeo = new THREE.SphereGeometry(0.2, 16, 16);
+      const hairGeo = new THREE.SphereGeometry(0.21, 16, 16);
+      const eyeWhiteGeo = new THREE.CircleGeometry(0.06, 16);
+      const pupilGeo = new THREE.CircleGeometry(0.025, 12);
+      const shineGeo = new THREE.CircleGeometry(0.01, 8);
+      const cheekGeo = new THREE.CircleGeometry(0.04, 12);
+      const shoeGeo = new THREE.BoxGeometry(0.12, 0.08, 0.2);
+      
+      // MATERYALLERİ TANIMLA
+      const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
+      const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
+      const headMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
+      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x2c3e50 });
+      const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const cheekMat = new THREE.MeshBasicMaterial({ 
+        color: 0xffb6c1, 
+        transparent: true, 
+        opacity: 0.6,
+        side: THREE.DoubleSide
+      });
+      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+      
+      // GÜLÜMSEME GEOMETRİSİ
+      const smileCurve = new THREE.EllipseCurve(
+        0, 0,
+        0.1, 0.06,
+        Math.PI * 0.9, Math.PI * 2.1,
+        false,
+        0
+      );
+      const smilePoints = smileCurve.getPoints(30);
+      const smileGeometry = new THREE.BufferGeometry().setFromPoints(smilePoints);
+      const smileMaterial = new THREE.LineBasicMaterial({ color: 0xff69b4, linewidth: 3 });
+      
       // Partner Bacaklar
       const pLegMat = new THREE.MeshStandardMaterial({ 
         color: partnerIsBatuhan ? 0x2c5f9e : 0xffc0cb
@@ -2128,8 +2208,40 @@
 
       // Player movement - KAMERA YÖNÜNE GÖRE
       const isMoving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
+      const isRunning = keys['shift']; // SHIFT = KOŞMA
+      const isDancing = keys['q']; // Q = DANS
+      
+      // FBX ANİMASYON KONTROLÜ (Merve karakteri için)
+      if (playerGroup.userData.walkAction && playerGroup.userData.runAction && playerGroup.userData.danceAction) {
+        const walkAction = playerGroup.userData.walkAction;
+        const runAction = playerGroup.userData.runAction;
+        const danceAction = playerGroup.userData.danceAction;
+        
+        // Önce tüm animasyonları durdur
+        walkAction.stop();
+        runAction.stop();
+        danceAction.stop();
+        
+        // Duruma göre animasyonu başlat
+        if (isDancing) {
+          // DANS ANİMASYONU
+          danceAction.play();
+        } else if (isMoving && isRunning) {
+          // KOŞMA ANİMASYONU
+          runAction.play();
+        } else if (isMoving) {
+          // YÜRÜME ANİMASYONU
+          walkAction.play();
+        } else {
+          // DURMA - Yürüme animasyonunu yavaşça oynat
+          walkAction.play();
+        }
+      }
       
       if (isMoving) {
+        // KOŞMA HIZI AYARLA
+        const currentSpeed = isRunning ? 0.2 : 0.1; // Koşarken 2x hızlı
+        
         // Kamera yönüne göre hareket
         const forward = new THREE.Vector3();
         camera.getWorldDirection(forward);
@@ -2140,20 +2252,20 @@
         right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
         
         if (keys['w']) {
-          playerGroup.position.x += forward.x * moveSpeed;
-          playerGroup.position.z += forward.z * moveSpeed;
+          playerGroup.position.x += forward.x * currentSpeed;
+          playerGroup.position.z += forward.z * currentSpeed;
         }
         if (keys['s']) {
-          playerGroup.position.x -= forward.x * moveSpeed;
-          playerGroup.position.z -= forward.z * moveSpeed;
+          playerGroup.position.x -= forward.x * currentSpeed;
+          playerGroup.position.z -= forward.z * currentSpeed;
         }
         if (keys['a']) {
-          playerGroup.position.x -= right.x * moveSpeed;
-          playerGroup.position.z -= right.z * moveSpeed;
+          playerGroup.position.x -= right.x * currentSpeed;
+          playerGroup.position.z -= right.z * currentSpeed;
         }
         if (keys['d']) {
-          playerGroup.position.x += right.x * moveSpeed;
-          playerGroup.position.z += right.z * moveSpeed;
+          playerGroup.position.x += right.x * currentSpeed;
+          playerGroup.position.z += right.z * currentSpeed;
         }
         
         // Karakter hareket yönüne dönsün
@@ -2165,13 +2277,6 @@
       if (keys[' '] && playerGroup.userData.onGround) {
         playerGroup.userData.velocityY = 0.15;
         playerGroup.userData.onGround = false;
-      }
-      
-      // DANS
-      if (keys['q']) {
-        isDancing = true;
-      } else {
-        isDancing = false;
       }
       
       // MÜZİK KONTROL (M tuşu)
