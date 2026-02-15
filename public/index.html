@@ -391,6 +391,9 @@
       75% { transform: translateX(10px); }
     }
   </style>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FBXLoader.js"></script>
+
 </head>
 <body>
   <!-- Menu Screen -->
@@ -2394,5 +2397,40 @@
       }
     });
   </script>
+
+<script>
+// === MERVE FBX CHARACTER LOAD ===
+const clock = new THREE.Clock();
+let merveMixer;
+
+const fbxLoader = new THREE.FBXLoader();
+fbxLoader.load('models/merve.fbx', function(object) {
+    object.scale.set(0.01, 0.01, 0.01);
+    object.position.set(0, 0, 0);
+
+    object.traverse(function(child) {
+        if (child.isMesh) {
+            child.castShadow = true;
+            child.receiveShadow = true;
+        }
+    });
+
+    scene.add(object);
+
+    merveMixer = new THREE.AnimationMixer(object);
+    const action = merveMixer.clipAction(object.animations[0]);
+    action.play();
+});
+
+// Extend existing animate loop safely
+const originalAnimate = animate;
+animate = function() {
+    if (merveMixer) {
+        merveMixer.update(clock.getDelta());
+    }
+    originalAnimate();
+};
+</script>
+
 </body>
 </html>
