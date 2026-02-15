@@ -462,7 +462,7 @@
       <p><strong>SHIFT</strong> - Koş 🏃‍♀️</p>
       <p><strong>Fare</strong> - Kamera Döndür (Ekrana tıkla)</p>
       <p><strong>SPACE</strong> - Zıpla</p>
-      <p><strong>Q</strong> - Dans Et 💃</p>
+      <p><strong>Q</strong> - Dans Aç/Kapat 💃</p>
       <p><strong>E</strong> - Mesajı Oku / Kapıya Gir</p>
       <p><strong>M</strong> - Müzik Aç/Kapat 🎵</p>
       <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
@@ -540,7 +540,6 @@
     let nearMessage = null;
     let selectedCharacter = null;
     let pendingAction = null; // 'create' or 'join'
-    let isDancing = false;
 
     let moveSpeed = 0.1; // Yürüme hızı
 
@@ -1545,9 +1544,13 @@
             if (child.isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
-              if (child.material) {
-                child.material.color.setHex(0xff69b4); // Pembe
-              }
+              // Materialleri pembe yap
+              child.material = new THREE.MeshStandardMaterial({
+                color: 0xff69b4, // Pembe
+                skinning: child.isSkinnedMesh, // Animasyon için
+                roughness: 0.8,
+                metalness: 0.2
+              });
             }
           });
           
@@ -2217,6 +2220,8 @@
     let time = 0;
     let walkCycle = 0;
     let currentAnimation = null; // Şu an oynatılan animasyon
+    let isDancingToggle = false; // Dans toggle durumu
+    let lastQKeyState = false; // Q tuşunun önceki durumu
     
     function animate() {
       requestAnimationFrame(animate);
@@ -2231,7 +2236,15 @@
       // Player movement - KAMERA YÖNÜNE GÖRE
       const isMoving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
       const isRunning = keys['shift']; // SHIFT = KOŞMA
-      const isDancing = keys['q']; // Q = DANS
+      
+      // Q TUŞU TOGGLE SİSTEMİ
+      const qKeyPressed = keys['q'];
+      if (qKeyPressed && !lastQKeyState) {
+        // Q tuşuna basıldı (önceden basılı değildi)
+        isDancingToggle = !isDancingToggle; // Toggle
+        console.log('💃 Dans toggle:', isDancingToggle);
+      }
+      lastQKeyState = qKeyPressed;
       
       // FBX ANİMASYON KONTROLÜ (Merve karakteri için)
       if (playerGroup.userData.walkAction && playerGroup.userData.runAction && playerGroup.userData.danceAction) {
@@ -2243,7 +2256,8 @@
         // Hangi animasyon oynatılmalı?
         let targetAnimation = null;
         
-        if (isDancing) {
+        if (isDancingToggle) {
+          // DANS AÇIK
           targetAnimation = 'dance';
         } else if (isMoving && isRunning) {
           targetAnimation = 'run';
@@ -2265,13 +2279,13 @@
           
           // Yeni animasyonu başlat
           if (targetAnimation === 'dance') {
-            danceAction.reset().play();
+            danceAction.reset().setEffectiveTimeScale(1.0).play();
           } else if (targetAnimation === 'run') {
-            runAction.reset().play();
+            runAction.reset().setEffectiveTimeScale(1.2).play(); // Koşma biraz hızlı
           } else if (targetAnimation === 'walk') {
-            walkAction.reset().play();
+            walkAction.reset().setEffectiveTimeScale(0.8).play(); // Yürüme biraz yavaş
           } else if (targetAnimation === 'idle') {
-            idleAction.reset().play();
+            idleAction.reset().setEffectiveTimeScale(1.0).play();
           }
           
           currentAnimation = targetAnimation;
@@ -2279,8 +2293,8 @@
       }
       
       if (isMoving) {
-        // KOŞMA HIZI AYARLA
-        const currentSpeed = isRunning ? 0.2 : 0.1; // Koşarken 2x hızlı
+        // HAREKET HIZI (Animasyonla senkronize)
+        const currentSpeed = isRunning ? 0.10 : 0.05; // Koşma daha yavaş, kayma olmasın
         
         // Kamera yönüne göre hareket
         const forward = new THREE.Vector3();
@@ -2360,98 +2374,35 @@
         playerGroup.position.z = Math.max(-17, Math.min(17, playerGroup.position.z));
       }
 
-      // Animation - DANS VE YÜRÜME
-      if (isDancing) {
-        // SÜPER DANS ANİMASYONU 💃🕺
-        const danceSpeed = time * 0.015;
-        const jumpHeight = Math.abs(Math.sin(danceSpeed * 4)) * 0.4; // Daha yüksek zıpla
-        
-        if (playerGroup.leftArm && playerGroup.rightArm) {
-          // KOLLAR YUKARI KALKSIN!
-          playerGroup.leftArm.rotation.z = Math.PI * 0.7 + Math.sin(danceSpeed * 2) * 0.3; // Yukarı
-          playerGroup.leftArm.rotation.x = Math.sin(danceSpeed * 1.5) * 0.5;
-          playerGroup.leftArm.rotation.y = Math.cos(danceSpeed * 1.2) * 0.4;
-          
-          playerGroup.rightArm.rotation.z = -Math.PI * 0.7 + Math.sin(danceSpeed * 2 + Math.PI) * 0.3; // Yukarı
-          playerGroup.rightArm.rotation.x = Math.sin(danceSpeed * 1.5 + Math.PI) * 0.5;
-          playerGroup.rightArm.rotation.y = Math.cos(danceSpeed * 1.2 + Math.PI) * 0.4;
-        }
-        
-        // Vücudu hızlıca sağ-sol salla
-        const bodySwing = Math.sin(danceSpeed * 3) * 0.25;
-        playerGroup.rotation.y = bodySwing;
-        playerGroup.rotation.z = Math.sin(danceSpeed * 2) * 0.08;
-        
-        // YUKARI AŞAĞI ZIPLAMA - çok belirgin
-        playerGroup.position.y = jumpHeight;
-        
-        // Etek ÇOK daha fazla sallan
-        if (playerGroup.skirt) {
-          playerGroup.skirt.rotation.y = Math.sin(danceSpeed * 3) * 0.6;
-          playerGroup.skirt.scale.x = 1 + Math.abs(Math.sin(danceSpeed * 4)) * 0.2;
-          playerGroup.skirt.scale.z = 1 + Math.abs(Math.sin(danceSpeed * 4)) * 0.2;
-        }
-        
-        // Bacaklar da ZIPLAMA hareketi
-        if (playerGroup.leftLeg && playerGroup.rightLeg) {
-          const legBend = Math.sin(danceSpeed * 4) * 0.3;
-          playerGroup.leftLeg.rotation.x = legBend;
-          playerGroup.rightLeg.rotation.x = legBend;
-        }
-        
-        // Kafa da sallan
-        if (playerGroup.children) {
-          playerGroup.children.forEach(child => {
-            if (child.geometry && child.geometry.type === 'SphereGeometry' && child.position.y > 1.4) {
-              // Kafa sallama
-              child.rotation.z = Math.sin(danceSpeed * 2.5) * 0.1;
-            }
-          });
-        }
-      } else if (isMoving) {
-        // YÜRÜME ANİMASYONU
-        if (playerGroup.leftArm && playerGroup.rightArm) {
+      // GEOMETRİK KARAKTER ANİMASYONLARI (Sadece Batuhan için)
+      // FBX karakterlerde (Merve) bu animasyonlar kullanılmaz
+      if (playerGroup.leftArm && playerGroup.rightArm && !playerGroup.userData.fbxModel) {
+        // Bu Batuhan (geometrik karakter)
+        if (isMoving) {
+          // YÜRÜME ANİMASYONU
           playerGroup.leftArm.rotation.x = Math.sin(walkCycle) * 0.5;
           playerGroup.leftArm.rotation.z = 0;
           playerGroup.rightArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
           playerGroup.rightArm.rotation.z = 0;
-        }
-        
-        // BACAK ANİMASYONU
-        if (playerGroup.leftLeg && playerGroup.rightLeg) {
-          playerGroup.leftLeg.rotation.x = Math.sin(walkCycle) * 0.4;
-          playerGroup.rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.4;
-        }
-      } else {
-        // Durduğunda normal pozisyon
-        if (playerGroup.leftArm && playerGroup.rightArm) {
+          
+          // BACAK ANİMASYONU
+          if (playerGroup.leftLeg && playerGroup.rightLeg) {
+            playerGroup.leftLeg.rotation.x = Math.sin(walkCycle) * 0.4;
+            playerGroup.rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.4;
+          }
+        } else {
+          // Durduğunda normal pozisyon
           playerGroup.leftArm.rotation.x = 0;
           playerGroup.leftArm.rotation.y = 0;
           playerGroup.leftArm.rotation.z = 0;
           playerGroup.rightArm.rotation.x = 0;
           playerGroup.rightArm.rotation.y = 0;
           playerGroup.rightArm.rotation.z = 0;
-        }
-        if (playerGroup.leftLeg && playerGroup.rightLeg) {
-          playerGroup.leftLeg.rotation.x = 0;
-          playerGroup.rightLeg.rotation.x = 0;
-        }
-        
-        // Vücut rotasyonunu sıfırla
-        if (playerGroup.rotation.z !== 0) {
-          playerGroup.rotation.z *= 0.9; // Yumuşak geçiş
-        }
-        
-        // Yere in
-        if (playerGroup.position.y > 0 && !playerGroup.userData.velocityY) {
-          playerGroup.position.y = Math.max(0, playerGroup.position.y - 0.05);
-        }
-        
-        // Eteği normale döndür
-        if (playerGroup.skirt) {
-          playerGroup.skirt.rotation.y *= 0.9;
-          playerGroup.skirt.scale.x = 1;
-          playerGroup.skirt.scale.z = 1;
+          
+          if (playerGroup.leftLeg && playerGroup.rightLeg) {
+            playerGroup.leftLeg.rotation.x = 0;
+            playerGroup.rightLeg.rotation.x = 0;
+          }
         }
       }
 
