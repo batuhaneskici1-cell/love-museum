@@ -2504,7 +2504,7 @@
           targetAnimation = 'idle';
         }
         
-        // Animasyon değiştiyse geçiş yap - BASİT SİSTEM!
+        // Animasyon değiştiyse geçiş yap - T-POSE FLASH YOK!
         if (currentAnimation !== targetAnimation && targetAnimation) {
           console.log('🎬 Animasyon:', currentAnimation, '→', targetAnimation);
           
@@ -2526,58 +2526,42 @@
             idleAction.enabled = false;
           }
           
-          // YENİ ANİMASYONU BAŞLAT - GÜNCELLEME: Reset sonrası time set daha güvenli!
+          // YENİ ANİMASYONU BAŞLAT - RESET YOK, DIREKT TIME SET!
           if (targetAnimation === 'walk' && walkAction) {
             walkAction.enabled = true;
-            walkAction.reset();
+            // RESET YOK! Direkt time set + play
+            walkAction.time = 0.3; // T-pose frame'ini atla
             walkAction.setEffectiveWeight(1);
             walkAction.setEffectiveTimeScale(walkAnimSpeed);
             walkAction.play();
-            // Time'ı play() sonrası set et - daha güvenli!
-            setTimeout(() => {
-              if (walkAction.isRunning()) {
-                walkAction.time = Math.min(0.3, walkAction.getClip().duration * 0.5);
-              }
-            }, 16); // 1 frame bekle
             console.log('✅ Walk başladı');
           } else if (targetAnimation === 'run' && runAction) {
             runAction.enabled = true;
-            runAction.reset();
+            runAction.time = 0.2;
             runAction.setEffectiveWeight(1);
             runAction.setEffectiveTimeScale(runAnimSpeed);
             runAction.play();
-            setTimeout(() => {
-              if (runAction.isRunning()) {
-                runAction.time = Math.min(0.2, runAction.getClip().duration * 0.5);
-              }
-            }, 16);
             console.log('✅ Run başladı');
           } else if (targetAnimation === 'dance' && danceAction) {
             danceAction.enabled = true;
-            danceAction.reset();
+            danceAction.time = 0; // Dans baştan başlasın
             danceAction.setEffectiveWeight(1);
             danceAction.play();
             console.log('✅ Dance başladı');
           } else if (targetAnimation === 'idle' && idleAction) {
             idleAction.enabled = true;
-            idleAction.reset();
+            idleAction.time = 0.2;
             idleAction.setEffectiveWeight(1);
             idleAction.play();
-            setTimeout(() => {
-              if (idleAction.isRunning()) {
-                idleAction.time = Math.min(0.2, idleAction.getClip().duration * 0.5);
-              }
-            }, 16);
             console.log('✅ Idle başladı');
           } else if (targetAnimation === 'idle' && !idleAction) {
             // IDLE YOKSA WALK'UN İLK FRAME'İNİ GÖSTER
             console.log('⚠️ Idle yok, walk frame kullanılıyor');
             if (walkAction) {
               walkAction.enabled = true;
-              walkAction.reset();
               walkAction.time = 0.1;
               walkAction.setEffectiveWeight(1);
-              walkAction.paused = true; // Dondur, hareket etme
+              walkAction.paused = true;
             }
           }
           
