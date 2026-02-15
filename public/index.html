@@ -1644,6 +1644,42 @@
             console.log('🎬 Walk animasyonu - Root motion temizlendi');
           }
           
+          // YENİ START/STOP YÜRÜME ANİMASYONU (opsiyonel)
+          // Eğer mWalkStartStop.fbx varsa onu kullan, yoksa mWalk.fbx kullan
+          let walkStartStopAction;
+          loader.load('/mWalkStartStop.fbx',
+            function(walkStartStopFbx) {
+              console.log('✅ mWalkStartStop.fbx yüklendi! (start/stop animasyon)');
+              if (walkStartStopFbx.animations && walkStartStopFbx.animations.length > 0) {
+                // ROOT MOTION TRACK'İNİ KALDIR!
+                const walkStartStopClip = walkStartStopFbx.animations[0];
+                walkStartStopClip.tracks = walkStartStopClip.tracks.filter(track => {
+                  return !track.name.includes('.position');
+                });
+                
+                walkStartStopAction = animMixer.clipAction(walkStartStopClip);
+                walkStartStopAction.setLoop(THREE.LoopOnce); // TEK SEFERLIK!
+                walkStartStopAction.clampWhenFinished = true; // Son frame'de kal
+                console.log('🚶 Start/Stop Walk animasyonu - Root motion temizlendi');
+                
+                // Orijinal walk'u bu animasyonla değiştir
+                walkAction = walkStartStopAction;
+                
+                if (isPlayer) {
+                  playerGroup.userData.walkAction = walkAction;
+                  playerGroup.userData.walkIsStartStop = true;
+                } else {
+                  partnerGroup.userData.walkAction = walkAction;
+                  partnerGroup.userData.walkIsStartStop = true;
+                }
+              }
+            },
+            undefined,
+            function(error) {
+              console.log('ℹ️ mWalkStartStop.fbx bulunamadı, normal yürüme kullanılıyor');
+            }
+          );
+          
           // Mixer'ı global değişkene ata
           if (isPlayer) {
             mixer = animMixer;
@@ -1730,6 +1766,19 @@
               console.log('🎬 Walk anim:', walkAnimSpeed, '| Hareket:', walkMoveSpeed);
               console.log('🏃 Run anim:', runAnimSpeed, '| Hareket:', runMoveSpeed);
               console.log('💡 1-8 tuşlarıyla ayarlayabilirsin!');
+              
+              // TÜM ANİMASYONLARI BAŞLAT (weight 0 ile)
+              // Bu sayede geçişler daha smooth olur
+              if (walkAction) {
+                walkAction.setEffectiveWeight(0).play();
+              }
+              if (runAction) {
+                runAction.setEffectiveWeight(0).play();
+              }
+              if (danceAction) {
+                danceAction.setEffectiveWeight(0).play();
+              }
+              // Idle zaten çalışıyor, onu 1'de bırak
             },
             undefined,
             function(error) {
@@ -2464,27 +2513,38 @@
           targetAnimation = 'idle';
         }
         
+        // START/STOP WALK ANİMASYONU İÇİN ÖZEL KONTROL
+        if (playerGroup.userData.walkIsStartStop && targetAnimation === 'walk') {
+          // Start/stop animasyonunu her W basıldığında baştan başlat
+          if (currentAnimation !== 'walk') {
+            walkAction.reset();
+          }
+        }
+        
         // Animasyon değiştiyse geçiş yap
         if (currentAnimation !== targetAnimation) {
           console.log('🎬 Animasyon değişti:', currentAnimation, '→', targetAnimation);
           
-          const fadeDuration = 0.2; // 200ms yumuşak geçiş
+          const fadeDuration = 0.25; // 250ms yumuşak geçiş
           
-          // Önceki animasyonu fade out yap
-          if (currentAnimation === 'walk') walkAction.fadeOut(fadeDuration);
-          if (currentAnimation === 'run') runAction.fadeOut(fadeDuration);
-          if (currentAnimation === 'dance') danceAction.fadeOut(fadeDuration);
-          if (currentAnimation === 'idle' && idleAction) idleAction.fadeOut(fadeDuration);
+          // TÜM animasyonları fade out yap (weight → 0)
+          walkAction.fadeOut(fadeDuration);
+          runAction.fadeOut(fadeDuration);
+          danceAction.fadeOut(fadeDuration);
+          if (idleAction) idleAction.fadeOut(fadeDuration);
           
-          // Yeni animasyonu fade in yap (RESET YOK!)
+          // Yeni animasyonu fade in yap (weight → 1)
+          // Zaten çalışıyor olmalılar (başlangıçta başlattık)
           if (targetAnimation === 'dance') {
-            danceAction.fadeIn(fadeDuration).play();
+            danceAction.fadeIn(fadeDuration);
           } else if (targetAnimation === 'run') {
-            runAction.setEffectiveTimeScale(runAnimSpeed).fadeIn(fadeDuration).play();
+            runAction.setEffectiveTimeScale(runAnimSpeed);
+            runAction.fadeIn(fadeDuration);
           } else if (targetAnimation === 'walk') {
-            walkAction.setEffectiveTimeScale(walkAnimSpeed).fadeIn(fadeDuration).play();
+            walkAction.setEffectiveTimeScale(walkAnimSpeed);
+            walkAction.fadeIn(fadeDuration);
           } else if (targetAnimation === 'idle' && idleAction) {
-            idleAction.fadeIn(fadeDuration).play();
+            idleAction.fadeIn(fadeDuration);
           }
           
           currentAnimation = targetAnimation;
