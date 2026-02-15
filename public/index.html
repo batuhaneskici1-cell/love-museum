@@ -1612,6 +1612,14 @@
               // ORİJİNAL MATERYALLERİ KORU! (Ten rengi, kıyafet vs.)
               // Hiçbir renk değişikliği yapma!
             }
+            
+            // Root bone'u bul ve kilitle
+            if (child.isBone && (child.name.toLowerCase().includes('hips') || 
+                                  child.name.toLowerCase().includes('root') ||
+                                  child.parent === fbxModel)) {
+              console.log('🦴 Root bone bulundu:', child.name);
+              child.userData.isRootBone = true;
+            }
           });
           
           // Animation mixer oluştur
@@ -1624,8 +1632,16 @@
           // YÜRÜME animasyonunu sakla
           let walkAction, runAction, danceAction, idleAction;
           if (fbxModel.animations && fbxModel.animations.length > 0) {
-            walkAction = animMixer.clipAction(fbxModel.animations[0]);
+            // ROOT MOTION TRACK'İNİ KALDIR!
+            const walkClip = fbxModel.animations[0];
+            walkClip.tracks = walkClip.tracks.filter(track => {
+              // Position track'lerini filtrele (sadece rotation ve scale kalsın)
+              return !track.name.includes('.position');
+            });
+            
+            walkAction = animMixer.clipAction(walkClip);
             walkAction.setLoop(THREE.LoopRepeat); // Sürekli tekrarla
+            console.log('🎬 Walk animasyonu - Root motion temizlendi');
           }
           
           // Mixer'ı global değişkene ata
@@ -1642,8 +1658,16 @@
             function(runFbx) {
               console.log('✅ mRun.fbx yüklendi!');
               if (runFbx.animations && runFbx.animations.length > 0) {
-                runAction = animMixer.clipAction(runFbx.animations[0]);
+                // ROOT MOTION TRACK'İNİ KALDIR!
+                const runClip = runFbx.animations[0];
+                runClip.tracks = runClip.tracks.filter(track => {
+                  return !track.name.includes('.position');
+                });
+                
+                runAction = animMixer.clipAction(runClip);
                 runAction.setLoop(THREE.LoopRepeat);
+                console.log('🏃 Run animasyonu - Root motion temizlendi');
+                
                 if (isPlayer) {
                   playerGroup.userData.runAction = runAction;
                 } else {
@@ -1658,8 +1682,16 @@
             function(danceFbx) {
               console.log('✅ mDance.fbx yüklendi!');
               if (danceFbx.animations && danceFbx.animations.length > 0) {
-                danceAction = animMixer.clipAction(danceFbx.animations[0]);
+                // ROOT MOTION TRACK'İNİ KALDIR!
+                const danceClip = danceFbx.animations[0];
+                danceClip.tracks = danceClip.tracks.filter(track => {
+                  return !track.name.includes('.position');
+                });
+                
+                danceAction = animMixer.clipAction(danceClip);
                 danceAction.setLoop(THREE.LoopRepeat);
+                console.log('💃 Dance animasyonu - Root motion temizlendi');
+                
                 if (isPlayer) {
                   playerGroup.userData.danceAction = danceAction;
                 } else {
@@ -1674,9 +1706,17 @@
             function(idleFbx) {
               console.log('✅ mIdle.fbx yüklendi!');
               if (idleFbx.animations && idleFbx.animations.length > 0) {
-                idleAction = animMixer.clipAction(idleFbx.animations[0]);
+                // ROOT MOTION TRACK'İNİ KALDIR!
+                const idleClip = idleFbx.animations[0];
+                idleClip.tracks = idleClip.tracks.filter(track => {
+                  return !track.name.includes('.position');
+                });
+                
+                idleAction = animMixer.clipAction(idleClip);
                 idleAction.setLoop(THREE.LoopRepeat);
                 idleAction.fadeIn(0.5).play(); // Yumuşak başlangıç
+                console.log('🧘 Idle animasyonu - Root motion temizlendi');
+                
                 currentAnimation = 'idle'; // Başlangıç animasyonu idle
                 if (isPlayer) {
                   playerGroup.userData.idleAction = idleAction;
@@ -2315,19 +2355,39 @@
       if (mixer) mixer.update(delta);
       if (partnerMixer) partnerMixer.update(delta);
       
-      // ROOT MOTION ENGELLEMESİ - FBX içindeki hareketi sıfırla
+      // ROOT MOTION TAMAMEN DEVRE DIŞI - FBX model'i her zaman 0,0,0'da
       if (playerGroup.userData.fbxModel) {
-        const fbxPos = playerGroup.userData.fbxModel.position;
-        if (fbxPos.x !== 0 || fbxPos.y !== 0 || fbxPos.z !== 0) {
-          console.log('🚫 Root motion engellendi:', fbxPos.x.toFixed(3), fbxPos.y.toFixed(3), fbxPos.z.toFixed(3));
-          fbxPos.set(0, 0, 0);
-        }
+        const fbxModel = playerGroup.userData.fbxModel;
+        fbxModel.position.set(0, 0, 0);
+        fbxModel.rotation.y = 0;
+        
+        // Root bone'u da sıfırla (Hips genelde)
+        fbxModel.traverse((child) => {
+          if (child.userData.isRootBone) {
+            const originalPos = child.userData.originalPosition;
+            if (!originalPos) {
+              child.userData.originalPosition = child.position.clone();
+            } else {
+              child.position.copy(originalPos);
+            }
+          }
+        });
       }
       if (partnerGroup && partnerGroup.userData.fbxModel) {
-        const fbxPos = partnerGroup.userData.fbxModel.position;
-        if (fbxPos.x !== 0 || fbxPos.y !== 0 || fbxPos.z !== 0) {
-          fbxPos.set(0, 0, 0);
-        }
+        const fbxModel = partnerGroup.userData.fbxModel;
+        fbxModel.position.set(0, 0, 0);
+        fbxModel.rotation.y = 0;
+        
+        fbxModel.traverse((child) => {
+          if (child.userData.isRootBone) {
+            const originalPos = child.userData.originalPosition;
+            if (!originalPos) {
+              child.userData.originalPosition = child.position.clone();
+            } else {
+              child.position.copy(originalPos);
+            }
+          }
+        });
       }
 
       // RUNTIME HIZ AYARLAMA (1-8 tuşları) - COOLDOWN İLE
