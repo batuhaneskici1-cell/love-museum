@@ -201,6 +201,39 @@
       opacity: 0.9;
     }
 
+    .speed-hud {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 15px 20px;
+      border-radius: 10px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      z-index: 100;
+      min-width: 280px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    }
+    
+    .speed-hud.hidden {
+      display: none;
+    }
+    
+    .speed-hud h4 {
+      margin: 0 0 10px 0;
+      color: #ff69b4;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 105, 180, 0.3);
+      padding-bottom: 5px;
+    }
+    
+    .speed-hud .speed-value {
+      color: #4af;
+      font-weight: bold;
+    }
+
     .controls {
       position: absolute;
       bottom: 30px;
@@ -456,6 +489,19 @@
       <p>Mutlu Sevgililer Günü, Canım! 💕</p>
     </div>
 
+    <!-- Speed Adjustment HUD -->
+    <div id="speed-hud" class="speed-hud hidden">
+      <h4>⚙️ HIZ AYARLARI</h4>
+      <div>🎬 Walk Anim: <span class="speed-value" id="walk-anim-speed">0.70</span></div>
+      <div>🚶 Walk Hareket: <span class="speed-value" id="walk-move-speed">0.030</span></div>
+      <div>🏃 Run Anim: <span class="speed-value" id="run-anim-speed">1.30</span></div>
+      <div>🏃 Run Hareket: <span class="speed-value" id="run-move-speed">0.070</span></div>
+      <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">
+        1/2 Walk Anim | 3/4 Run Anim<br>
+        5/6 Walk Hareket | 7/8 Run Hareket
+      </div>
+    </div>
+
     <div class="controls">
       <h3>Kontroller 🎮</h3>
       <p><strong>W A S D</strong> - Hareket Et</p>
@@ -467,6 +513,13 @@
       <p><strong>M</strong> - Müzik Aç/Kapat 🎵</p>
       <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
       <p><strong>ESC</strong> - Fareyi Serbest Bırak</p>
+      <hr style="margin: 10px 0; border-color: rgba(255,105,180,0.3);">
+      <p style="font-size: 12px; opacity: 0.8;"><strong>HIZ AYARLAMA:</strong></p>
+      <p style="font-size: 11px;">0 - HUD Aç/Kapat 👁️</p>
+      <p style="font-size: 11px;">1/2 - Yürüme Anim ⏩⏪</p>
+      <p style="font-size: 11px;">3/4 - Koşma Anim ⏩⏪</p>
+      <p style="font-size: 11px;">5/6 - Yürüme Hız ⏩⏪</p>
+      <p style="font-size: 11px;">7/8 - Koşma Hız ⏩⏪</p>
     </div>
 
     <!-- Background Music -->
@@ -718,6 +771,12 @@
       document.getElementById('menu-screen').classList.add('hidden');
       document.getElementById('character-screen').style.display = 'none';
       document.getElementById('game-container').classList.add('active');
+      
+      // Hız HUD'ını göster (Merve için)
+      if (selectedCharacter === 'merve') {
+        document.getElementById('speed-hud').classList.remove('hidden');
+      }
+      
       initThreeJS();
       
       // Müziği başlatmayı dene (kullanıcı etkileşimi sonrası)
@@ -1617,6 +1676,12 @@
                   partnerGroup.userData.idleAction = idleAction;
                 }
               }
+              
+              // Başlangıç değerlerini göster
+              console.log('⚙️ BAŞLANGIÇ HIZ AYARLARI:');
+              console.log('🎬 Walk anim:', walkAnimSpeed, '| Hareket:', walkMoveSpeed);
+              console.log('🏃 Run anim:', runAnimSpeed, '| Hareket:', runMoveSpeed);
+              console.log('💡 1-8 tuşlarıyla ayarlayabilirsin!');
             },
             undefined,
             function(error) {
@@ -2224,6 +2289,14 @@
     let isDancingToggle = false; // Dans toggle durumu
     let lastQKeyState = false; // Q tuşunun önceki durumu
     
+    // ANİMASYON HIZ AYARLARI (Ayarlanabilir!)
+    // ANİMASYON HIZ AYARLARI (Deneysel olarak ayarlandı)
+    let walkAnimSpeed = 0.7;   // Yürüme animasyon hızı (yavaş)
+    let runAnimSpeed = 1.3;    // Koşma animasyon hızı (hızlı)
+    let walkMoveSpeed = 0.03;  // Yürüme hareket hızı (yavaş)
+    let runMoveSpeed = 0.07;   // Koşma hareket hızı (orta)
+    let lastSpeedAdjust = 0;   // Son ayarlama zamanı
+    
     function animate() {
       requestAnimationFrame(animate);
       time += 16;
@@ -2234,6 +2307,42 @@
       if (mixer) mixer.update(delta);
       if (partnerMixer) partnerMixer.update(delta);
 
+      // RUNTIME HIZ AYARLAMA (1-8 tuşları) - COOLDOWN İLE
+      const currentTime = Date.now();
+      
+      // 0 tuşu ile HUD toggle
+      if (keys['0'] && currentTime - lastSpeedAdjust > 300) {
+        const hud = document.getElementById('speed-hud');
+        hud.classList.toggle('hidden');
+        lastSpeedAdjust = currentTime;
+      }
+      
+      if (currentTime - lastSpeedAdjust > 100) { // 100ms cooldown
+        let adjusted = false;
+        if (keys['1']) { walkAnimSpeed += 0.02; adjusted = true; }
+        if (keys['2']) { walkAnimSpeed -= 0.02; adjusted = true; }
+        if (keys['3']) { runAnimSpeed += 0.02; adjusted = true; }
+        if (keys['4']) { runAnimSpeed -= 0.02; adjusted = true; }
+        if (keys['5']) { walkMoveSpeed += 0.002; adjusted = true; }
+        if (keys['6']) { walkMoveSpeed -= 0.002; adjusted = true; }
+        if (keys['7']) { runMoveSpeed += 0.003; adjusted = true; }
+        if (keys['8']) { runMoveSpeed -= 0.003; adjusted = true; }
+        
+        if (adjusted) {
+          lastSpeedAdjust = currentTime;
+          
+          // HUD'ı güncelle
+          document.getElementById('walk-anim-speed').textContent = walkAnimSpeed.toFixed(2);
+          document.getElementById('walk-move-speed').textContent = walkMoveSpeed.toFixed(3);
+          document.getElementById('run-anim-speed').textContent = runAnimSpeed.toFixed(2);
+          document.getElementById('run-move-speed').textContent = runMoveSpeed.toFixed(3);
+          
+          console.log('⚙️ AYARLAR:');
+          console.log('  🎬 Walk Anim:', walkAnimSpeed.toFixed(2), '| Hareket:', walkMoveSpeed.toFixed(3));
+          console.log('  🏃 Run Anim:', runAnimSpeed.toFixed(2), '| Hareket:', runMoveSpeed.toFixed(3));
+        }
+      }
+      
       // Player movement - KAMERA YÖNÜNE GÖRE
       const isMoving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
       const isRunning = keys['shift']; // SHIFT = KOŞMA
@@ -2253,6 +2362,10 @@
         const runAction = playerGroup.userData.runAction;
         const danceAction = playerGroup.userData.danceAction;
         const idleAction = playerGroup.userData.idleAction; // Opsiyonel
+        
+        // Mevcut oynatılan animasyonun hızını güncelle (runtime ayarlar için)
+        if (walkAction.isRunning()) walkAction.setEffectiveTimeScale(walkAnimSpeed);
+        if (runAction.isRunning()) runAction.setEffectiveTimeScale(runAnimSpeed);
         
         // Hangi animasyon oynatılmalı?
         let targetAnimation = null;
@@ -2278,13 +2391,13 @@
           danceAction.stop();
           if (idleAction) idleAction.stop();
           
-          // Yeni animasyonu başlat
+          // Yeni animasyonu başlat (ayarlanabilir hızlarla)
           if (targetAnimation === 'dance') {
             danceAction.reset().play();
           } else if (targetAnimation === 'run') {
-            runAction.reset().play();
+            runAction.reset().setEffectiveTimeScale(runAnimSpeed).play();
           } else if (targetAnimation === 'walk') {
-            walkAction.reset().play();
+            walkAction.reset().setEffectiveTimeScale(walkAnimSpeed).play();
           } else if (targetAnimation === 'idle') {
             idleAction.reset().play();
           }
@@ -2294,8 +2407,8 @@
       }
       
       if (isMoving) {
-        // HAREKET HIZI (Animasyonla senkronize - ÇOK YAVAŞ!)
-        const currentSpeed = isRunning ? 0.08 : 0.04; // Çok daha yavaş!
+        // HAREKET HIZI (Ayarlanabilir değerler)
+        const currentSpeed = isRunning ? runMoveSpeed : walkMoveSpeed;
         
         // Kamera yönüne göre hareket
         const forward = new THREE.Vector3();
