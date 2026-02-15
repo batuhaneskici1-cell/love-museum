@@ -1750,7 +1750,8 @@
                 
                 idleAction = animMixer.clipAction(idleClip);
                 idleAction.setLoop(THREE.LoopRepeat);
-                idleAction.fadeIn(0.5).play(); // Yumuşak başlangıç
+                idleAction.play(); // Direkt başlat, fade yok!
+                idleAction.setEffectiveWeight(1); // Full weight
                 console.log('🧘 Idle animasyonu - Root motion temizlendi');
                 
                 currentAnimation = 'idle'; // Başlangıç animasyonu idle
@@ -1767,18 +1768,21 @@
               console.log('🏃 Run anim:', runAnimSpeed, '| Hareket:', runMoveSpeed);
               console.log('💡 1-8 tuşlarıyla ayarlayabilirsin!');
               
-              // TÜM ANİMASYONLARI BAŞLAT (weight 0 ile)
-              // Bu sayede geçişler daha smooth olur
+              // DİĞER ANİMASYONLARI HAZIRLA AMA BAŞLATMA!
+              // Sadece enabled = false yap, sonra gerektiğinde enabled = true yapacağız
               if (walkAction) {
-                walkAction.setEffectiveWeight(0).play();
+                walkAction.enabled = false;
+                console.log('🚶 Walk hazırda bekliyor');
               }
               if (runAction) {
-                runAction.setEffectiveWeight(0).play();
+                runAction.enabled = false;
+                console.log('🏃 Run hazırda bekliyor');
               }
               if (danceAction) {
-                danceAction.setEffectiveWeight(0).play();
+                danceAction.enabled = false;
+                console.log('💃 Dance hazırda bekliyor');
               }
-              // Idle zaten çalışıyor, onu 1'de bırak
+              // Idle zaten çalışıyor - dokunma!
             },
             undefined,
             function(error) {
@@ -2495,9 +2499,16 @@
         const danceAction = playerGroup.userData.danceAction;
         const idleAction = playerGroup.userData.idleAction; // Opsiyonel
         
+        // Tüm animasyonlar yüklendiyse devam et
+        if (walkAction && runAction && danceAction) {
+        
         // Mevcut oynatılan animasyonun hızını güncelle (runtime ayarlar için)
-        if (walkAction.isRunning()) walkAction.setEffectiveTimeScale(walkAnimSpeed);
-        if (runAction.isRunning()) runAction.setEffectiveTimeScale(runAnimSpeed);
+        if (walkAction && walkAction.enabled && walkAction.isRunning()) {
+          walkAction.setEffectiveTimeScale(walkAnimSpeed);
+        }
+        if (runAction && runAction.enabled && runAction.isRunning()) {
+          runAction.setEffectiveTimeScale(runAnimSpeed);
+        }
         
         // Hangi animasyon oynatılmalı?
         let targetAnimation = null;
@@ -2514,7 +2525,7 @@
         }
         
         // START/STOP WALK ANİMASYONU İÇİN ÖZEL KONTROL
-        if (playerGroup.userData.walkIsStartStop && targetAnimation === 'walk') {
+        if (playerGroup.userData.walkIsStartStop && targetAnimation === 'walk' && walkAction) {
           // Start/stop animasyonunu her W basıldığında baştan başlat
           if (currentAnimation !== 'walk') {
             walkAction.reset();
@@ -2527,28 +2538,48 @@
           
           const fadeDuration = 0.25; // 250ms yumuşak geçiş
           
-          // TÜM animasyonları fade out yap (weight → 0)
-          walkAction.fadeOut(fadeDuration);
-          runAction.fadeOut(fadeDuration);
-          danceAction.fadeOut(fadeDuration);
-          if (idleAction) idleAction.fadeOut(fadeDuration);
+          // Önceki animasyonu fade out yap ve sonra disable et
+          if (currentAnimation === 'walk' && walkAction && walkAction.enabled) {
+            walkAction.fadeOut(fadeDuration);
+            setTimeout(() => { walkAction.enabled = false; }, fadeDuration * 1000 + 50);
+          }
+          if (currentAnimation === 'run' && runAction && runAction.enabled) {
+            runAction.fadeOut(fadeDuration);
+            setTimeout(() => { runAction.enabled = false; }, fadeDuration * 1000 + 50);
+          }
+          if (currentAnimation === 'dance' && danceAction && danceAction.enabled) {
+            danceAction.fadeOut(fadeDuration);
+            setTimeout(() => { danceAction.enabled = false; }, fadeDuration * 1000 + 50);
+          }
+          if (currentAnimation === 'idle' && idleAction && idleAction.enabled) {
+            idleAction.fadeOut(fadeDuration);
+            setTimeout(() => { idleAction.enabled = false; }, fadeDuration * 1000 + 50);
+          }
           
-          // Yeni animasyonu fade in yap (weight → 1)
-          // Zaten çalışıyor olmalılar (başlangıçta başlattık)
-          if (targetAnimation === 'dance') {
+          // Yeni animasyonu enable et, reset, weight 0'dan başlat, fade in
+          if (targetAnimation === 'dance' && danceAction) {
+            danceAction.enabled = true;
+            danceAction.reset().setEffectiveWeight(0).play();
             danceAction.fadeIn(fadeDuration);
-          } else if (targetAnimation === 'run') {
-            runAction.setEffectiveTimeScale(runAnimSpeed);
+          } else if (targetAnimation === 'run' && runAction) {
+            runAction.enabled = true;
+            runAction.reset().setEffectiveWeight(0).setEffectiveTimeScale(runAnimSpeed).play();
             runAction.fadeIn(fadeDuration);
-          } else if (targetAnimation === 'walk') {
-            walkAction.setEffectiveTimeScale(walkAnimSpeed);
+          } else if (targetAnimation === 'walk' && walkAction) {
+            walkAction.enabled = true;
+            walkAction.reset().setEffectiveWeight(0).setEffectiveTimeScale(walkAnimSpeed).play();
             walkAction.fadeIn(fadeDuration);
           } else if (targetAnimation === 'idle' && idleAction) {
+            if (!idleAction.enabled) {
+              idleAction.enabled = true;
+              idleAction.reset().setEffectiveWeight(0).play();
+            }
             idleAction.fadeIn(fadeDuration);
           }
           
           currentAnimation = targetAnimation;
         }
+        } // Animasyonlar yüklü kontrolü sonu
       }
       
       if (isMoving) {
