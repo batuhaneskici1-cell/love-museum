@@ -1605,7 +1605,8 @@
               console.log('✅ mIdle.fbx yüklendi!');
               if (idleFbx.animations && idleFbx.animations.length > 0) {
                 idleAction = animMixer.clipAction(idleFbx.animations[0]);
-                idleAction.play(); // Idle default olarak oynar
+                idleAction.play(); // Idle başlangıçta oynar
+                currentAnimation = 'idle'; // Başlangıç animasyonu idle
                 if (isPlayer) {
                   playerGroup.userData.idleAction = idleAction;
                 } else {
@@ -2215,6 +2216,8 @@
 
     let time = 0;
     let walkCycle = 0;
+    let currentAnimation = null; // Şu an oynatılan animasyon
+    
     function animate() {
       requestAnimationFrame(animate);
       time += 16;
@@ -2237,27 +2240,42 @@
         const danceAction = playerGroup.userData.danceAction;
         const idleAction = playerGroup.userData.idleAction; // Opsiyonel
         
-        // Önce tüm animasyonları durdur
-        walkAction.stop();
-        runAction.stop();
-        danceAction.stop();
-        if (idleAction) idleAction.stop();
+        // Hangi animasyon oynatılmalı?
+        let targetAnimation = null;
         
-        // Duruma göre animasyonu başlat
         if (isDancing) {
-          // DANS ANİMASYONU
-          danceAction.play();
+          targetAnimation = 'dance';
         } else if (isMoving && isRunning) {
-          // KOŞMA ANİMASYONU
-          runAction.play();
+          targetAnimation = 'run';
         } else if (isMoving) {
-          // YÜRÜME ANİMASYONU
-          walkAction.play();
+          targetAnimation = 'walk';
         } else if (idleAction) {
-          // IDLE ANİMASYONU (varsa)
-          idleAction.play();
+          targetAnimation = 'idle';
         }
-        // İdle yoksa ve duruyorsa → Hiçbir animasyon oynamaz
+        
+        // Animasyon değiştiyse geçiş yap
+        if (currentAnimation !== targetAnimation) {
+          console.log('🎬 Animasyon değişti:', currentAnimation, '→', targetAnimation);
+          
+          // Önceki animasyonu durdur
+          walkAction.stop();
+          runAction.stop();
+          danceAction.stop();
+          if (idleAction) idleAction.stop();
+          
+          // Yeni animasyonu başlat
+          if (targetAnimation === 'dance') {
+            danceAction.reset().play();
+          } else if (targetAnimation === 'run') {
+            runAction.reset().play();
+          } else if (targetAnimation === 'walk') {
+            walkAction.reset().play();
+          } else if (targetAnimation === 'idle') {
+            idleAction.reset().play();
+          }
+          
+          currentAnimation = targetAnimation;
+        }
       }
       
       if (isMoving) {
