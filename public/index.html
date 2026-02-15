@@ -1617,10 +1617,15 @@
           // Animation mixer oluştur
           const animMixer = new THREE.AnimationMixer(fbxModel);
           
+          // ROOT MOTION'I DEVRE DIŞI BIRAK
+          // FBX içindeki hareket offset'ini yok say
+          fbxModel.position.set(0, 0, 0);
+          
           // YÜRÜME animasyonunu sakla
           let walkAction, runAction, danceAction, idleAction;
           if (fbxModel.animations && fbxModel.animations.length > 0) {
             walkAction = animMixer.clipAction(fbxModel.animations[0]);
+            walkAction.setLoop(THREE.LoopRepeat); // Sürekli tekrarla
           }
           
           // Mixer'ı global değişkene ata
@@ -1638,6 +1643,7 @@
               console.log('✅ mRun.fbx yüklendi!');
               if (runFbx.animations && runFbx.animations.length > 0) {
                 runAction = animMixer.clipAction(runFbx.animations[0]);
+                runAction.setLoop(THREE.LoopRepeat);
                 if (isPlayer) {
                   playerGroup.userData.runAction = runAction;
                 } else {
@@ -1653,6 +1659,7 @@
               console.log('✅ mDance.fbx yüklendi!');
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 danceAction = animMixer.clipAction(danceFbx.animations[0]);
+                danceAction.setLoop(THREE.LoopRepeat);
                 if (isPlayer) {
                   playerGroup.userData.danceAction = danceAction;
                 } else {
@@ -1668,7 +1675,8 @@
               console.log('✅ mIdle.fbx yüklendi!');
               if (idleFbx.animations && idleFbx.animations.length > 0) {
                 idleAction = animMixer.clipAction(idleFbx.animations[0]);
-                idleAction.play(); // Idle başlangıçta oynar
+                idleAction.setLoop(THREE.LoopRepeat);
+                idleAction.fadeIn(0.5).play(); // Yumuşak başlangıç
                 currentAnimation = 'idle'; // Başlangıç animasyonu idle
                 if (isPlayer) {
                   playerGroup.userData.idleAction = idleAction;
@@ -2306,6 +2314,21 @@
       const delta = clock.getDelta();
       if (mixer) mixer.update(delta);
       if (partnerMixer) partnerMixer.update(delta);
+      
+      // ROOT MOTION ENGELLEMESİ - FBX içindeki hareketi sıfırla
+      if (playerGroup.userData.fbxModel) {
+        const fbxPos = playerGroup.userData.fbxModel.position;
+        if (fbxPos.x !== 0 || fbxPos.y !== 0 || fbxPos.z !== 0) {
+          console.log('🚫 Root motion engellendi:', fbxPos.x.toFixed(3), fbxPos.y.toFixed(3), fbxPos.z.toFixed(3));
+          fbxPos.set(0, 0, 0);
+        }
+      }
+      if (partnerGroup && partnerGroup.userData.fbxModel) {
+        const fbxPos = partnerGroup.userData.fbxModel.position;
+        if (fbxPos.x !== 0 || fbxPos.y !== 0 || fbxPos.z !== 0) {
+          fbxPos.set(0, 0, 0);
+        }
+      }
 
       // RUNTIME HIZ AYARLAMA (1-8 tuşları) - COOLDOWN İLE
       const currentTime = Date.now();
@@ -2385,21 +2408,23 @@
         if (currentAnimation !== targetAnimation) {
           console.log('🎬 Animasyon değişti:', currentAnimation, '→', targetAnimation);
           
-          // Önceki animasyonu durdur
-          walkAction.stop();
-          runAction.stop();
-          danceAction.stop();
-          if (idleAction) idleAction.stop();
+          const fadeDuration = 0.2; // 200ms yumuşak geçiş
           
-          // Yeni animasyonu başlat (ayarlanabilir hızlarla)
+          // Önceki animasyonu fade out yap
+          if (currentAnimation === 'walk') walkAction.fadeOut(fadeDuration);
+          if (currentAnimation === 'run') runAction.fadeOut(fadeDuration);
+          if (currentAnimation === 'dance') danceAction.fadeOut(fadeDuration);
+          if (currentAnimation === 'idle' && idleAction) idleAction.fadeOut(fadeDuration);
+          
+          // Yeni animasyonu fade in yap (RESET YOK!)
           if (targetAnimation === 'dance') {
-            danceAction.reset().play();
+            danceAction.fadeIn(fadeDuration).play();
           } else if (targetAnimation === 'run') {
-            runAction.reset().setEffectiveTimeScale(runAnimSpeed).play();
+            runAction.setEffectiveTimeScale(runAnimSpeed).fadeIn(fadeDuration).play();
           } else if (targetAnimation === 'walk') {
-            walkAction.reset().setEffectiveTimeScale(walkAnimSpeed).play();
-          } else if (targetAnimation === 'idle') {
-            idleAction.reset().play();
+            walkAction.setEffectiveTimeScale(walkAnimSpeed).fadeIn(fadeDuration).play();
+          } else if (targetAnimation === 'idle' && idleAction) {
+            idleAction.fadeIn(fadeDuration).play();
           }
           
           currentAnimation = targetAnimation;
