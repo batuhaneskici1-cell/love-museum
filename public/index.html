@@ -805,11 +805,6 @@
       document.getElementById('character-screen').style.display = 'none';
       document.getElementById('game-container').classList.add('active');
       
-      // Hız HUD'ını göster (Merve için)
-      if (selectedCharacter === 'merve') {
-        document.getElementById('speed-hud').classList.remove('hidden');
-      }
-      
       initThreeJS();
       
       // Müziği başlatmayı dene (kullanıcı etkileşimi sonrası)
@@ -1985,8 +1980,8 @@
             },
             undefined,
             function(error) {
-              console.error('❌ mRun.fbx YÜKLEME HATASI!', error);
-              alert('❌ HATA: mRun.fbx dosyası bulunamadı!\n\nDosya: public/mRun.fbx');
+              console.error(`❌ ${prefix}Run.fbx YÜKLEME HATASI!`, error);
+              alert(`❌ HATA: ${prefix}Run.fbx dosyası bulunamadı!\n\nDosya: public/${prefix}Run.fbx`);
             }
           );
           
@@ -2016,7 +2011,7 @@
             },
             undefined,
             function(error) {
-              console.warn('⚠️ mDance1.fbx bulunamadı');
+              console.warn(`⚠️ ${prefix}Dance1.fbx bulunamadı`);
             }
           );
           
@@ -2043,7 +2038,7 @@
             },
             undefined,
             function(error) {
-              console.warn('⚠️ mDance2.fbx bulunamadı');
+              console.warn(`⚠️ ${prefix}Dance2.fbx bulunamadı`);
             }
           );
           
@@ -2070,7 +2065,7 @@
             },
             undefined,
             function(error) {
-              console.warn('⚠️ mDance3.fbx bulunamadı');
+              console.warn(`⚠️ ${prefix}Dance3.fbx bulunamadı`);
             }
           );
           
@@ -2097,7 +2092,7 @@
             },
             undefined,
             function(error) {
-              console.warn('⚠️ mDance4.fbx bulunamadı');
+              console.warn(`⚠️ ${prefix}Dance4.fbx bulunamadı`);
             }
           );
           
@@ -2137,76 +2132,97 @@
               console.log('⚙️ BAŞLANGIÇ HIZ AYARLARI:');
               console.log('🎬 Walk anim:', walkAnimSpeed, '| Hareket:', walkMoveSpeed);
               console.log('🏃 Run anim:', runAnimSpeed, '| Hareket:', runMoveSpeed);
-              console.log('💡 1-8 tuşlarıyla ayarlayabilirsin!');
+              console.log('💡 Animasyon sistemi hazır!');
               
               // DİĞER ANİMASYONLARI HAZIRLA - userData'dan çek!
-              const walkAct = isPlayer ? playerGroup.userData.walkAction : partnerGroup.userData.walkAction;
-              const runAct = isPlayer ? playerGroup.userData.runAction : partnerGroup.userData.runAction;
-              
-              // 4 Dans action'ları
-              const danceAct1 = isPlayer ? playerGroup.userData.danceAction1 : partnerGroup.userData.danceAction1;
-              const danceAct2 = isPlayer ? playerGroup.userData.danceAction2 : partnerGroup.userData.danceAction2;
-              const danceAct3 = isPlayer ? playerGroup.userData.danceAction3 : partnerGroup.userData.danceAction3;
-              const danceAct4 = isPlayer ? playerGroup.userData.danceAction4 : partnerGroup.userData.danceAction4;
-              
-              if (walkAct) {
-                walkAct.time = 0.3; // T-pose frame'ini atla!
-                walkAct.setEffectiveWeight(0); // Gizli
-                walkAct.enabled = true;
-                walkAct.play(); // Başlat ama görünmez
-                console.log('🚶 Walk başladı (weight=0, time=0.3)');
-              } else {
-                console.warn('⚠️ walkAction bulunamadı!');
-              }
-              
-              if (runAct) {
-                runAct.time = 0.2; // T-pose frame'ini atla!
-                runAct.setEffectiveWeight(0);
-                runAct.enabled = true;
-                runAct.play();
-                console.log('🏃 Run başladı (weight=0, time=0.2)');
-              } else {
-                console.warn('⚠️ runAction bulunamadı!');
-              }
-              
-              // 4 Dansı başlat (hepsi gizli)
-              if (danceAct1) {
-                danceAct1.time = 0.1;
-                danceAct1.setEffectiveWeight(0);
-                danceAct1.enabled = true;
-                danceAct1.play();
-                console.log('💃 Dans 1 başladı (weight=0)');
-              }
-              
-              if (danceAct2) {
-                danceAct2.time = 0.1;
-                danceAct2.setEffectiveWeight(0);
-                danceAct2.enabled = true;
-                danceAct2.play();
-                console.log('💃 Dans 2 başladı (weight=0)');
-              }
-              
-              if (danceAct3) {
-                danceAct3.time = 0.1;
-                danceAct3.setEffectiveWeight(0);
-                danceAct3.enabled = true;
-                danceAct3.play();
-                console.log('💃 Dans 3 başladı (weight=0)');
-              }
-              
-              if (danceAct4) {
-                danceAct4.time = 0.1;
-                danceAct4.setEffectiveWeight(0);
-                danceAct4.enabled = true;
-                danceAct4.play();
-                console.log('💃 Dans 4 başladı (weight=0)');
-              }
+              // 2 saniye bekle - tüm danslar yüklensin
+              setTimeout(() => {
+                const walkAct = isPlayer ? playerGroup.userData.walkAction : partnerGroup.userData.walkAction;
+                const runAct = isPlayer ? playerGroup.userData.runAction : partnerGroup.userData.runAction;
+                
+                // 4 Dans action'ları
+                const danceAct1 = isPlayer ? playerGroup.userData.danceAction1 : partnerGroup.userData.danceAction1;
+                const danceAct2 = isPlayer ? playerGroup.userData.danceAction2 : partnerGroup.userData.danceAction2;
+                const danceAct3 = isPlayer ? playerGroup.userData.danceAction3 : partnerGroup.userData.danceAction3;
+                const danceAct4 = isPlayer ? playerGroup.userData.danceAction4 : partnerGroup.userData.danceAction4;
+                
+                console.log('🎬 Animasyon başlatma kontrolü:');
+                console.log('  Walk:', walkAct ? 'VAR' : 'YOK');
+                console.log('  Run:', runAct ? 'VAR' : 'YOK');
+                console.log('  Dans 1:', danceAct1 ? 'VAR' : 'YOK');
+                console.log('  Dans 2:', danceAct2 ? 'VAR' : 'YOK');
+                console.log('  Dans 3:', danceAct3 ? 'VAR' : 'YOK');
+                console.log('  Dans 4:', danceAct4 ? 'VAR' : 'YOK');
+                
+                if (walkAct) {
+                  walkAct.time = 0.3; // T-pose frame'ini atla!
+                  walkAct.setEffectiveWeight(0); // Gizli
+                  walkAct.enabled = true;
+                  walkAct.play(); // Başlat ama görünmez
+                  console.log('✅ Walk başlatıldı (weight=0, time=0.3)');
+                } else {
+                  console.error('❌ walkAction bulunamadı!');
+                }
+                
+                if (runAct) {
+                  runAct.time = 0.2; // T-pose frame'ini atla!
+                  runAct.setEffectiveWeight(0);
+                  runAct.enabled = true;
+                  runAct.play();
+                  console.log('✅ Run başlatıldı (weight=0, time=0.2)');
+                } else {
+                  console.error('❌ runAction bulunamadı!');
+                }
+                
+                // 4 Dansı başlat (hepsi gizli)
+                if (danceAct1) {
+                  danceAct1.time = 0.1;
+                  danceAct1.setEffectiveWeight(0);
+                  danceAct1.enabled = true;
+                  danceAct1.play();
+                  console.log('✅ Dans 1 başlatıldı (weight=0)');
+                } else {
+                  console.warn('⚠️ Dans 1 bulunamadı');
+                }
+                
+                if (danceAct2) {
+                  danceAct2.time = 0.1;
+                  danceAct2.setEffectiveWeight(0);
+                  danceAct2.enabled = true;
+                  danceAct2.play();
+                  console.log('✅ Dans 2 başlatıldı (weight=0)');
+                } else {
+                  console.warn('⚠️ Dans 2 bulunamadı');
+                }
+                
+                if (danceAct3) {
+                  danceAct3.time = 0.1;
+                  danceAct3.setEffectiveWeight(0);
+                  danceAct3.enabled = true;
+                  danceAct3.play();
+                  console.log('✅ Dans 3 başlatıldı (weight=0)');
+                } else {
+                  console.warn('⚠️ Dans 3 bulunamadı');
+                }
+                
+                if (danceAct4) {
+                  danceAct4.time = 0.1;
+                  danceAct4.setEffectiveWeight(0);
+                  danceAct4.enabled = true;
+                  danceAct4.play();
+                  console.log('✅ Dans 4 başlatıldı (weight=0)');
+                } else {
+                  console.warn('⚠️ Dans 4 bulunamadı');
+                }
+                
+                console.log('🎉 TÜM ANİMASYONLAR BAŞLATILDI!');
+              }, 2000); // 2 saniye bekle
               
               // Idle zaten çalışıyor ve görünür (weight=1)
             },
             undefined,
             function(error) {
-              console.warn('⚠️ mIdle.fbx bulunamadı (opsiyonel)');
+              console.warn(`⚠️ ${prefix}Idle.fbx bulunamadı (opsiyonel)`);
               console.log('💡 Idle animasyonu olmadan da çalışabilir');
             }
           );
