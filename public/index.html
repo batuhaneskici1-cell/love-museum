@@ -429,6 +429,114 @@
   </style>
 </head>
 <body>
+  <!-- YÜKLEME EKRANI - ROMANTİK -->
+  <div id="loading-screen" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #ffc3a0 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    font-family: 'Arial', sans-serif;
+    color: white;
+    overflow: hidden;
+  ">
+    <!-- Kalpler animasyonu -->
+    <div style="position: absolute; width: 100%; height: 100%; overflow: hidden; opacity: 0.3;">
+      <div class="heart" style="position: absolute; left: 10%; animation: float 6s infinite; animation-delay: 0s;">💕</div>
+      <div class="heart" style="position: absolute; left: 20%; animation: float 7s infinite; animation-delay: 1s;">❤️</div>
+      <div class="heart" style="position: absolute; left: 30%; animation: float 5s infinite; animation-delay: 2s;">💖</div>
+      <div class="heart" style="position: absolute; left: 40%; animation: float 8s infinite; animation-delay: 0.5s;">💗</div>
+      <div class="heart" style="position: absolute; left: 50%; animation: float 6s infinite; animation-delay: 1.5s;">💓</div>
+      <div class="heart" style="position: absolute; left: 60%; animation: float 7s infinite; animation-delay: 2.5s;">💝</div>
+      <div class="heart" style="position: absolute; left: 70%; animation: float 5s infinite; animation-delay: 3s;">💞</div>
+      <div class="heart" style="position: absolute; left: 80%; animation: float 6s infinite; animation-delay: 1s;">💟</div>
+      <div class="heart" style="position: absolute; left: 90%; animation: float 7s infinite; animation-delay: 2s;">❣️</div>
+    </div>
+    
+    <!-- Ana içerik -->
+    <div style="position: relative; z-index: 1; text-align: center;">
+      <h1 style="
+        font-size: 48px;
+        margin-bottom: 30px;
+        text-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+        animation: pulse 2s infinite;
+      ">💕 Aşkımızın Müzesi 💕</h1>
+      
+      <div id="loading-messages" style="
+        font-size: 24px;
+        margin: 40px 0;
+        min-height: 80px;
+        text-shadow: 1px 1px 5px rgba(0,0,0,0.2);
+        animation: fadeIn 1s;
+      ">
+        Seni düşünüyorum... 💭
+      </div>
+      
+      <!-- Yükleme barı -->
+      <div style="
+        width: 400px;
+        height: 30px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 15px;
+        overflow: hidden;
+        margin: 30px auto;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      ">
+        <div id="loading-bar" style="
+          width: 0%;
+          height: 100%;
+          background: linear-gradient(90deg, #ff6b9d, #fec5bb);
+          border-radius: 15px;
+          transition: width 0.3s;
+          box-shadow: 0 0 20px rgba(255,107,157,0.5);
+        "></div>
+      </div>
+      
+      <div id="loading-percentage" style="
+        font-size: 20px;
+        margin-top: 15px;
+        font-weight: bold;
+      ">0%</div>
+      
+      <!-- Yüklenen şeyler -->
+      <div id="loading-items" style="
+        margin-top: 30px;
+        font-size: 16px;
+        opacity: 0.8;
+        max-width: 500px;
+      "></div>
+    </div>
+    
+    <style>
+      @keyframes float {
+        0%, 100% { transform: translateY(100vh) scale(1); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+      }
+      
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .heart {
+        font-size: 40px;
+      }
+    </style>
+  </div>
+  
   <!-- Menu Screen -->
   <div id="menu-screen">
     <h1 class="menu-title">💕 Aşkımızın Müzesi 💕</h1>
@@ -581,6 +689,102 @@
   </div>
 
   <script>
+    // YÜKLEME EKRANI KONTROLCÜSÜ
+    const loadingManager = {
+      total: 0,
+      loaded: 0,
+      messages: [
+        "Seni çok seviyorum canım... 💕",
+        "Her gün seninle geçen bir hediye 🎁",
+        "Gözlerin yıldızlardan güzel ✨",
+        "Gülüşün dünyamı aydınlatıyor ☀️",
+        "Seninle her an özel 💖",
+        "Kalbim sadece senin için atıyor 💓",
+        "Sen benim en güzel maceramısın 🌈",
+        "Yanımdasın ya, başka ne isterim ki 💑",
+        "Seninle olmak cennet gibi 😇",
+        "Her anı seninle yaşamak istiyorum ⏰",
+        "Sen benim dünyadaki en büyük şansımsın 🍀",
+        "Seni sevmek en güzel his 💘"
+      ],
+      currentMessageIndex: 0,
+      
+      init() {
+        this.updateMessage();
+        setInterval(() => this.updateMessage(), 3000); // Her 3 saniyede bir mesaj değiştir
+      },
+      
+      updateMessage() {
+        const msgElement = document.getElementById('loading-messages');
+        if (msgElement) {
+          msgElement.style.animation = 'none';
+          setTimeout(() => {
+            msgElement.textContent = this.messages[this.currentMessageIndex];
+            msgElement.style.animation = 'fadeIn 1s';
+            this.currentMessageIndex = (this.currentMessageIndex + 1) % this.messages.length;
+          }, 50);
+        }
+      },
+      
+      addItem(name) {
+        this.total++;
+        const itemsElement = document.getElementById('loading-items');
+        if (itemsElement) {
+          const item = document.createElement('div');
+          item.id = `loading-item-${this.total}`;
+          item.textContent = `⏳ ${name}...`;
+          item.style.opacity = '0';
+          item.style.transition = 'opacity 0.5s';
+          itemsElement.appendChild(item);
+          setTimeout(() => item.style.opacity = '1', 10);
+        }
+      },
+      
+      completeItem(name) {
+        this.loaded++;
+        const percentage = Math.round((this.loaded / this.total) * 100);
+        
+        // Update bar
+        const bar = document.getElementById('loading-bar');
+        if (bar) bar.style.width = percentage + '%';
+        
+        // Update percentage
+        const perc = document.getElementById('loading-percentage');
+        if (perc) perc.textContent = percentage + '%';
+        
+        // Mark item complete
+        const itemsElement = document.getElementById('loading-items');
+        if (itemsElement) {
+          const items = itemsElement.children;
+          for (let item of items) {
+            if (item.textContent.includes(name)) {
+              item.textContent = `✅ ${name}`;
+              item.style.color = '#4ade80';
+            }
+          }
+        }
+        
+        // Tümü yüklendiyse ekranı kapat
+        if (this.loaded >= this.total && this.total > 0) {
+          setTimeout(() => this.hide(), 500);
+        }
+      },
+      
+      hide() {
+        const screen = document.getElementById('loading-screen');
+        if (screen) {
+          screen.style.transition = 'opacity 1s';
+          screen.style.opacity = '0';
+          setTimeout(() => {
+            screen.style.display = 'none';
+          }, 1000);
+        }
+      }
+    };
+    
+    // Yükleme ekranını başlat
+    loadingManager.init();
+    
     // Socket.io connection
     const socket = io();
     
@@ -665,6 +869,43 @@
       if (partnerGroup) {
         partnerGroup.position.set(data.position.x, data.position.y, data.position.z);
         partnerGroup.rotation.y = data.rotation;
+        
+        // ANİMASYON SENKRONİZASYONU
+        if (data.animation && partnerGroup.userData) {
+          const partnerWalk = partnerGroup.userData.walkAction;
+          const partnerRun = partnerGroup.userData.runAction;
+          const partnerIdle = partnerGroup.userData.idleAction;
+          const partnerDance1 = partnerGroup.userData.danceAction1;
+          const partnerDance2 = partnerGroup.userData.danceAction2;
+          const partnerDance3 = partnerGroup.userData.danceAction3;
+          const partnerDance4 = partnerGroup.userData.danceAction4;
+          
+          // Tüm animasyonları gizle
+          if (partnerWalk) partnerWalk.setEffectiveWeight(0);
+          if (partnerRun) partnerRun.setEffectiveWeight(0);
+          if (partnerIdle) partnerIdle.setEffectiveWeight(0);
+          if (partnerDance1) partnerDance1.setEffectiveWeight(0);
+          if (partnerDance2) partnerDance2.setEffectiveWeight(0);
+          if (partnerDance3) partnerDance3.setEffectiveWeight(0);
+          if (partnerDance4) partnerDance4.setEffectiveWeight(0);
+          
+          // İlgili animasyonu göster
+          if (data.animation === 'walk' && partnerWalk) {
+            partnerWalk.setEffectiveWeight(1);
+          } else if (data.animation === 'run' && partnerRun) {
+            partnerRun.setEffectiveWeight(1);
+          } else if (data.animation === 'idle' && partnerIdle) {
+            partnerIdle.setEffectiveWeight(1);
+          } else if (data.animation === 'dance1' && partnerDance1) {
+            partnerDance1.setEffectiveWeight(1);
+          } else if (data.animation === 'dance2' && partnerDance2) {
+            partnerDance2.setEffectiveWeight(1);
+          } else if (data.animation === 'dance3' && partnerDance3) {
+            partnerDance3.setEffectiveWeight(1);
+          } else if (data.animation === 'dance4' && partnerDance4) {
+            partnerDance4.setEffectiveWeight(1);
+          }
+        }
         
         // Make sure partner is visible
         if (!partnerGroup.visible && partnerConnected) {
@@ -1894,11 +2135,24 @@
       
       // Dosya prefix'ini belirle (m = Merve, b = Batuhan)
       const prefix = isBatuhan ? 'b' : 'm';
+      const charName = isBatuhan ? 'Batuhan' : 'Merve';
+      
+      // YÜKLEME EKRANI - Dosyaları ekle
+      if (isPlayer) {
+        loadingManager.addItem(`${charName} - Yürüme`);
+        loadingManager.addItem(`${charName} - Koşma`);
+        loadingManager.addItem(`${charName} - Bekle`);
+        loadingManager.addItem(`${charName} - Dans 1`);
+        loadingManager.addItem(`${charName} - Dans 2`);
+        loadingManager.addItem(`${charName} - Dans 3`);
+        loadingManager.addItem(`${charName} - Dans 4`);
+      }
       
       // İlk olarak yürüme animasyonlu karakteri yükle
       loader.load(`/${prefix}Walk.fbx`, 
         function(fbxModel) {
           console.log(`✅ ${prefix}Walk.fbx yüklendi!`);
+          if (isPlayer) loadingManager.completeItem(`${charName} - Yürüme`);
           fbxModel.scale.set(0.01, 0.01, 0.01);
           fbxModel.position.y = 0;
           
@@ -1964,6 +2218,7 @@
           loader.load(`/${prefix}Run.fbx`,
             function(runFbx) {
               console.log(`✅ ${prefix}Run.fbx yüklendi!`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Koşma`);
               if (runFbx.animations && runFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
                 const runClip = runFbx.animations[0];
@@ -2000,6 +2255,7 @@
           loader.load(`/${prefix}Dance1.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance1.fbx yüklendi!`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 1`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2031,6 +2287,7 @@
           loader.load(`/${prefix}Dance2.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance2.fbx yüklendi!`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 2`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2062,6 +2319,7 @@
           loader.load(`/${prefix}Dance3.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance3.fbx yüklendi!`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 3`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2093,6 +2351,7 @@
           loader.load(`/${prefix}Dance4.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance4.fbx yüklendi!`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 4`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2131,6 +2390,7 @@
           loader.load(`/${prefix}Idle.fbx`,
             function(idleFbx) {
               console.log(`✅ ${prefix}Idle.fbx yüklendi!`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Bekle`);
               if (idleFbx.animations && idleFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
                 const idleClip = idleFbx.animations[0];
@@ -2336,7 +2596,7 @@
       window.addEventListener('mousemove', (e) => {
         if (document.pointerLockElement === renderer.domElement) {
           yaw -= e.movementX * 0.002;
-          pitch -= e.movementY * 0.002;
+          pitch += e.movementY * 0.002; // Fare aşağı = kamera aşağı
           
           // Limit pitch
           pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch));
@@ -2684,14 +2944,16 @@
       // Camera look at player
       camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z);
 
-      // Send position to server
+      // Send position AND animation state to server
       socket.emit('update_position', {
         position: {
           x: playerGroup.position.x,
           y: playerGroup.position.y,
           z: playerGroup.position.z
         },
-        rotation: playerGroup.rotation.y
+        rotation: playerGroup.rotation.y,
+        animation: currentAnimation, // Şu anki animasyon
+        danceNumber: selectedDance // Seçili dans (0 = yok, 1-4 = dans)
       });
 
       // Animate messages
