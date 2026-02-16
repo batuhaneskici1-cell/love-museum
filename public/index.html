@@ -1742,27 +1742,39 @@
               console.log('🏃 Run anim:', runAnimSpeed, '| Hareket:', runMoveSpeed);
               console.log('💡 1-8 tuşlarıyla ayarlayabilirsin!');
               
-              // DİĞER ANİMASYONLARI HAZIRLA - TIME'I SET ET!
-              if (walkAction) {
-                walkAction.time = 0.3; // T-pose frame'ini atla!
-                walkAction.setEffectiveWeight(0); // Gizli
-                walkAction.enabled = true;
-                walkAction.play(); // Başlat ama görünmez
+              // DİĞER ANİMASYONLARI HAZIRLA - userData'dan çek!
+              const walkAct = isPlayer ? playerGroup.userData.walkAction : partnerGroup.userData.walkAction;
+              const runAct = isPlayer ? playerGroup.userData.runAction : partnerGroup.userData.runAction;
+              const danceAct = isPlayer ? playerGroup.userData.danceAction : partnerGroup.userData.danceAction;
+              
+              if (walkAct) {
+                walkAct.time = 0.3; // T-pose frame'ini atla!
+                walkAct.setEffectiveWeight(0); // Gizli
+                walkAct.enabled = true;
+                walkAct.play(); // Başlat ama görünmez
                 console.log('🚶 Walk başladı (weight=0, time=0.3)');
+              } else {
+                console.warn('⚠️ walkAction bulunamadı!');
               }
-              if (runAction) {
-                runAction.time = 0.2; // T-pose frame'ini atla!
-                runAction.setEffectiveWeight(0);
-                runAction.enabled = true;
-                runAction.play();
+              
+              if (runAct) {
+                runAct.time = 0.2; // T-pose frame'ini atla!
+                runAct.setEffectiveWeight(0);
+                runAct.enabled = true;
+                runAct.play();
                 console.log('🏃 Run başladı (weight=0, time=0.2)');
+              } else {
+                console.warn('⚠️ runAction bulunamadı!');
               }
-              if (danceAction) {
-                danceAction.time = 0.1; // T-pose frame'ini atla!
-                danceAction.setEffectiveWeight(0);
-                danceAction.enabled = true;
-                danceAction.play();
+              
+              if (danceAct) {
+                danceAct.time = 0.1; // T-pose frame'ini atla!
+                danceAct.setEffectiveWeight(0);
+                danceAct.enabled = true;
+                danceAct.play();
                 console.log('💃 Dance başladı (weight=0, time=0.1)');
+              } else {
+                console.warn('⚠️ danceAction bulunamadı!');
               }
               // Idle zaten çalışıyor ve görünür (weight=1)
             },
