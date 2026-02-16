@@ -2504,51 +2504,50 @@
           targetAnimation = 'idle';
         }
         
-        // CROSSFADE SİSTEMİ - Stop YOK, T-pose YOK!
+        // EN BASİT SİSTEM - Sadece play/pause, stop YOK!
         if (currentAnimation !== targetAnimation && targetAnimation) {
-          console.log('🎬 CrossFade:', currentAnimation, '→', targetAnimation);
+          console.log('🎬 Geçiş:', currentAnimation, '→', targetAnimation);
           
-          // Hedef animasyonu bul
-          let targetAction = null;
-          if (targetAnimation === 'walk') targetAction = walkAction;
-          else if (targetAnimation === 'run') targetAction = runAction;
-          else if (targetAnimation === 'dance') targetAction = danceAction;
-          else if (targetAnimation === 'idle') targetAction = idleAction;
+          // Tüm animasyonların weight'ini 0 yap (gizle)
+          if (walkAction) walkAction.setEffectiveWeight(0);
+          if (runAction) runAction.setEffectiveWeight(0);
+          if (danceAction) danceAction.setEffectiveWeight(0);
+          if (idleAction) idleAction.setEffectiveWeight(0);
           
-          if (targetAction) {
-            // Eğer hedef animasyon çalmıyorsa başlat (weight 0'dan)
-            if (!targetAction.isRunning()) {
-              targetAction.enabled = true;
-              targetAction.time = 0.2; // T-pose frame'ini atla
-              if (targetAnimation === 'walk') targetAction.setEffectiveTimeScale(walkAnimSpeed);
-              if (targetAnimation === 'run') targetAction.setEffectiveTimeScale(runAnimSpeed);
-              targetAction.setEffectiveWeight(0); // Weight 0'dan başla
-              targetAction.play();
+          // Hedef animasyonu göster
+          if (targetAnimation === 'walk' && walkAction) {
+            if (!walkAction.isRunning()) {
+              walkAction.time = 0.3;
+              walkAction.setEffectiveTimeScale(walkAnimSpeed);
+              walkAction.play();
             }
-            
-            // Mevcut animasyondan yeni animasyona CROSSFADE - Bu stop etmez!
-            if (currentAnimation && currentAnimation !== targetAnimation) {
-              let currentAction = null;
-              if (currentAnimation === 'walk') currentAction = walkAction;
-              else if (currentAnimation === 'run') currentAction = runAction;
-              else if (currentAnimation === 'dance') currentAction = danceAction;
-              else if (currentAnimation === 'idle') currentAction = idleAction;
-              
-              if (currentAction && currentAction.isRunning()) {
-                // CrossFade: Eski animasyon fade out, yeni fade in - HİÇ STOP YOK!
-                currentAction.crossFadeTo(targetAction, 0.15, false);
-              } else {
-                // Mevcut animasyon yoksa direkt başlat
-                targetAction.setEffectiveWeight(1);
-              }
-            } else {
-              // İlk animasyon
-              targetAction.setEffectiveWeight(1);
+            walkAction.setEffectiveWeight(1);
+            console.log('✅ Walk weight=1');
+          } else if (targetAnimation === 'run' && runAction) {
+            if (!runAction.isRunning()) {
+              runAction.time = 0.2;
+              runAction.setEffectiveTimeScale(runAnimSpeed);
+              runAction.play();
             }
-            
-            currentAnimation = targetAnimation;
-            console.log('✅', targetAnimation, 'aktif');
+            runAction.setEffectiveWeight(1);
+            console.log('✅ Run weight=1');
+          } else if (targetAnimation === 'dance' && danceAction) {
+            if (!danceAction.isRunning()) {
+              danceAction.time = 0;
+              danceAction.play();
+            }
+            danceAction.setEffectiveWeight(1);
+            console.log('✅ Dance weight=1');
+          } else if (targetAnimation === 'idle' && idleAction) {
+            if (!idleAction.isRunning()) {
+              idleAction.time = 0.2;
+              idleAction.play();
+            }
+            idleAction.setEffectiveWeight(1);
+            console.log('✅ Idle weight=1');
           }
+          
+          currentAnimation = targetAnimation;
         }
         } // Animasyonlar yüklü kontrolü sonu
       }
