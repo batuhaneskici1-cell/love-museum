@@ -1944,7 +1944,11 @@
             
             walkAction = animMixer.clipAction(walkClip);
             walkAction.setLoop(THREE.LoopRepeat); // Sürekli tekrarla
-            console.log('🎬 Walk animasyonu - Root motion temizlendi');
+            walkAction.time = 0.3; // T-pose frame'ini atla
+            walkAction.setEffectiveWeight(0); // Gizli başlat
+            walkAction.enabled = true;
+            walkAction.play(); // HEMEN başlat
+            console.log('🎬 Walk - Root motion temizlendi + başlatıldı (weight=0)');
           }
           
           // Mixer'ı global değişkene ata
@@ -1969,7 +1973,11 @@
                 
                 runAction = animMixer.clipAction(runClip);
                 runAction.setLoop(THREE.LoopRepeat);
-                console.log('🏃 Run animasyonu - Root motion temizlendi');
+                runAction.time = 0.25; // T-pose frame'ini atla
+                runAction.setEffectiveWeight(0); // Gizli başlat
+                runAction.enabled = true;
+                runAction.play(); // HEMEN başlat
+                console.log('🏃 Run - Root motion temizlendi + başlatıldı (weight=0)');
                 
                 if (isPlayer) {
                   playerGroup.userData.runAction = runAction;
@@ -2000,7 +2008,11 @@
                 
                 danceAction1 = animMixer.clipAction(danceClip);
                 danceAction1.setLoop(THREE.LoopRepeat);
-                console.log('💃 Dans 1 - Root motion temizlendi');
+                danceAction1.time = 0.15; // T-pose frame'ini atla
+                danceAction1.setEffectiveWeight(0); // Gizli başlat
+                danceAction1.enabled = true;
+                danceAction1.play(); // HEMEN başlat
+                console.log('💃 Dans 1 - Root motion temizlendi + başlatıldı (weight=0)');
                 
                 if (isPlayer) {
                   playerGroup.userData.danceAction1 = danceAction1;
@@ -2027,7 +2039,11 @@
                 
                 danceAction2 = animMixer.clipAction(danceClip);
                 danceAction2.setLoop(THREE.LoopRepeat);
-                console.log('💃 Dans 2 - Root motion temizlendi');
+                danceAction2.time = 0.15; // T-pose frame'ini atla
+                danceAction2.setEffectiveWeight(0); // Gizli başlat
+                danceAction2.enabled = true;
+                danceAction2.play(); // HEMEN başlat
+                console.log('💃 Dans 2 - Root motion temizlendi + başlatıldı (weight=0)');
                 
                 if (isPlayer) {
                   playerGroup.userData.danceAction2 = danceAction2;
@@ -2054,7 +2070,11 @@
                 
                 danceAction3 = animMixer.clipAction(danceClip);
                 danceAction3.setLoop(THREE.LoopRepeat);
-                console.log('💃 Dans 3 - Root motion temizlendi');
+                danceAction3.time = 0.15; // T-pose frame'ini atla
+                danceAction3.setEffectiveWeight(0); // Gizli başlat
+                danceAction3.enabled = true;
+                danceAction3.play(); // HEMEN başlat
+                console.log('💃 Dans 3 - Root motion temizlendi + başlatıldı (weight=0)');
                 
                 if (isPlayer) {
                   playerGroup.userData.danceAction3 = danceAction3;
@@ -2081,7 +2101,11 @@
                 
                 danceAction4 = animMixer.clipAction(danceClip);
                 danceAction4.setLoop(THREE.LoopRepeat);
-                console.log('💃 Dans 4 - Root motion temizlendi');
+                danceAction4.time = 0.15; // T-pose frame'ini atla
+                danceAction4.setEffectiveWeight(0); // Gizli başlat
+                danceAction4.enabled = true;
+                danceAction4.play(); // HEMEN başlat
+                console.log('💃 Dans 4 - Root motion temizlendi + başlatıldı (weight=0)');
                 
                 if (isPlayer) {
                   playerGroup.userData.danceAction4 = danceAction4;
