@@ -9,6 +9,7 @@
   <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
   <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
   <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
   <style>
     * {
       margin: 0;
@@ -490,35 +491,18 @@
     </div>
 
     <!-- Speed Adjustment HUD -->
-    <div id="speed-hud" class="speed-hud hidden">
-      <h4>⚙️ HIZ AYARLARI</h4>
-      <div>🎬 Walk Anim: <span class="speed-value" id="walk-anim-speed">0.70</span></div>
-      <div>🚶 Walk Hareket: <span class="speed-value" id="walk-move-speed">0.010</span></div>
-      <div>🏃 Run Anim: <span class="speed-value" id="run-anim-speed">1.30</span></div>
-      <div>🏃 Run Hareket: <span class="speed-value" id="run-move-speed">0.025</span></div>
-      <div style="margin-top: 8px; font-size: 11px; opacity: 0.7;">
-        1/2 Walk Anim | 3/4 Run Anim<br>
-        5/6 Walk Hareket | 7/8 Run Hareket
-      </div>
-    </div>
-
     <div class="controls">
       <h3>Kontroller 🎮</h3>
       <p><strong>W A S D</strong> - Hareket Et</p>
       <p><strong>SHIFT</strong> - Koş 🏃‍♀️</p>
       <p><strong>Fare</strong> - Kamera Döndür (Ekrana tıkla)</p>
       <p><strong>SPACE</strong> - Zıpla</p>
-      <p><strong>Q</strong> - Dans Aç/Kapat 💃</p>
+      <p><strong>Q</strong> - Dans Seç 💃</p>
       <p><strong>E</strong> - Mesajı Oku / Kapıya Gir</p>
       <p><strong>M</strong> - Müzik Aç/Kapat 🎵</p>
       <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
       <p><strong>ESC</strong> - Fareyi Serbest Bırak</p>
-      <hr style="margin: 10px 0; border-color: rgba(255,105,180,0.3);">
-      <p style="font-size: 12px; opacity: 0.8;"><strong>HIZ AYARLAMA:</strong></p>
-      <p style="font-size: 11px;">0 - HUD Aç/Kapat 👁️</p>
-      <p style="font-size: 11px;">1/2 - Yürüme Anim ⏩⏪</p>
-      <p style="font-size: 11px;">3/4 - Koşma Anim ⏩⏪</p>
-      <p style="font-size: 11px;">5/6 - Yürüme Hız ⏩⏪</p>
+    </div>
       <p style="font-size: 11px;">7/8 - Koşma Hız ⏩⏪</p>
     </div>
 
@@ -570,6 +554,30 @@
         <p id="password-error" style="color: #ffeeee; margin-top: 20px; font-size: 18px; display: none;"></p>
       </div>
     </div>
+
+    <!-- DANS SEÇİM MENÜSÜ -->
+    <div id="dance-menu" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+      <div style="background: linear-gradient(135deg, rgba(255, 105, 180, 0.98), rgba(255, 182, 193, 0.98)); padding: 40px; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); backdrop-filter: blur(10px);">
+        <h2 style="color: white; text-align: center; margin-bottom: 25px; font-size: 36px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">💃 Dans Seç 🕺</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+          <button onclick="selectDance(1)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            🎵 Dans 1
+          </button>
+          <button onclick="selectDance(2)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            💃 Dans 2
+          </button>
+          <button onclick="selectDance(3)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            🕺 Dans 3
+          </button>
+          <button onclick="selectDance(4)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            🎉 Dans 4
+          </button>
+        </div>
+        <button onclick="closeDanceMenu()" style="padding: 18px; width: 100%; font-size: 20px; background: rgba(255,255,255,0.3); border: 2px solid white; border-radius: 12px; color: white; cursor: pointer; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.5)';" onmouseout="this.style.background='rgba(255,255,255,0.3)';">
+          ❌ İptal
+        </button>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -593,6 +601,8 @@
     let nearMessage = null;
     let selectedCharacter = null;
     let pendingAction = null; // 'create' or 'join'
+    let selectedDance = 0; // 0 = dans yok, 1-4 = dans numarası
+    let currentDanceAction = null; // Şu an çalan dans animasyonu
 
     let moveSpeed = 0.1; // Yürüme hızı
 
@@ -744,6 +754,29 @@
     // Global fonksiyonlar - HTML onclick için
     window.checkPassword = checkPassword;
     window.closePasswordPopup = closePasswordPopup;
+    
+    // DANS SEÇİM FONKSİYONLARI
+    window.selectDance = function(danceNumber) {
+      selectedDance = danceNumber;
+      document.getElementById('dance-menu').style.display = 'none';
+      console.log('💃 Dans seçildi:', danceNumber);
+      
+      // Pointer lock'u geri al
+      if (document.pointerLockElement === null && renderer && renderer.domElement) {
+        renderer.domElement.requestPointerLock();
+      }
+    };
+    
+    window.closeDanceMenu = function() {
+      selectedDance = 0; // Dans kapalı
+      document.getElementById('dance-menu').style.display = 'none';
+      console.log('❌ Dans iptal edildi');
+      
+      // Pointer lock'u geri al
+      if (document.pointerLockElement === null && renderer && renderer.domElement) {
+        renderer.domElement.requestPointerLock();
+      }
+    };
 
     function enterMuseum() {
       window.insideMuseum = true;
@@ -794,7 +827,40 @@
       const container = document.getElementById('game-container');
       
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x87CEEB); // Mavi gökyüzü
+      
+      // GÜZEL SKYBOX - Gradient gökyüzü
+      const skyGeo = new THREE.SphereGeometry(500, 32, 15);
+      const skyMat = new THREE.ShaderMaterial({
+        uniforms: {
+          topColor: { value: new THREE.Color(0x0077ff) },
+          bottomColor: { value: new THREE.Color(0xffffff) },
+          offset: { value: 33 },
+          exponent: { value: 0.6 }
+        },
+        vertexShader: `
+          varying vec3 vWorldPosition;
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 topColor;
+          uniform vec3 bottomColor;
+          uniform float offset;
+          uniform float exponent;
+          varying vec3 vWorldPosition;
+          void main() {
+            float h = normalize(vWorldPosition + offset).y;
+            gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+          }
+        `,
+        side: THREE.BackSide
+      });
+      const sky = new THREE.Mesh(skyGeo, skyMat);
+      scene.add(sky);
+      
       scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
 
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -989,6 +1055,245 @@
         );
         scene.add(cloud);
       }
+
+      // ========================================
+      // 🎨 MODELS KLASÖRÜNDEKİ TÜM MODELLER OTOMATİK YÜKLEME
+      // ========================================
+      
+      if (typeof THREE.GLTFLoader !== 'undefined') {
+        const gltfLoader = new THREE.GLTFLoader();
+        
+        // Model listesi - models klasörüne koyduğun her şey
+        const treeModels = ['tree', 'tree1', 'tree2', 'tree3', 'oak', 'pine', 'palm'];
+        const flowerModels = ['flower', 'flower1', 'flower2', 'flower3', 'rose', 'tulip'];
+        const rockModels = ['rock', 'rock1', 'rock2', 'rock3', 'stone', 'boulder'];
+        const grassModels = ['grass', 'grass1', 'grass2', 'bush', 'shrub'];
+        const propModels = ['bench', 'lamp', 'fountain', 'fence', 'sign'];
+        
+        let loadedModels = {
+          trees: [],
+          flowers: [],
+          rocks: [],
+          grass: [],
+          props: []
+        };
+        
+        // AĞAÇLAR - Her birini dene
+        treeModels.forEach(name => {
+          gltfLoader.load(`/models/${name}.glb`,
+            function(gltf) {
+              console.log(`✅ ${name}.glb yüklendi!`);
+              loadedModels.trees.push(gltf.scene);
+              
+              // 5-10 ağaç yerleştir
+              const count = 5 + Math.floor(Math.random() * 5);
+              for (let i = 0; i < count; i++) {
+                const tree = gltf.scene.clone();
+                
+                let x = Math.random() * 80 - 40;
+                let z = Math.random() * 80 - 40;
+                if (Math.abs(x) < 22 && z > -30 && z < 10) {
+                  x += x > 0 ? 28 : -28;
+                }
+                
+                tree.position.set(x, 0, z);
+                tree.scale.setScalar(1 + Math.random() * 1.5);
+                tree.rotation.y = Math.random() * Math.PI * 2;
+                
+                tree.traverse((child) => {
+                  if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                  }
+                });
+                
+                scene.add(tree);
+              }
+            },
+            undefined,
+            function(error) {
+              // Hata verme, sadece yok de
+            }
+          );
+        });
+        
+        // ÇİÇEKLER
+        flowerModels.forEach(name => {
+          gltfLoader.load(`/models/${name}.glb`,
+            function(gltf) {
+              console.log(`✅ ${name}.glb yüklendi!`);
+              loadedModels.flowers.push(gltf.scene);
+              
+              // 15-20 çiçek
+              const count = 15 + Math.floor(Math.random() * 5);
+              for (let i = 0; i < count; i++) {
+                const flower = gltf.scene.clone();
+                
+                let x = Math.random() * 70 - 35;
+                let z = Math.random() * 70 - 35;
+                if (Math.abs(x) < 20 && z > -28 && z < 10) {
+                  x += x > 0 ? 25 : -25;
+                }
+                
+                flower.position.set(x, 0, z);
+                flower.scale.setScalar(0.3 + Math.random() * 0.5);
+                flower.rotation.y = Math.random() * Math.PI * 2;
+                
+                flower.traverse((child) => {
+                  if (child.isMesh) child.castShadow = true;
+                });
+                
+                scene.add(flower);
+              }
+            },
+            undefined,
+            function(error) {}
+          );
+        });
+        
+        // KAYALAR
+        rockModels.forEach(name => {
+          gltfLoader.load(`/models/${name}.glb`,
+            function(gltf) {
+              console.log(`✅ ${name}.glb yüklendi!`);
+              loadedModels.rocks.push(gltf.scene);
+              
+              // 8-12 kaya
+              const count = 8 + Math.floor(Math.random() * 4);
+              for (let i = 0; i < count; i++) {
+                const rock = gltf.scene.clone();
+                
+                let x = Math.random() * 80 - 40;
+                let z = Math.random() * 80 - 40;
+                if (Math.abs(x) < 20 && z > -30 && z < 10) {
+                  x += x > 0 ? 25 : -25;
+                }
+                
+                rock.position.set(x, 0, z);
+                rock.scale.setScalar(0.5 + Math.random() * 1);
+                rock.rotation.set(
+                  Math.random() * 0.5,
+                  Math.random() * Math.PI * 2,
+                  Math.random() * 0.5
+                );
+                
+                rock.traverse((child) => {
+                  if (child.isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                  }
+                });
+                
+                scene.add(rock);
+              }
+            },
+            undefined,
+            function(error) {}
+          );
+        });
+        
+        // ÇİMEN/ÇALı
+        grassModels.forEach(name => {
+          gltfLoader.load(`/models/${name}.glb`,
+            function(gltf) {
+              console.log(`✅ ${name}.glb yüklendi!`);
+              loadedModels.grass.push(gltf.scene);
+              
+              // 20-30 çimen
+              const count = 20 + Math.floor(Math.random() * 10);
+              for (let i = 0; i < count; i++) {
+                const grass = gltf.scene.clone();
+                
+                let x = Math.random() * 60 - 30;
+                let z = Math.random() * 60 - 30;
+                if (Math.abs(x) < 18 && z > -25 && z < 8) {
+                  x += x > 0 ? 22 : -22;
+                }
+                
+                grass.position.set(x, 0, z);
+                grass.scale.setScalar(0.4 + Math.random() * 0.4);
+                grass.rotation.y = Math.random() * Math.PI * 2;
+                
+                grass.traverse((child) => {
+                  if (child.isMesh) child.castShadow = true;
+                });
+                
+                scene.add(grass);
+              }
+            },
+            undefined,
+            function(error) {}
+          );
+        });
+        
+        // PROPLAR (Bank, Lamba, vb)
+        propModels.forEach(name => {
+          gltfLoader.load(`/models/${name}.glb`,
+            function(gltf) {
+              console.log(`✅ ${name}.glb yüklendi!`);
+              loadedModels.props.push(gltf.scene);
+              
+              // Prop'a göre yerleştir
+              if (name.includes('bench')) {
+                // 2 bank müze önüne
+                const bench1 = gltf.scene.clone();
+                bench1.position.set(-6, 0, 26);
+                bench1.rotation.y = Math.PI;
+                bench1.scale.setScalar(1.2);
+                scene.add(bench1);
+                
+                const bench2 = gltf.scene.clone();
+                bench2.position.set(6, 0, 26);
+                bench2.rotation.y = Math.PI;
+                bench2.scale.setScalar(1.2);
+                scene.add(bench2);
+              } else if (name.includes('lamp')) {
+                // 4 lamba müze çevresine
+                const positions = [{x:-10, z:23}, {x:10, z:23}, {x:-10, z:18}, {x:10, z:18}];
+                positions.forEach(pos => {
+                  const lamp = gltf.scene.clone();
+                  lamp.position.set(pos.x, 0, pos.z);
+                  lamp.scale.setScalar(1.5);
+                  scene.add(lamp);
+                });
+              } else {
+                // Diğerleri rastgele
+                for (let i = 0; i < 3; i++) {
+                  const prop = gltf.scene.clone();
+                  let x = Math.random() * 60 - 30;
+                  let z = Math.random() * 60 - 30;
+                  if (Math.abs(x) < 20 && z > -28 && z < 12) {
+                    x += x > 0 ? 25 : -25;
+                  }
+                  prop.position.set(x, 0, z);
+                  prop.rotation.y = Math.random() * Math.PI * 2;
+                  scene.add(prop);
+                }
+              }
+            },
+            undefined,
+            function(error) {}
+          );
+        });
+        
+        console.log('🎨 Model yükleyici aktif! Tüm .glb dosyaları otomatik yükleniyor...');
+        
+        // 3 saniye sonra özet ver
+        setTimeout(() => {
+          let total = Object.values(loadedModels).reduce((sum, arr) => sum + arr.length, 0);
+          console.log(`✅ TOPLAM ${total} farklı model yüklendi!`);
+          console.log('🌳 Ağaçlar:', loadedModels.trees.length);
+          console.log('🌸 Çiçekler:', loadedModels.flowers.length);
+          console.log('🪨 Kayalar:', loadedModels.rocks.length);
+          console.log('🌿 Çimen/Çalı:', loadedModels.grass.length);
+          console.log('🪑 Proplar:', loadedModels.props.length);
+        }, 3000);
+        
+      } else {
+        console.warn('⚠️ GLTFLoader bulunamadı!');
+      }
+      
+      // ========================================
 
       // NEHİR - Müzenin sağ tarafında
       const riverCurve = new THREE.QuadraticBezierCurve3(
@@ -1589,13 +1894,16 @@
 
 
     // FBX KARAKTER YÜKLEME - TÜM ANİMASYONLARLA
-    function loadFBXCharacter(parentGroup, isPlayer) {
+    function loadFBXCharacter(parentGroup, isPlayer, isBatuhan) {
       const loader = new THREE.FBXLoader();
       
+      // Dosya prefix'ini belirle (m = Merve, b = Batuhan)
+      const prefix = isBatuhan ? 'b' : 'm';
+      
       // İlk olarak yürüme animasyonlu karakteri yükle
-      loader.load('/mWalk.fbx', 
+      loader.load(`/${prefix}Walk.fbx`, 
         function(fbxModel) {
-          console.log('✅ mWalk.fbx yüklendi!');
+          console.log(`✅ ${prefix}Walk.fbx yüklendi!`);
           fbxModel.scale.set(0.01, 0.01, 0.01);
           fbxModel.position.y = 0;
           
@@ -1654,9 +1962,9 @@
           }
           
           // KOŞMA animasyonunu yükle
-          loader.load('/mRun.fbx',
+          loader.load(`/${prefix}Run.fbx`,
             function(runFbx) {
-              console.log('✅ mRun.fbx yüklendi!');
+              console.log(`✅ ${prefix}Run.fbx yüklendi!`);
               if (runFbx.animations && runFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
                 const runClip = runFbx.animations[0];
@@ -1682,39 +1990,128 @@
             }
           );
           
-          // DANS animasyonunu yükle
-          loader.load('/mDance.fbx',
+          // DANS ANİMASYONLARI - 4 FARKLI DANS
+          let danceAction1, danceAction2, danceAction3, danceAction4;
+          
+          // Dans 1
+          loader.load(`/${prefix}Dance1.fbx`,
             function(danceFbx) {
-              console.log('✅ mDance.fbx yüklendi!');
+              console.log(`✅ ${prefix}Dance1.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
-                // ROOT MOTION TRACK'İNİ KALDIR!
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
                   return !track.name.includes('.position');
                 });
                 
-                danceAction = animMixer.clipAction(danceClip);
-                danceAction.setLoop(THREE.LoopRepeat);
-                console.log('💃 Dance animasyonu - Root motion temizlendi');
+                danceAction1 = animMixer.clipAction(danceClip);
+                danceAction1.setLoop(THREE.LoopRepeat);
+                console.log('💃 Dans 1 - Root motion temizlendi');
                 
                 if (isPlayer) {
-                  playerGroup.userData.danceAction = danceAction;
+                  playerGroup.userData.danceAction1 = danceAction1;
                 } else {
-                  partnerGroup.userData.danceAction = danceAction;
+                  partnerGroup.userData.danceAction1 = danceAction1;
                 }
               }
             },
             undefined,
             function(error) {
-              console.error('❌ mDance.fbx YÜKLEME HATASI!', error);
-              alert('❌ HATA: mDance.fbx dosyası bulunamadı!\n\nDosya: public/mDance.fbx');
+              console.warn('⚠️ mDance1.fbx bulunamadı');
             }
           );
           
+          // Dans 2
+          loader.load(`/${prefix}Dance2.fbx`,
+            function(danceFbx) {
+              console.log(`✅ ${prefix}Dance2.fbx yüklendi!`);
+              if (danceFbx.animations && danceFbx.animations.length > 0) {
+                const danceClip = danceFbx.animations[0];
+                danceClip.tracks = danceClip.tracks.filter(track => {
+                  return !track.name.includes('.position');
+                });
+                
+                danceAction2 = animMixer.clipAction(danceClip);
+                danceAction2.setLoop(THREE.LoopRepeat);
+                console.log('💃 Dans 2 - Root motion temizlendi');
+                
+                if (isPlayer) {
+                  playerGroup.userData.danceAction2 = danceAction2;
+                } else {
+                  partnerGroup.userData.danceAction2 = danceAction2;
+                }
+              }
+            },
+            undefined,
+            function(error) {
+              console.warn('⚠️ mDance2.fbx bulunamadı');
+            }
+          );
+          
+          // Dans 3
+          loader.load(`/${prefix}Dance3.fbx`,
+            function(danceFbx) {
+              console.log(`✅ ${prefix}Dance3.fbx yüklendi!`);
+              if (danceFbx.animations && danceFbx.animations.length > 0) {
+                const danceClip = danceFbx.animations[0];
+                danceClip.tracks = danceClip.tracks.filter(track => {
+                  return !track.name.includes('.position');
+                });
+                
+                danceAction3 = animMixer.clipAction(danceClip);
+                danceAction3.setLoop(THREE.LoopRepeat);
+                console.log('💃 Dans 3 - Root motion temizlendi');
+                
+                if (isPlayer) {
+                  playerGroup.userData.danceAction3 = danceAction3;
+                } else {
+                  partnerGroup.userData.danceAction3 = danceAction3;
+                }
+              }
+            },
+            undefined,
+            function(error) {
+              console.warn('⚠️ mDance3.fbx bulunamadı');
+            }
+          );
+          
+          // Dans 4
+          loader.load(`/${prefix}Dance4.fbx`,
+            function(danceFbx) {
+              console.log(`✅ ${prefix}Dance4.fbx yüklendi!`);
+              if (danceFbx.animations && danceFbx.animations.length > 0) {
+                const danceClip = danceFbx.animations[0];
+                danceClip.tracks = danceClip.tracks.filter(track => {
+                  return !track.name.includes('.position');
+                });
+                
+                danceAction4 = animMixer.clipAction(danceClip);
+                danceAction4.setLoop(THREE.LoopRepeat);
+                console.log('💃 Dans 4 - Root motion temizlendi');
+                
+                if (isPlayer) {
+                  playerGroup.userData.danceAction4 = danceAction4;
+                } else {
+                  partnerGroup.userData.danceAction4 = danceAction4;
+                }
+              }
+            },
+            undefined,
+            function(error) {
+              console.warn('⚠️ mDance4.fbx bulunamadı');
+            }
+          );
+          
+          // ESKI danceAction referansı için (geriye uyumluluk)
+          if (isPlayer) {
+            playerGroup.userData.danceAction = danceAction1; // Dans 1 default
+          } else {
+            partnerGroup.userData.danceAction = danceAction1;
+          }
+          
           // IDLE animasyonunu yükle (OPSİYONEL)
-          loader.load('/mIdle.fbx',
+          loader.load(`/${prefix}Idle.fbx`,
             function(idleFbx) {
-              console.log('✅ mIdle.fbx yüklendi!');
+              console.log(`✅ ${prefix}Idle.fbx yüklendi!`);
               if (idleFbx.animations && idleFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
                 const idleClip = idleFbx.animations[0];
@@ -1745,7 +2142,12 @@
               // DİĞER ANİMASYONLARI HAZIRLA - userData'dan çek!
               const walkAct = isPlayer ? playerGroup.userData.walkAction : partnerGroup.userData.walkAction;
               const runAct = isPlayer ? playerGroup.userData.runAction : partnerGroup.userData.runAction;
-              const danceAct = isPlayer ? playerGroup.userData.danceAction : partnerGroup.userData.danceAction;
+              
+              // 4 Dans action'ları
+              const danceAct1 = isPlayer ? playerGroup.userData.danceAction1 : partnerGroup.userData.danceAction1;
+              const danceAct2 = isPlayer ? playerGroup.userData.danceAction2 : partnerGroup.userData.danceAction2;
+              const danceAct3 = isPlayer ? playerGroup.userData.danceAction3 : partnerGroup.userData.danceAction3;
+              const danceAct4 = isPlayer ? playerGroup.userData.danceAction4 : partnerGroup.userData.danceAction4;
               
               if (walkAct) {
                 walkAct.time = 0.3; // T-pose frame'ini atla!
@@ -1767,15 +2169,39 @@
                 console.warn('⚠️ runAction bulunamadı!');
               }
               
-              if (danceAct) {
-                danceAct.time = 0.1; // T-pose frame'ini atla!
-                danceAct.setEffectiveWeight(0);
-                danceAct.enabled = true;
-                danceAct.play();
-                console.log('💃 Dance başladı (weight=0, time=0.1)');
-              } else {
-                console.warn('⚠️ danceAction bulunamadı!');
+              // 4 Dansı başlat (hepsi gizli)
+              if (danceAct1) {
+                danceAct1.time = 0.1;
+                danceAct1.setEffectiveWeight(0);
+                danceAct1.enabled = true;
+                danceAct1.play();
+                console.log('💃 Dans 1 başladı (weight=0)');
               }
+              
+              if (danceAct2) {
+                danceAct2.time = 0.1;
+                danceAct2.setEffectiveWeight(0);
+                danceAct2.enabled = true;
+                danceAct2.play();
+                console.log('💃 Dans 2 başladı (weight=0)');
+              }
+              
+              if (danceAct3) {
+                danceAct3.time = 0.1;
+                danceAct3.setEffectiveWeight(0);
+                danceAct3.enabled = true;
+                danceAct3.play();
+                console.log('💃 Dans 3 başladı (weight=0)');
+              }
+              
+              if (danceAct4) {
+                danceAct4.time = 0.1;
+                danceAct4.setEffectiveWeight(0);
+                danceAct4.enabled = true;
+                danceAct4.play();
+                console.log('💃 Dans 4 başladı (weight=0)');
+              }
+              
               // Idle zaten çalışıyor ve görünür (weight=1)
             },
             undefined,
@@ -1828,246 +2254,14 @@
       // Player character
       playerGroup = new THREE.Group();
       
-      // MERVE İSE FBX YÜKLE
+      // MERVE İSE FBX YÜKLE (Kadın)
       if (!playerIsBatuhan) {
-        loadFBXCharacter(playerGroup, true);
+        loadFBXCharacter(playerGroup, true, false); // false = Merve
       }
-      // BATUHAN İSE GEOMETRİK KARAKTER
+      // BATUHAN İSE FBX YÜKLE (Erkek)
       else {
-      
-      // BACAKLAR - Animasyon için ayrı sakla
-      const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
-      const legMat = new THREE.MeshStandardMaterial({ 
-        color: playerIsBatuhan ? 0x2c5f9e : 0xffc0cb
-      });
-      const leftLeg = new THREE.Mesh(legGeo, legMat);
-      leftLeg.position.set(-0.12, 0.3, 0);
-      leftLeg.castShadow = true;
-      playerGroup.add(leftLeg);
-      playerGroup.leftLeg = leftLeg; // Animasyon için
-      
-      const rightLeg = new THREE.Mesh(legGeo, legMat);
-      rightLeg.position.set(0.12, 0.3, 0);
-      rightLeg.castShadow = true;
-      playerGroup.add(rightLeg);
-      playerGroup.rightLeg = rightLeg; // Animasyon için
-
-      // GÖVDE
-      const bodyGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8);
-      const bodyMat = new THREE.MeshStandardMaterial({ 
-        color: playerIsBatuhan ? 0x4a90e2 : 0xff69b4
-      });
-      const body = new THREE.Mesh(bodyGeo, bodyMat);
-      body.position.y = 0.9;
-      body.castShadow = true;
-      playerGroup.add(body);
-
-      // ETEK (Sadece kız karakter için) - Daha YUKARI - kollar görünsün
-      if (!playerIsBatuhan) {
-        const skirtGeo = new THREE.CylinderGeometry(0.28, 0.38, 0.3, 12);
-        const skirtMat = new THREE.MeshStandardMaterial({ 
-          color: 0xff69b4,
-          side: THREE.DoubleSide
-        });
-        const skirt = new THREE.Mesh(skirtGeo, skirtMat);
-        skirt.position.y = 0.65; // Daha yukarı
-        skirt.castShadow = true;
-        playerGroup.add(skirt);
-        playerGroup.skirt = skirt; // Dans animasyonu için
+        loadFBXCharacter(playerGroup, true, true); // true = Batuhan
       }
-
-      // KOLLAR - DAHA GERÇEKÇİ VE YAPIŞIK (Eteğin ÜZERİNDE render edilsin)
-      const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
-      const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
-      
-      // Sol kol - omuzdan başlasın
-      const leftArmPivot = new THREE.Group();
-      const leftArm = new THREE.Mesh(armGeo, armMat);
-      leftArm.position.y = -0.25; // Pivot noktasından aşağı
-      leftArm.castShadow = true;
-      leftArmPivot.add(leftArm);
-      leftArmPivot.position.set(-0.22, 1.05, 0); // Omuz pozisyonu
-      playerGroup.add(leftArmPivot);
-      playerGroup.leftArm = leftArmPivot;
-      
-      // Sağ kol - omuzdan başlasın
-      const rightArmPivot = new THREE.Group();
-      const rightArm = new THREE.Mesh(armGeo, armMat);
-      rightArm.position.y = -0.25; // Pivot noktasından aşağı
-      rightArm.castShadow = true;
-      rightArmPivot.add(rightArm);
-      rightArmPivot.position.set(0.22, 1.05, 0); // Omuz pozisyonu
-      playerGroup.add(rightArmPivot);
-      playerGroup.rightArm = rightArmPivot;
-
-      // BOYUN
-      const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
-      const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
-      const neck = new THREE.Mesh(neckGeo, neckMat);
-      neck.position.y = 1.26;
-      neck.castShadow = true;
-      playerGroup.add(neck);
-
-      // KAFA
-      const headGeo = new THREE.SphereGeometry(0.2, 16, 16);
-      const headMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
-      const head = new THREE.Mesh(headGeo, headMat);
-      head.position.y = 1.42;
-      head.castShadow = true;
-      playerGroup.add(head);
-
-      // SAÇ - Kız için uzun saç
-      const hairGeo = new THREE.SphereGeometry(0.21, 16, 16);
-      const hairMat = new THREE.MeshStandardMaterial({ 
-        color: playerIsBatuhan ? 0x1a1a1a : 0x6b4423
-      });
-      const hair = new THREE.Mesh(hairGeo, hairMat);
-      hair.position.y = 1.5;
-      hair.scale.set(1.05, 1.1, 1.05);
-      hair.castShadow = true;
-      playerGroup.add(hair);
-
-      // KIZ İÇİN UZUN SAÇ (Ponytail)
-      if (!playerIsBatuhan) {
-        const ponytailGeo = new THREE.SphereGeometry(0.12, 12, 12);
-        // Arka saç (ponytail)
-        const ponytail = new THREE.Mesh(ponytailGeo, hairMat);
-        ponytail.position.set(0, 1.35, -0.18);
-        ponytail.scale.set(0.8, 1.4, 0.8);
-        ponytail.castShadow = true;
-        playerGroup.add(ponytail);
-        
-        // Saç uçları
-        const ponytailEnd = new THREE.Mesh(ponytailGeo, hairMat);
-        ponytailEnd.position.set(0, 1.1, -0.2);
-        ponytailEnd.scale.set(0.6, 1.2, 0.6);
-        ponytailEnd.castShadow = true;
-        playerGroup.add(ponytailEnd);
-      }
-
-      // GÖZLER - DAHA BÜYÜK VE TATLI
-      const eyeWhiteGeo = new THREE.CircleGeometry(0.06, 16);
-      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-      
-      const leftEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-      leftEyeWhite.position.set(-0.08, 1.46, 0.195);
-      leftEyeWhite.rotation.y = -0.1;
-      playerGroup.add(leftEyeWhite);
-      
-      const rightEyeWhite = new THREE.Mesh(eyeWhiteGeo, eyeWhiteMat);
-      rightEyeWhite.position.set(0.08, 1.46, 0.195);
-      rightEyeWhite.rotation.y = 0.1;
-      playerGroup.add(rightEyeWhite);
-      
-      // Göz bebekleri - parlak
-      const pupilGeo = new THREE.CircleGeometry(0.025, 12);
-      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x2c3e50 });
-      
-      const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
-      leftPupil.position.set(-0.08, 1.46, 0.196);
-      leftPupil.rotation.y = -0.1;
-      playerGroup.add(leftPupil);
-      
-      const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
-      rightPupil.position.set(0.08, 1.46, 0.196);
-      rightPupil.rotation.y = 0.1;
-      playerGroup.add(rightPupil);
-      
-      // Işıltı - gözlere canlılık
-      const shineGeo = new THREE.CircleGeometry(0.01, 8);
-      const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      
-      const leftShine = new THREE.Mesh(shineGeo, shineMat);
-      leftShine.position.set(-0.075, 1.47, 0.197);
-      leftShine.rotation.y = -0.1;
-      playerGroup.add(leftShine);
-      
-      const rightShine = new THREE.Mesh(shineGeo, shineMat);
-      rightShine.position.set(0.085, 1.47, 0.197);
-      rightShine.rotation.y = 0.1;
-      playerGroup.add(rightShine);
-
-      // GÜLÜMSEME - Daha büyük ve sevimli
-      const smileCurve = new THREE.EllipseCurve(
-        0, 0,
-        0.1, 0.06,
-        Math.PI * 0.9, Math.PI * 2.1,
-        false,
-        0
-      );
-      const smilePoints = smileCurve.getPoints(30);
-      const smileGeometry = new THREE.BufferGeometry().setFromPoints(smilePoints);
-      const smileMaterial = new THREE.LineBasicMaterial({ color: 0xff69b4, linewidth: 3 });
-      const smile = new THREE.Line(smileGeometry, smileMaterial);
-      smile.position.set(0, 1.35, 0.19);
-      smile.rotation.x = Math.PI / 2;
-      playerGroup.add(smile);
-      
-      // Yanaklar - allık
-      const cheekGeo = new THREE.CircleGeometry(0.04, 12);
-      const cheekMat = new THREE.MeshBasicMaterial({ 
-        color: 0xffb6c1, 
-        transparent: true, 
-        opacity: 0.6,
-        side: THREE.DoubleSide
-      });
-      
-      const leftCheek = new THREE.Mesh(cheekGeo, cheekMat);
-      leftCheek.position.set(-0.13, 1.38, 0.18);
-      leftCheek.rotation.y = -0.3;
-      playerGroup.add(leftCheek);
-      
-      const rightCheek = new THREE.Mesh(cheekGeo, cheekMat);
-      rightCheek.position.set(0.13, 1.38, 0.18);
-      rightCheek.rotation.y = 0.3;
-      playerGroup.add(rightCheek);
-
-      // ETEK (Sadece kız karakter için)
-      if (!playerIsBatuhan) {
-        const skirtGeo = new THREE.CylinderGeometry(0.35, 0.45, 0.4, 12);
-        const skirtMat = new THREE.MeshStandardMaterial({ 
-          color: 0xff69b4,
-          side: THREE.DoubleSide
-        });
-        const skirt = new THREE.Mesh(skirtGeo, skirtMat);
-        skirt.position.y = 0.7;
-        skirt.castShadow = true;
-        playerGroup.add(skirt);
-        playerGroup.skirt = skirt; // Dans animasyonu için
-      }
-
-      // AYAKKABILAR
-      const shoeGeo = new THREE.BoxGeometry(0.12, 0.08, 0.2);
-      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-      const leftShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      leftShoe.position.set(-0.12, 0.04, 0.05);
-      leftShoe.castShadow = true;
-      playerGroup.add(leftShoe);
-      
-      const rightShoe = new THREE.Mesh(shoeGeo, shoeMat);
-      rightShoe.position.set(0.12, 0.04, 0.05);
-      rightShoe.castShadow = true;
-      playerGroup.add(rightShoe);
-
-      // İSİM ETİKETİ
-      const canvas = document.createElement('canvas');
-      canvas.width = 256;
-      canvas.height = 64;
-      const ctx = canvas.getContext('2d');
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.fillRect(0, 0, 256, 64);
-      ctx.fillStyle = '#ff1493';
-      ctx.font = 'bold 32px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(playerIsBatuhan ? 'Batuhan' : 'Merve', 128, 42);
-      
-      const nameTexture = new THREE.CanvasTexture(canvas);
-      const nameMat = new THREE.SpriteMaterial({ map: nameTexture });
-      const nameSprite = new THREE.Sprite(nameMat);
-      nameSprite.position.y = 1.8;
-      nameSprite.scale.set(0.8, 0.2, 1);
-      playerGroup.add(nameSprite);
-      } // Batuhan if bloğu sonu
 
       playerGroup.position.set(0, 0, 30); // DIŞARIDA BAŞLA
       scene.add(playerGroup);
@@ -2076,81 +2270,16 @@
       partnerGroup = new THREE.Group();
       const partnerIsBatuhan = !playerIsBatuhan;
       
-      // PARTNER MERVE İSE FBX YÜKLE
+      // PARTNER MERVE İSE FBX YÜKLE (Kadın)
       if (!partnerIsBatuhan) {
-        loadFBXCharacter(partnerGroup, false);
+        loadFBXCharacter(partnerGroup, false, false); // false = Merve
       }
-      // PARTNER BATUHAN İSE GEOMETRİK
+      // PARTNER BATUHAN İSE FBX YÜKLE (Erkek)
       else {
-      
-      // GEOMETRİLERİ TANIMLA
-      const legGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.6, 8);
-      const bodyGeo = new THREE.CylinderGeometry(0.2, 0.25, 0.6, 8);
-      const armGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.5, 8);
-      const neckGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 8);
-      const headGeo = new THREE.SphereGeometry(0.2, 16, 16);
-      const hairGeo = new THREE.SphereGeometry(0.21, 16, 16);
-      const eyeWhiteGeo = new THREE.CircleGeometry(0.06, 16);
-      const pupilGeo = new THREE.CircleGeometry(0.025, 12);
-      const shineGeo = new THREE.CircleGeometry(0.01, 8);
-      const cheekGeo = new THREE.CircleGeometry(0.04, 12);
-      const shoeGeo = new THREE.BoxGeometry(0.12, 0.08, 0.2);
-      
-      // MATERYALLERİ TANIMLA
-      const armMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
-      const neckMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
-      const headMat = new THREE.MeshStandardMaterial({ color: 0xfdbcb4 });
-      const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide });
-      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x2c3e50 });
-      const shineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
-      const cheekMat = new THREE.MeshBasicMaterial({ 
-        color: 0xffb6c1, 
-        transparent: true, 
-        opacity: 0.6,
-        side: THREE.DoubleSide
-      });
-      const shoeMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
-      
-      // GÜLÜMSEME GEOMETRİSİ
-      const smileCurve = new THREE.EllipseCurve(
-        0, 0,
-        0.1, 0.06,
-        Math.PI * 0.9, Math.PI * 2.1,
-        false,
-        0
-      );
-      const smilePoints = smileCurve.getPoints(30);
-      const smileGeometry = new THREE.BufferGeometry().setFromPoints(smilePoints);
-      const smileMaterial = new THREE.LineBasicMaterial({ color: 0xff69b4, linewidth: 3 });
-      
-      // Partner Bacaklar
-      const pLegMat = new THREE.MeshStandardMaterial({ 
-        color: partnerIsBatuhan ? 0x2c5f9e : 0xffc0cb
-      });
-      const pLeftLeg = new THREE.Mesh(legGeo, pLegMat);
-      pLeftLeg.position.set(-0.12, 0.3, 0);
-      pLeftLeg.castShadow = true;
-      partnerGroup.add(pLeftLeg);
-      
-      const pRightLeg = new THREE.Mesh(legGeo, pLegMat);
-      pRightLeg.position.set(0.12, 0.3, 0);
-      pRightLeg.castShadow = true;
-      partnerGroup.add(pRightLeg);
+        loadFBXCharacter(partnerGroup, false, true); // true = Batuhan
+      }
 
-      // Partner Gövde
-      const pBodyMat = new THREE.MeshStandardMaterial({ 
-        color: partnerIsBatuhan ? 0x4a90e2 : 0xff69b4
-      });
-      const pBody = new THREE.Mesh(bodyGeo, pBodyMat);
-      pBody.position.y = 0.9;
-      pBody.castShadow = true;
-      partnerGroup.add(pBody);
-
-      // Partner ETEK (Sadece kız karakter için) - Daha YUKARI
-      if (!partnerIsBatuhan) {
-        const pSkirtGeo = new THREE.CylinderGeometry(0.28, 0.38, 0.3, 12);
-        const pSkirtMat = new THREE.MeshStandardMaterial({ 
-          color: 0xff69b4,
+      partnerGroup.position.set(0, 0, 28);
           side: THREE.DoubleSide
         });
         const pSkirt = new THREE.Mesh(pSkirtGeo, pSkirtMat);
@@ -2391,13 +2520,12 @@
     let isDancingToggle = false; // Dans toggle durumu
     let lastQKeyState = false; // Q tuşunun önceki durumu
     
-    // ANİMASYON HIZ AYARLARI (Ayarlanabilir!)
-    // ANİMASYON HIZ AYARLARI (Deneysel olarak ayarlandı)
-    let walkAnimSpeed = 0.7;   // Yürüme animasyon hızı (yavaş)
-    let runAnimSpeed = 1.3;    // Koşma animasyon hızı (hızlı)
-    let walkMoveSpeed = 0.010; // Yürüme hareket hızı (%65 YAVAŞLATILDI!)
-    let runMoveSpeed = 0.025;  // Koşma hareket hızı (%65 YAVAŞLATILDI!)
-    let lastSpeedAdjust = 0;   // Son ayarlama zamanı
+    // ANİMASYON HIZ AYARLARI - SABİT DEĞERLER
+    let walkAnimSpeed = 1.14;   // Yürüme animasyon hızı
+    let runAnimSpeed = 1.28;    // Koşma animasyon hızı
+    let walkMoveSpeed = 0.016;  // Yürüme hareket hızı
+    let runMoveSpeed = 0.073;   // Koşma hareket hızı
+    let lastSpeedAdjust = 0;    // Son ayarlama zamanı
     
     function animate() {
       requestAnimationFrame(animate);
@@ -2444,64 +2572,39 @@
         });
       }
 
-      // RUNTIME HIZ AYARLAMA (1-8 tuşları) - COOLDOWN İLE
-      const currentTime = Date.now();
-      
-      // 0 tuşu ile HUD toggle
-      if (keys['0'] && currentTime - lastSpeedAdjust > 300) {
-        const hud = document.getElementById('speed-hud');
-        hud.classList.toggle('hidden');
-        lastSpeedAdjust = currentTime;
-      }
-      
-      if (currentTime - lastSpeedAdjust > 100) { // 100ms cooldown
-        let adjusted = false;
-        if (keys['1']) { walkAnimSpeed += 0.02; adjusted = true; }
-        if (keys['2']) { walkAnimSpeed -= 0.02; adjusted = true; }
-        if (keys['3']) { runAnimSpeed += 0.02; adjusted = true; }
-        if (keys['4']) { runAnimSpeed -= 0.02; adjusted = true; }
-        if (keys['5']) { walkMoveSpeed += 0.002; adjusted = true; }
-        if (keys['6']) { walkMoveSpeed -= 0.002; adjusted = true; }
-        if (keys['7']) { runMoveSpeed += 0.003; adjusted = true; }
-        if (keys['8']) { runMoveSpeed -= 0.003; adjusted = true; }
-        
-        if (adjusted) {
-          lastSpeedAdjust = currentTime;
-          
-          // HUD'ı güncelle
-          document.getElementById('walk-anim-speed').textContent = walkAnimSpeed.toFixed(2);
-          document.getElementById('walk-move-speed').textContent = walkMoveSpeed.toFixed(3);
-          document.getElementById('run-anim-speed').textContent = runAnimSpeed.toFixed(2);
-          document.getElementById('run-move-speed').textContent = runMoveSpeed.toFixed(3);
-          
-          console.log('⚙️ AYARLAR:');
-          console.log('  🎬 Walk Anim:', walkAnimSpeed.toFixed(2), '| Hareket:', walkMoveSpeed.toFixed(3));
-          console.log('  🏃 Run Anim:', runAnimSpeed.toFixed(2), '| Hareket:', runMoveSpeed.toFixed(3));
-        }
-      }
       
       // Player movement - KAMERA YÖNÜNE GÖRE
       const isMoving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
       const isRunning = keys['shift']; // SHIFT = KOŞMA
       
-      // Q TUŞU TOGGLE SİSTEMİ
+      // Q TUŞU - DANS MENÜSÜ AÇ
       const qKeyPressed = keys['q'];
       if (qKeyPressed && !lastQKeyState) {
-        // Q tuşuna basıldı (önceden basılı değildi)
-        isDancingToggle = !isDancingToggle; // Toggle
-        console.log('💃 Dans toggle:', isDancingToggle);
+        // Q tuşuna basıldı - dans menüsünü aç
+        document.getElementById('dance-menu').style.display = 'flex';
+        // Pointer lock'u kaldır (menüde fare kullanabilsin)
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+        console.log('💃 Dans menüsü açıldı');
       }
       lastQKeyState = qKeyPressed;
       
-      // FBX ANİMASYON KONTROLÜ (Merve karakteri için)
-      if (playerGroup.userData.walkAction && playerGroup.userData.runAction && playerGroup.userData.danceAction) {
+      // FBX ANİMASYON KONTROLÜ (Her iki karakter için)
+      if (playerGroup.userData.walkAction && playerGroup.userData.runAction) {
         const walkAction = playerGroup.userData.walkAction;
         const runAction = playerGroup.userData.runAction;
-        const danceAction = playerGroup.userData.danceAction;
+        const danceAction = playerGroup.userData.danceAction; // Eski - geriye uyumluluk
         const idleAction = playerGroup.userData.idleAction; // Opsiyonel
         
-        // Tüm animasyonlar yüklendiyse devam et
-        if (walkAction && runAction && danceAction) {
+        // 4 Dans action'ları
+        const danceAction1 = playerGroup.userData.danceAction1;
+        const danceAction2 = playerGroup.userData.danceAction2;
+        const danceAction3 = playerGroup.userData.danceAction3;
+        const danceAction4 = playerGroup.userData.danceAction4;
+        
+        // Tüm temel animasyonlar yüklendiyse devam et
+        if (walkAction && runAction) {
         
         // Mevcut oynatılan animasyonun hızını güncelle (runtime ayarlar için)
         if (walkAction && walkAction.enabled && walkAction.isRunning()) {
@@ -2514,8 +2617,9 @@
         // Hangi animasyon oynatılmalı?
         let targetAnimation = null;
         
-        if (isDancingToggle) {
-          targetAnimation = 'dance';
+        if (selectedDance > 0) {
+          // Dans seçilmiş (1-4)
+          targetAnimation = `dance${selectedDance}`;
         } else if (isMoving && isRunning) {
           targetAnimation = 'run';
         } else if (isMoving) {
@@ -2531,24 +2635,38 @@
           // Tüm animasyonların weight'ini 0 yap (gizle)
           if (walkAction) walkAction.setEffectiveWeight(0);
           if (runAction) runAction.setEffectiveWeight(0);
-          if (danceAction) danceAction.setEffectiveWeight(0);
           if (idleAction) idleAction.setEffectiveWeight(0);
+          
+          // 4 Dans weight'lerini 0 yap
+          if (danceAction1) danceAction1.setEffectiveWeight(0);
+          if (danceAction2) danceAction2.setEffectiveWeight(0);
+          if (danceAction3) danceAction3.setEffectiveWeight(0);
+          if (danceAction4) danceAction4.setEffectiveWeight(0);
           
           // Hedef animasyonu göster (weight=1)
           if (targetAnimation === 'walk' && walkAction) {
             walkAction.setEffectiveWeight(1);
             walkAction.setEffectiveTimeScale(walkAnimSpeed);
-            console.log('✅ Walk görünür (weight=1)');
+            console.log('✅ Walk görünür');
           } else if (targetAnimation === 'run' && runAction) {
             runAction.setEffectiveWeight(1);
             runAction.setEffectiveTimeScale(runAnimSpeed);
-            console.log('✅ Run görünür (weight=1)');
-          } else if (targetAnimation === 'dance' && danceAction) {
-            danceAction.setEffectiveWeight(1);
-            console.log('✅ Dance görünür (weight=1)');
+            console.log('✅ Run görünür');
+          } else if (targetAnimation === 'dance1' && danceAction1) {
+            danceAction1.setEffectiveWeight(1);
+            console.log('✅ Dans 1 görünür');
+          } else if (targetAnimation === 'dance2' && danceAction2) {
+            danceAction2.setEffectiveWeight(1);
+            console.log('✅ Dans 2 görünür');
+          } else if (targetAnimation === 'dance3' && danceAction3) {
+            danceAction3.setEffectiveWeight(1);
+            console.log('✅ Dans 3 görünür');
+          } else if (targetAnimation === 'dance4' && danceAction4) {
+            danceAction4.setEffectiveWeight(1);
+            console.log('✅ Dans 4 görünür');
           } else if (targetAnimation === 'idle' && idleAction) {
             idleAction.setEffectiveWeight(1);
-            console.log('✅ Idle görünür (weight=1)');
+            console.log('✅ Idle görünür');
           }
           
           currentAnimation = targetAnimation;
@@ -2671,7 +2789,7 @@
       }
 
       // Third-person camera - SABİT TAKİP
-      const cameraDistance = 4.5;
+      const cameraDistance = 3.5; // Daha yakın
       const cameraHeight = 2.5;
       
       camera.position.x = playerGroup.position.x - Math.sin(yaw) * cameraDistance * Math.cos(pitch);
