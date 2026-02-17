@@ -103,20 +103,28 @@ io.on('connection', (socket) => {
     if (socket.isHost) {
       room.hostPosition = data.position;
       room.hostRotation = data.rotation;
+      room.hostAnimation = data.animation;
+      room.hostDanceNumber = data.danceNumber;
       // Send to guest
       if (room.guest) {
         io.to(room.guest).emit('partner_moved', {
           position: data.position,
-          rotation: data.rotation
+          rotation: data.rotation,
+          animation: data.animation,
+          danceNumber: data.danceNumber
         });
       }
     } else {
       room.guestPosition = data.position;
       room.guestRotation = data.rotation;
+      room.guestAnimation = data.animation;
+      room.guestDanceNumber = data.danceNumber;
       // Send to host
       io.to(room.host).emit('partner_moved', {
         position: data.position,
-        rotation: data.rotation
+        rotation: data.rotation,
+        animation: data.animation,
+        danceNumber: data.danceNumber
       });
     }
   });

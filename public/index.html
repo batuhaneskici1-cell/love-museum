@@ -202,39 +202,6 @@
       opacity: 0.9;
     }
 
-    .speed-hud {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      background: rgba(0, 0, 0, 0.7);
-      color: white;
-      padding: 15px 20px;
-      border-radius: 10px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      line-height: 1.6;
-      z-index: 100;
-      min-width: 280px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
-    }
-    
-    .speed-hud.hidden {
-      display: none;
-    }
-    
-    .speed-hud h4 {
-      margin: 0 0 10px 0;
-      color: #ff69b4;
-      font-size: 14px;
-      border-bottom: 1px solid rgba(255, 105, 180, 0.3);
-      padding-bottom: 5px;
-    }
-    
-    .speed-hud .speed-value {
-      color: #4af;
-      font-weight: bold;
-    }
-
     .controls {
       position: absolute;
       bottom: 30px;
@@ -886,8 +853,6 @@
       <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
       <p><strong>ESC</strong> - Fareyi Serbest Bırak</p>
     </div>
-      <p style="font-size: 11px;">7/8 - Koşma Hız ⏩⏪</p>
-    </div>
 
     <!-- Background Music -->
     <audio id="background-music" loop>
@@ -1018,14 +983,16 @@
       completeItem(name) {
         this.loaded++;
         const percentage = Math.round((this.loaded / this.total) * 100);
+        // Gerçek yükleme sahte ilerlemeden büyükse güncelle
+        const displayPercent = Math.max(percentage, Math.round(this._fakeProgress || 0));
         
         // Update bar
         const bar = document.getElementById('loading-bar');
-        if (bar) bar.style.width = percentage + '%';
+        if (bar) bar.style.width = displayPercent + '%';
         
         // Update percentage
         const perc = document.getElementById('loading-percentage');
-        if (perc) perc.textContent = percentage + '%';
+        if (perc) perc.textContent = displayPercent + '%';
         
         // Mark item complete
         const itemsElement = document.getElementById('loading-items');
@@ -1041,6 +1008,7 @@
         
         // Tümü yüklendiyse ekranı kapat
         if (this.loaded >= this.total && this.total > 0) {
+          if (this._fakeInterval) clearInterval(this._fakeInterval);
           setTimeout(() => this.hide(), 500);
         }
       },
@@ -1051,6 +1019,24 @@
           screen.style.display = 'flex';
           screen.style.opacity = '1';
         }
+        
+        // Sahte ön ilerleme: 0% → 40% (dosyalar yüklenene kadar oyalar)
+        this._fakeProgress = 0;
+        this._fakeInterval = setInterval(() => {
+          if (this._fakeProgress < 40) {
+            this._fakeProgress += 0.5; // Yavaşça ilerle
+            // Sadece gerçek yükleme yoksa sahteyi göster
+            const realPercent = this.total > 0 ? Math.round((this.loaded / this.total) * 100) : 0;
+            if (realPercent < this._fakeProgress) {
+              const bar = document.getElementById('loading-bar');
+              if (bar) bar.style.width = this._fakeProgress + '%';
+              const perc = document.getElementById('loading-percentage');
+              if (perc) perc.textContent = Math.round(this._fakeProgress) + '%';
+            }
+          } else {
+            clearInterval(this._fakeInterval);
+          }
+        }, 80); // 80ms × 80 adım = ~6 saniyede %40'a ulaşır
       },
       
       hide() {
