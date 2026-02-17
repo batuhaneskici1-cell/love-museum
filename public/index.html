@@ -1142,6 +1142,12 @@
           } else if (data.animation === 'dance4' && partnerDance4) {
             partnerDance4.setEffectiveWeight(1);
           }
+          
+          // Partner dans ediyorsa fbxModel Y'sini sabitle (yükselme + titreme yok)
+          if (data.animation && data.animation.startsWith('dance')) {
+            const partnerFbx = partnerGroup.userData.fbxModel;
+            if (partnerFbx) partnerFbx.position.y = 0;
+          }
         }
         
         // Make sure partner is visible
@@ -2509,17 +2515,7 @@
                   return true;
                 });
                 
-                // Dans sonrası Y sıfırla - mixer içinde kludge
-                danceClip.tracks.forEach(track => {
-                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
-                    // Y kanalını sıfırla
-                    if (track.values) {
-                      for (let vi = 1; vi < track.values.length; vi += 3) {
-                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
-                      }
-                    }
-                  }
-                });
+
                 
                 danceAction1 = animMixer.clipAction(danceClip);
                 danceAction1.setLoop(THREE.LoopRepeat);
@@ -2555,17 +2551,7 @@
                   return true;
                 });
                 
-                // Dans sonrası Y sıfırla - mixer içinde kludge
-                danceClip.tracks.forEach(track => {
-                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
-                    // Y kanalını sıfırla
-                    if (track.values) {
-                      for (let vi = 1; vi < track.values.length; vi += 3) {
-                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
-                      }
-                    }
-                  }
-                });
+
                 
                 danceAction2 = animMixer.clipAction(danceClip);
                 danceAction2.setLoop(THREE.LoopRepeat);
@@ -2601,17 +2587,7 @@
                   return true;
                 });
                 
-                // Dans sonrası Y sıfırla - mixer içinde kludge
-                danceClip.tracks.forEach(track => {
-                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
-                    // Y kanalını sıfırla
-                    if (track.values) {
-                      for (let vi = 1; vi < track.values.length; vi += 3) {
-                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
-                      }
-                    }
-                  }
-                });
+
                 
                 danceAction3 = animMixer.clipAction(danceClip);
                 danceAction3.setLoop(THREE.LoopRepeat);
@@ -2647,17 +2623,7 @@
                   return true;
                 });
                 
-                // Dans sonrası Y sıfırla - mixer içinde kludge
-                danceClip.tracks.forEach(track => {
-                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
-                    // Y kanalını sıfırla
-                    if (track.values) {
-                      for (let vi = 1; vi < track.values.length; vi += 3) {
-                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
-                      }
-                    }
-                  }
-                });
+
                 
                 danceAction4 = animMixer.clipAction(danceClip);
                 danceAction4.setLoop(THREE.LoopRepeat);
@@ -2989,15 +2955,10 @@
         fbxModel.position.set(0, 0, 0);
         fbxModel.rotation.y = 0;
         
-        // Root bone'u da sıfırla (Hips genelde)
+        // Root bone Y'sini sıfırla (dans yükselme + titreme çözümü)
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
-            const originalPos = child.userData.originalPosition;
-            if (!originalPos) {
-              child.userData.originalPosition = child.position.clone();
-            } else {
-              child.position.copy(originalPos);
-            }
+            child.position.y = 0;
           }
         });
       }
@@ -3008,12 +2969,7 @@
         
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
-            const originalPos = child.userData.originalPosition;
-            if (!originalPos) {
-              child.userData.originalPosition = child.position.clone();
-            } else {
-              child.position.copy(originalPos);
-            }
+            child.position.y = 0;
           }
         });
       }
@@ -3066,8 +3022,9 @@
         if (selectedDance > 0) {
           // Dans seçilmiş (1-4)
           targetAnimation = `dance${selectedDance}`;
-          // Dans ederken karakter yükselmesin - Y'yi sabitle
-          playerGroup.position.y = 0;
+          // Dans ederken FBX model yükselmesin - sadece fbxModel Y'sini sabitle
+          const fbxM = playerGroup.userData.fbxModel;
+          if (fbxM) fbxM.position.y = 0;
         } else if (isMoving && isRunning) {
           targetAnimation = 'run';
         } else if (isMoving) {
