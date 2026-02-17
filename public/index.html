@@ -1409,565 +1409,186 @@
       ground.receiveShadow = true;
       scene.add(ground);
 
-      // AĞAÇLAR - Daha fazla
-      for (let i = 0; i < 40; i++) {
-        const trunkHeight = 2 + Math.random() * 2;
-        const trunk = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.3, 0.4, trunkHeight, 8),
-          new THREE.MeshStandardMaterial({ color: 0x4a3520 })
+      // ========================================
+      // 🌿 KENNEY NATURE KIT - TASARLI DÜNYA
+      // ========================================
+      const gltfLoader = new THREE.GLTFLoader();
+      
+      function placeModel(name, x, y, z, scale, rotY) {
+        gltfLoader.load(`/models/${name}.glb`,
+          function(gltf) {
+            const obj = gltf.scene;
+            obj.position.set(x, y, z);
+            obj.scale.setScalar(scale || 1);
+            obj.rotation.y = rotY || 0;
+            obj.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            scene.add(obj);
+          }, undefined, () => {}
         );
-        
-        const leavesSize = 1.2 + Math.random() * 1;
-        const leaves = new THREE.Mesh(
-          new THREE.SphereGeometry(leavesSize, 8, 8),
-          new THREE.MeshStandardMaterial({ color: 0x2d5016 })
-        );
-        
-        // Rastgele pozisyon ama müze alanından uzak
-        let x = Math.random() * 120 - 60;
-        let z = Math.random() * 120 - 60;
-        
-        // Müze çevresinden uzak tut
-        if (Math.abs(x) < 25 && z > -35 && z < 10) {
-          x += x > 0 ? 30 : -30;
+      }
+      
+      function scatterModels(names, count, xRange, zRange, minScale, maxScale) {
+        for (let i = 0; i < count; i++) {
+          const name = names[Math.floor(Math.random() * names.length)];
+          let x = (Math.random() - 0.5) * xRange;
+          let z = (Math.random() - 0.5) * zRange;
+          if (Math.abs(x) < 24 && z > -40 && z < 14) x += x > 0 ? 28 : -28;
+          const s = minScale + Math.random() * (maxScale - minScale);
+          placeModel(name, x, 0, z, s, Math.random() * Math.PI * 2);
         }
-        
-        trunk.position.set(x, trunkHeight / 2, z);
-        leaves.position.set(x, trunkHeight + leavesSize * 0.8, z);
-        
-        trunk.castShadow = true;
-        trunk.receiveShadow = true;
-        leaves.castShadow = true;
-        
-        scene.add(trunk);
-        scene.add(leaves);
       }
 
-      // ÇİMEN KÜMELERİ - Zemine detay
-      for (let i = 0; i < 200; i++) {
-        const grassClump = new THREE.Group();
-        
-        // Birkaç çimen yaprağı
-        for (let j = 0; j < 5; j++) {
-          const blade = new THREE.Mesh(
-            new THREE.ConeGeometry(0.02, 0.15 + Math.random() * 0.1, 3),
-            new THREE.MeshStandardMaterial({ 
-              color: new THREE.Color().setHSL(0.25 + Math.random() * 0.1, 0.6, 0.3),
-              flatShading: true
-            })
-          );
-          blade.position.set(
-            (Math.random() - 0.5) * 0.1,
-            0.08,
-            (Math.random() - 0.5) * 0.1
-          );
-          blade.rotation.z = (Math.random() - 0.5) * 0.3;
-          grassClump.add(blade);
-        }
-        
-        let x = Math.random() * 100 - 50;
-        let z = Math.random() * 100 - 50;
-        
-        if (Math.abs(x) < 20 && z > -30 && z < 5) {
-          x += x > 0 ? 25 : -25;
-        }
-        
-        grassClump.position.set(x, 0, z);
-        scene.add(grassClump);
+      // ── AĞAÇLAR ──
+      const oakTrees = ['tree_oak', 'tree_detailed', 'tree_default'];
+      const pineTrees = ['tree_pineRoundA', 'tree_pineRoundB', 'tree_pineTallA'];
+      const smallTrees = ['tree_simple', 'tree_small', 'tree_fat', 'tree_tall'];
+      const allTrees = [...oakTrees, ...pineTrees];
+      
+      for (let i = 0; i < 18; i++) {
+        const name = allTrees[Math.floor(Math.random() * allTrees.length)];
+        placeModel(name, 50 + Math.random() * 14, 0, -70 + i * 8, 1.2 + Math.random() * 0.8, Math.random() * Math.PI * 2);
+      }
+      for (let i = 0; i < 18; i++) {
+        const name = oakTrees[Math.floor(Math.random() * oakTrees.length)];
+        placeModel(name, -46 - Math.random() * 12, 0, -70 + i * 8, 1.0 + Math.random() * 1.0, Math.random() * Math.PI * 2);
+      }
+      for (let i = 0; i < 14; i++) {
+        const name = allTrees[Math.floor(Math.random() * allTrees.length)];
+        placeModel(name, -52 + i * 8, 0, -65 - Math.random() * 10, 1.3 + Math.random() * 0.7, Math.random() * Math.PI * 2);
+      }
+      for (let i = 0; i < 10; i++) {
+        const name = smallTrees[Math.floor(Math.random() * smallTrees.length)];
+        const x = -40 + i * 9;
+        if (Math.abs(x) > 18) placeModel(name, x, 0, 52 + Math.random() * 14, 0.8 + Math.random() * 0.6, Math.random() * Math.PI * 2);
+      }
+      scatterModels(smallTrees, 12, 30, 50, 0.7, 1.2);
+
+      // ── ÇİÇEKLER ──
+      const flowers = ['flower_purpleA','flower_purpleB','flower_purpleC','flower_redA','flower_redB','flower_redC','flower_yellowA','flower_yellowB','flower_yellowC'];
+      scatterModels(flowers, 80, 80, 100, 0.8, 1.4);
+      for (let z = -35; z <= 10; z += 2.5) {
+        placeModel(flowers[Math.floor(Math.random() * flowers.length)], -16, 0, z, 1.0, 0);
+        placeModel(flowers[Math.floor(Math.random() * flowers.length)],  16, 0, z, 1.0, 0);
       }
 
-      // UZAK DAĞLAR - Ufuk çizgisi
-      for (let i = 0; i < 8; i++) {
-        const mountainHeight = 15 + Math.random() * 10;
-        const mountain = new THREE.Mesh(
-          new THREE.ConeGeometry(15 + Math.random() * 10, mountainHeight, 4),
-          new THREE.MeshStandardMaterial({ 
-            color: 0x5a6c57,
-            flatShading: true
-          })
-        );
-        
-        const angle = (i / 8) * Math.PI * 2;
-        const distance = 120;
-        
-        mountain.position.set(
-          Math.cos(angle) * distance,
-          mountainHeight / 2 - 2,
-          Math.sin(angle) * distance
-        );
-        mountain.rotation.y = Math.random() * Math.PI * 2;
-        mountain.receiveShadow = true;
-        
+      // ── ÇIMEN VE ÇALILAR ──
+      scatterModels(['grass','grass_large','grass_leafs','grass_leafsLarge'], 60, 90, 110, 0.6, 1.2);
+      scatterModels(['plant_bush','plant_bushDetailed','plant_bushLarge','plant_bushSmall'], 30, 80, 90, 0.7, 1.3);
+
+      // ── KAYALAR ──
+      for (let z = -55; z <= 55; z += 8) {
+        placeModel(['rock_smallA','rock_smallB','stone_smallA','stone_smallB'][Math.floor(Math.random()*4)], 30 + Math.random()*3, 0, z + Math.random()*4, 0.8 + Math.random()*0.5, Math.random()*Math.PI*2);
+      }
+      scatterModels(['rock_largeA','rock_largeB','rock_largeC','rock_largeD'], 8, 90, 100, 0.8, 1.5);
+      scatterModels(['rock_tallA','rock_tallB','rock_tallE'], 6, 90, 100, 0.7, 1.2);
+      scatterModels(['rock_smallA','rock_smallC','stone_smallA','stone_smallD'], 20, 80, 90, 0.5, 1.0);
+
+      // ── MANTARLAR ──
+      const mushrooms = ['mushroom_redGroup','mushroom_tanGroup','mushroom_red','mushroom_tan'];
+      for (let i = 0; i < 8; i++) placeModel(mushrooms[Math.floor(Math.random()*mushrooms.length)], -38-Math.random()*8, 0, -40+i*12, 0.8+Math.random()*0.5, Math.random()*Math.PI*2);
+      for (let i = 0; i < 6; i++) placeModel(mushrooms[Math.floor(Math.random()*mushrooms.length)], 50+Math.random()*8, 0, -30+i*14, 0.7+Math.random()*0.4, Math.random()*Math.PI*2);
+
+      // ── KÜTÜKLER ──
+      scatterModels(['stump_roundDetailed','stump_squareDetailed','stump_old'], 10, 80, 90, 0.7, 1.1);
+      scatterModels(['log','log_large','log_stack'], 8, 70, 80, 0.8, 1.2);
+
+      // ── NEHİR (tile tabanlı) ──
+      for (let z = -60; z <= 60; z += 4) placeModel('ground_riverStraight', 33, 0, z, 2.0, 0);
+      for (let i = 0; i < 8; i++) placeModel(i%2===0?'lily_large':'lily_small', 33+(Math.random()-0.5)*4, 0.05, -50+i*14, 0.8, Math.random()*Math.PI*2);
+
+      // ── KÖPRÜ ──
+      placeModel('bridge_wood', 33, 0, 0, 2.0, 0);
+
+      // ── TAŞLI YOL (Müze girişi) ──
+      for (let z = 10; z <= 28; z += 4) placeModel('ground_pathStraight', 0, 0, z, 2.0, 0);
+      for (let z = 10; z <= 28; z += 4) {
+        placeModel('path_stone', -4, 0, z, 1.0, 0);
+        placeModel('path_stone',  4, 0, z, 1.0, 0);
+      }
+
+      // ── HEYKELLER & SÜTUNLAR ──
+      placeModel('statue_column', -12, 0, -8, 1.5, 0);
+      placeModel('statue_column',  12, 0, -8, 1.5, 0);
+      placeModel('statue_column', -12, 0,  8, 1.5, 0);
+      placeModel('statue_column',  12, 0,  8, 1.5, 0);
+      placeModel('statue_obelisk', -20, 0, -25, 1.2, 0);
+      placeModel('statue_obelisk',  20, 0, -25, 1.2, 0);
+      placeModel('statue_ring', 0, 0, 20, 1.3, 0);
+
+      // ── KAMP ATEŞİ (sol romantik alan) ──
+      placeModel('campfire_stones', -25, 0, 20, 1.5, 0);
+      placeModel('log_large', -23, 0, 20, 1.0, Math.PI*0.1);
+      placeModel('log_large', -27, 0, 20, 1.0, Math.PI*0.9);
+      placeModel('stump_roundDetailed', -25, 0, 18, 0.8, 0);
+      placeModel('stump_roundDetailed', -25, 0, 22, 0.8, 0);
+      for (let i = 0; i < 10; i++) {
+        const a = (i/10)*Math.PI*2;
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], -25+Math.cos(a)*5, 0, 20+Math.sin(a)*5, 0.9, Math.random()*Math.PI*2);
+      }
+
+      // ── ÇİT (Müze bahçesi) ──
+      for (let x = -22; x <= -10; x += 2.5) placeModel('fence_simple', x, 0, 14, 1.0, 0);
+      for (let x =  10; x <=  22; x += 2.5) placeModel('fence_simple', x, 0, 14, 1.0, 0);
+      for (let z = -38; z <= 12; z += 2.5) {
+        placeModel('fence_simple', -23, 0, z, 1.0, Math.PI/2);
+        placeModel('fence_simple',  23, 0, z, 1.0, Math.PI/2);
+      }
+      placeModel('fence_gate', 0, 0, 14, 1.0, 0);
+      placeModel('sign', 0, 0, 22, 1.2, Math.PI);
+
+      // ── KÖPRÜ BAŞI KAYALARI ──
+      placeModel('rock_largeA', 29, 0, -4, 0.9, 0.3);
+      placeModel('rock_largeB', 29, 0,  4, 0.8, 1.1);
+      placeModel('stone_largeA', 37, 0, -4, 0.9, 0.5);
+      placeModel('stone_largeB', 37, 0,  4, 0.8, 1.2);
+
+      // ── UZAK DAĞLAR ──
+      for (let i = 0; i < 10; i++) {
+        const h = 18 + Math.random()*12;
+        const mountain = new THREE.Mesh(new THREE.ConeGeometry(18+Math.random()*12, h, 5), new THREE.MeshStandardMaterial({color:0x6a7c57,flatShading:true}));
+        const angle = (i/10)*Math.PI*2;
+        mountain.position.set(Math.cos(angle)*130, h/2-3, Math.sin(angle)*130);
         scene.add(mountain);
-        
-        // Kar tepesi
-        const snow = new THREE.Mesh(
-          new THREE.ConeGeometry(8, 6, 4),
-          new THREE.MeshStandardMaterial({ color: 0xffffff })
-        );
-        snow.position.copy(mountain.position);
-        snow.position.y += mountainHeight / 2;
+        const snow = new THREE.Mesh(new THREE.ConeGeometry(7,7,5), new THREE.MeshStandardMaterial({color:0xffffff}));
+        snow.position.copy(mountain.position); snow.position.y += h/2;
         scene.add(snow);
       }
 
-      // KAYALAR - Etrafta serpiştirilmiş
-      for (let i = 0; i < 30; i++) {
-        const rockSize = 0.3 + Math.random() * 0.5;
-        const rock = new THREE.Mesh(
-          new THREE.DodecahedronGeometry(rockSize, 0),
-          new THREE.MeshStandardMaterial({ 
-            color: 0x808080,
-            flatShading: true
-          })
-        );
-        
-        let x = Math.random() * 90 - 45;
-        let z = Math.random() * 90 - 45;
-        
-        if (Math.abs(x) < 20 && z > -30 && z < 5) {
-          x += x > 0 ? 25 : -25;
-        }
-        
-        rock.position.set(x, rockSize / 2, z);
-        rock.rotation.set(
-          Math.random() * Math.PI,
-          Math.random() * Math.PI,
-          Math.random() * Math.PI
-        );
-        rock.castShadow = true;
-        rock.receiveShadow = true;
-        scene.add(rock);
-      }
-
-      // BULUTLAR
+      // ── BULUTLAR ──
       for (let i = 0; i < 12; i++) {
         const cloud = new THREE.Group();
         for (let j = 0; j < 4; j++) {
-          const sphere = new THREE.Mesh(
-            new THREE.SphereGeometry(Math.random() * 1.5 + 1, 8, 8),
-            new THREE.MeshBasicMaterial({ 
-              color: 0xffffff, 
-              transparent: true, 
-              opacity: 0.7 
-            })
-          );
-          sphere.position.set(
-            Math.random() * 5 - 2.5, 
-            Math.random() * 1.5, 
-            Math.random() * 3 - 1.5
-          );
-          cloud.add(sphere);
+          const s = new THREE.Mesh(new THREE.SphereGeometry(1.2+Math.random()*1.5,7,7), new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.75}));
+          s.position.set(Math.random()*5-2.5, Math.random()*1.5, Math.random()*3-1.5);
+          cloud.add(s);
         }
-        cloud.position.set(
-          Math.random() * 150 - 75,
-          30 + Math.random() * 20,
-          Math.random() * 150 - 75
-        );
+        cloud.position.set(Math.random()*160-80, 32+Math.random()*20, Math.random()*160-80);
         scene.add(cloud);
       }
 
-      // ========================================
-      // 🎨 MODELS KLASÖRÜNDEKİ TÜM MODELLER OTOMATİK YÜKLEME
-      // ========================================
-      
-      if (typeof THREE.GLTFLoader !== 'undefined') {
-        const gltfLoader = new THREE.GLTFLoader();
-        
-        // Model listesi - models klasörüne koyduğun her şey
-        const treeModels = ['tree', 'tree1', 'tree2', 'tree3', 'oak', 'pine', 'palm'];
-        const flowerModels = ['flower', 'flower1', 'flower2', 'flower3', 'rose', 'tulip'];
-        const rockModels = ['rock', 'rock1', 'rock2', 'rock3', 'stone', 'boulder'];
-        const grassModels = ['grass', 'grass1', 'grass2', 'bush', 'shrub'];
-        const propModels = ['bench', 'lamp', 'fountain', 'fence', 'sign'];
-        
-        let loadedModels = {
-          trees: [],
-          flowers: [],
-          rocks: [],
-          grass: [],
-          props: []
-        };
-        
-        // AĞAÇLAR - Her birini dene
-        treeModels.forEach(name => {
-          gltfLoader.load(`/models/${name}.glb`,
-            function(gltf) {
-              console.log(`✅ ${name}.glb yüklendi!`);
-              loadedModels.trees.push(gltf.scene);
-              
-              // 5-10 ağaç yerleştir
-              const count = 5 + Math.floor(Math.random() * 5);
-              for (let i = 0; i < count; i++) {
-                const tree = gltf.scene.clone();
-                
-                let x = Math.random() * 80 - 40;
-                let z = Math.random() * 80 - 40;
-                if (Math.abs(x) < 22 && z > -30 && z < 10) {
-                  x += x > 0 ? 28 : -28;
-                }
-                
-                tree.position.set(x, 0, z);
-                tree.scale.setScalar(1 + Math.random() * 1.5);
-                tree.rotation.y = Math.random() * Math.PI * 2;
-                
-                tree.traverse((child) => {
-                  if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                  }
-                });
-                
-                scene.add(tree);
-              }
-            },
-            undefined,
-            function(error) {
-              // Hata verme, sadece yok de
-            }
-          );
-        });
-        
-        // ÇİÇEKLER
-        flowerModels.forEach(name => {
-          gltfLoader.load(`/models/${name}.glb`,
-            function(gltf) {
-              console.log(`✅ ${name}.glb yüklendi!`);
-              loadedModels.flowers.push(gltf.scene);
-              
-              // 15-20 çiçek
-              const count = 15 + Math.floor(Math.random() * 5);
-              for (let i = 0; i < count; i++) {
-                const flower = gltf.scene.clone();
-                
-                let x = Math.random() * 70 - 35;
-                let z = Math.random() * 70 - 35;
-                if (Math.abs(x) < 20 && z > -28 && z < 10) {
-                  x += x > 0 ? 25 : -25;
-                }
-                
-                flower.position.set(x, 0, z);
-                flower.scale.setScalar(0.3 + Math.random() * 0.5);
-                flower.rotation.y = Math.random() * Math.PI * 2;
-                
-                flower.traverse((child) => {
-                  if (child.isMesh) child.castShadow = true;
-                });
-                
-                scene.add(flower);
-              }
-            },
-            undefined,
-            function(error) {}
-          );
-        });
-        
-        // KAYALAR
-        rockModels.forEach(name => {
-          gltfLoader.load(`/models/${name}.glb`,
-            function(gltf) {
-              console.log(`✅ ${name}.glb yüklendi!`);
-              loadedModels.rocks.push(gltf.scene);
-              
-              // 8-12 kaya
-              const count = 8 + Math.floor(Math.random() * 4);
-              for (let i = 0; i < count; i++) {
-                const rock = gltf.scene.clone();
-                
-                let x = Math.random() * 80 - 40;
-                let z = Math.random() * 80 - 40;
-                if (Math.abs(x) < 20 && z > -30 && z < 10) {
-                  x += x > 0 ? 25 : -25;
-                }
-                
-                rock.position.set(x, 0, z);
-                rock.scale.setScalar(0.5 + Math.random() * 1);
-                rock.rotation.set(
-                  Math.random() * 0.5,
-                  Math.random() * Math.PI * 2,
-                  Math.random() * 0.5
-                );
-                
-                rock.traverse((child) => {
-                  if (child.isMesh) {
-                    child.castShadow = true;
-                    child.receiveShadow = true;
-                  }
-                });
-                
-                scene.add(rock);
-              }
-            },
-            undefined,
-            function(error) {}
-          );
-        });
-        
-        // ÇİMEN/ÇALı
-        grassModels.forEach(name => {
-          gltfLoader.load(`/models/${name}.glb`,
-            function(gltf) {
-              console.log(`✅ ${name}.glb yüklendi!`);
-              loadedModels.grass.push(gltf.scene);
-              
-              // 20-30 çimen
-              const count = 20 + Math.floor(Math.random() * 10);
-              for (let i = 0; i < count; i++) {
-                const grass = gltf.scene.clone();
-                
-                let x = Math.random() * 60 - 30;
-                let z = Math.random() * 60 - 30;
-                if (Math.abs(x) < 18 && z > -25 && z < 8) {
-                  x += x > 0 ? 22 : -22;
-                }
-                
-                grass.position.set(x, 0, z);
-                grass.scale.setScalar(0.4 + Math.random() * 0.4);
-                grass.rotation.y = Math.random() * Math.PI * 2;
-                
-                grass.traverse((child) => {
-                  if (child.isMesh) child.castShadow = true;
-                });
-                
-                scene.add(grass);
-              }
-            },
-            undefined,
-            function(error) {}
-          );
-        });
-        
-        // PROPLAR (Bank, Lamba, vb)
-        propModels.forEach(name => {
-          gltfLoader.load(`/models/${name}.glb`,
-            function(gltf) {
-              console.log(`✅ ${name}.glb yüklendi!`);
-              loadedModels.props.push(gltf.scene);
-              
-              // Prop'a göre yerleştir
-              if (name.includes('bench')) {
-                // 2 bank müze önüne
-                const bench1 = gltf.scene.clone();
-                bench1.position.set(-6, 0, 26);
-                bench1.rotation.y = Math.PI;
-                bench1.scale.setScalar(1.2);
-                scene.add(bench1);
-                
-                const bench2 = gltf.scene.clone();
-                bench2.position.set(6, 0, 26);
-                bench2.rotation.y = Math.PI;
-                bench2.scale.setScalar(1.2);
-                scene.add(bench2);
-              } else if (name.includes('lamp')) {
-                // 4 lamba müze çevresine
-                const positions = [{x:-10, z:23}, {x:10, z:23}, {x:-10, z:18}, {x:10, z:18}];
-                positions.forEach(pos => {
-                  const lamp = gltf.scene.clone();
-                  lamp.position.set(pos.x, 0, pos.z);
-                  lamp.scale.setScalar(1.5);
-                  scene.add(lamp);
-                });
-              } else {
-                // Diğerleri rastgele
-                for (let i = 0; i < 3; i++) {
-                  const prop = gltf.scene.clone();
-                  let x = Math.random() * 60 - 30;
-                  let z = Math.random() * 60 - 30;
-                  if (Math.abs(x) < 20 && z > -28 && z < 12) {
-                    x += x > 0 ? 25 : -25;
-                  }
-                  prop.position.set(x, 0, z);
-                  prop.rotation.y = Math.random() * Math.PI * 2;
-                  scene.add(prop);
-                }
-              }
-            },
-            undefined,
-            function(error) {}
-          );
-        });
-        
-        console.log('🎨 Model yükleyici aktif! Tüm .glb dosyaları otomatik yükleniyor...');
-        
-        // 3 saniye sonra özet ver
-        setTimeout(() => {
-          let total = Object.values(loadedModels).reduce((sum, arr) => sum + arr.length, 0);
-          console.log(`✅ TOPLAM ${total} farklı model yüklendi!`);
-          console.log('🌳 Ağaçlar:', loadedModels.trees.length);
-          console.log('🌸 Çiçekler:', loadedModels.flowers.length);
-          console.log('🪨 Kayalar:', loadedModels.rocks.length);
-          console.log('🌿 Çimen/Çalı:', loadedModels.grass.length);
-          console.log('🪑 Proplar:', loadedModels.props.length);
-        }, 3000);
-        
-      } else {
-        console.warn('⚠️ GLTFLoader bulunamadı!');
-      }
-      
-      // ========================================
-
-      // NEHİR - Müzenin sağ tarafında
-      const riverCurve = new THREE.QuadraticBezierCurve3(
-        new THREE.Vector3(35, 0.02, -60),
-        new THREE.Vector3(40, 0.02, 0),
-        new THREE.Vector3(35, 0.02, 60)
-      );
-      const riverPoints = riverCurve.getPoints(50);
-      const riverShape = new THREE.Shape();
-      
-      riverPoints.forEach((point, i) => {
-        const width = 6 + Math.sin(i * 0.2) * 1;
-        if (i === 0) {
-          riverShape.moveTo(point.x - width/2, point.z);
-        } else {
-          riverShape.lineTo(point.x - width/2, point.z);
-        }
-      });
-      
-      for (let i = riverPoints.length - 1; i >= 0; i--) {
-        const point = riverPoints[i];
-        const width = 6 + Math.sin(i * 0.2) * 1;
-        riverShape.lineTo(point.x + width/2, point.z);
-      }
-      
-      const riverGeo = new THREE.ShapeGeometry(riverShape);
-      const riverMat = new THREE.MeshStandardMaterial({ 
-        color: 0x4a90e2,
-        transparent: true,
-        opacity: 0.7,
-        metalness: 0.3,
-        roughness: 0.2
-      });
-      const river = new THREE.Mesh(riverGeo, riverMat);
-      river.rotation.x = -Math.PI / 2;
-      river.position.y = 0.02;
-      river.receiveShadow = true;
-      scene.add(river);
-
-      // KÖPRÜ - Nehir üzerinde
-      const bridgeGeo = new THREE.BoxGeometry(8, 0.3, 3);
-      const bridgeMat = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-      const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
-      bridge.position.set(40, 0.3, 0);
-      bridge.castShadow = true;
-      bridge.receiveShadow = true;
-      scene.add(bridge);
-
-      // Köprü난간ları
-      for (let side of [-1.5, 1.5]) {
-        for (let i = 0; i < 5; i++) {
-          const post = new THREE.Mesh(
-            new THREE.BoxGeometry(0.1, 0.8, 0.1),
-            bridgeMat
-          );
-          post.position.set(40 + (i - 2) * 1.8, 0.7, side);
-          post.castShadow = true;
-          scene.add(post);
-        }
-      }
-
-      // UÇAN KELEBEKLER
+      // ── KELEBEKLER ──
       window.butterflies = [];
-      for (let i = 0; i < 10; i++) {
-        const butterflyGroup = new THREE.Group();
-        
-        // Kanatlar
-        const wingGeo = new THREE.CircleGeometry(0.15, 6);
-        const wingMat = new THREE.MeshBasicMaterial({ 
-          color: new THREE.Color().setHSL(Math.random(), 0.7, 0.6),
-          side: THREE.DoubleSide
-        });
-        
-        const leftWing = new THREE.Mesh(wingGeo, wingMat);
-        leftWing.position.x = -0.1;
-        butterflyGroup.add(leftWing);
-        
-        const rightWing = new THREE.Mesh(wingGeo, wingMat);
-        rightWing.position.x = 0.1;
-        butterflyGroup.add(rightWing);
-        
-        butterflyGroup.position.set(
-          Math.random() * 60 - 30,
-          1 + Math.random() * 3,
-          Math.random() * 60 - 30
-        );
-        
-        butterflyGroup.userData = {
-          speed: 0.02 + Math.random() * 0.03,
-          wingSpeed: 5 + Math.random() * 5,
-          path: Math.random() * Math.PI * 2
-        };
-        
-        scene.add(butterflyGroup);
-        window.butterflies.push(butterflyGroup);
+      for (let i = 0; i < 12; i++) {
+        const bg = new THREE.Group();
+        const wMat = new THREE.MeshBasicMaterial({color: new THREE.Color().setHSL(Math.random(),0.8,0.65), side:THREE.DoubleSide});
+        const lw = new THREE.Mesh(new THREE.CircleGeometry(0.15,6), wMat); lw.position.x=-0.1; bg.add(lw);
+        const rw = new THREE.Mesh(new THREE.CircleGeometry(0.15,6), wMat); rw.position.x= 0.1; bg.add(rw);
+        bg.position.set(Math.random()*50-25, 1.5+Math.random()*2, Math.random()*50-25);
+        bg.userData = {speed:0.02+Math.random()*0.03, wingSpeed:5+Math.random()*5, path:Math.random()*Math.PI*2};
+        scene.add(bg); window.butterflies.push(bg);
       }
 
-      // UÇAN KUŞLAR
+      // ── KUŞLAR ──
       window.birds = [];
       for (let i = 0; i < 8; i++) {
-        const birdGroup = new THREE.Group();
-        
-        // Basit kuş şekli (V şeklinde)
-        const birdGeo = new THREE.ConeGeometry(0.1, 0.3, 4);
-        const birdMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
-        const body = new THREE.Mesh(birdGeo, birdMat);
-        body.rotation.x = Math.PI / 2;
-        birdGroup.add(body);
-        
-        birdGroup.position.set(
-          Math.random() * 100 - 50,
-          10 + Math.random() * 15,
-          Math.random() * 100 - 50
-        );
-        
-        birdGroup.userData = {
-          speed: 0.05 + Math.random() * 0.05,
-          angle: Math.random() * Math.PI * 2,
-          radius: 30 + Math.random() * 20
-        };
-        
-        scene.add(birdGroup);
-        window.birds.push(birdGroup);
+        const bg = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.3,4), new THREE.MeshBasicMaterial({color:0x444444}));
+        body.rotation.x = Math.PI/2; bg.add(body);
+        bg.position.set(Math.random()*100-50, 12+Math.random()*15, Math.random()*100-50);
+        bg.userData = {speed:0.05+Math.random()*0.05, angle:Math.random()*Math.PI*2, radius:30+Math.random()*20};
+        scene.add(bg); window.birds.push(bg);
       }
 
-      // ÇİÇEKLER - Çok daha fazla! 100 çiçek
-      for (let i = 0; i < 100; i++) {
-        const flowerGroup = new THREE.Group();
-        
-        // Çiçek taç yaprakları
-        const petalCount = 5 + Math.floor(Math.random() * 3);
-        const petalColor = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
-        
-        for (let j = 0; j < petalCount; j++) {
-          const petal = new THREE.Mesh(
-            new THREE.CircleGeometry(0.15, 8),
-            new THREE.MeshBasicMaterial({ color: petalColor, side: THREE.DoubleSide })
-          );
-          const angle = (j / petalCount) * Math.PI * 2;
-          petal.position.set(Math.cos(angle) * 0.15, 0, Math.sin(angle) * 0.15);
-          petal.rotation.x = -Math.PI / 2;
-          flowerGroup.add(petal);
-        }
-        
-        // Çiçek merkezi
-        const center = new THREE.Mesh(
-          new THREE.CircleGeometry(0.08, 8),
-          new THREE.MeshBasicMaterial({ color: 0xffeb3b, side: THREE.DoubleSide })
-        );
-        center.rotation.x = -Math.PI / 2;
-        center.position.y = 0.01;
-        flowerGroup.add(center);
-        
-        // Rastgele pozisyon ama yoldan uzak
-        let x = Math.random() * 80 - 40;
-        let z = Math.random() * 80 - 40;
-        
-        if (Math.abs(x) < 20 && z > -30 && z < 5) {
-          x += x > 0 ? 25 : -25;
-        }
-        
-        flowerGroup.position.set(x, 0.05, z);
-        scene.add(flowerGroup);
-      }
 
       // MÜZE BİNASI - GÜZELLEŞTİRİLMİŞ
       const museumGroup = new THREE.Group();
