@@ -2447,12 +2447,8 @@
             }
           });
           
-          // Bounding box ile zemine oturt
-          const bbox = new THREE.Box3().setFromObject(fbxModel);
-          const yOffset = -bbox.min.y; // Ayaklar y=0'da olsun
-          fbxModel.position.y = yOffset;
-          console.log('📐 Y offset:', yOffset.toFixed(3), '| BBox min:', bbox.min.y.toFixed(3), 'max:', bbox.max.y.toFixed(3));
-          fbxModel.userData.yOffset = yOffset; // Sonra kullanmak için sakla
+          // Bounding box gruba eklendikten sonra hesaplanacak (aşağıda)
+          fbxModel.userData.yOffset = 0; // Başlangıçta 0, sonra güncellenecek
           
           // Animation mixer oluştur
           const animMixer = new THREE.AnimationMixer(fbxModel);
@@ -2819,8 +2815,47 @@
           nameSprite.scale.set(0.8, 0.2, 1);
           fbxModel.add(nameSprite);
           
+          // Önce gruba ekle
           parentGroup.add(fbxModel);
           parentGroup.userData.fbxModel = fbxModel;
+          
+          // Mixamo karakterleri için Y offset hesapla
+          // SkinnedMesh'lerde bbox güvenilmez, skeleton'daki foot bone'ları kullanalım
+          let yOffset = 0;
+          fbxModel.traverse((child) => {
+            // Ayak bone'larını bul
+            if (child.isBone) {
+              const name = child.name.toLowerCase();
+              if (name.includes('foot') || name.includes('toe') || name.includes('ankle')) {
+                // Bu bone'un dünya pozisyonunu al
+                const worldPos = new THREE.Vector3();
+                child.getWorldPosition(worldPos);
+                if (worldPos.y < yOffset || yOffset === 0) {
+                  yOffset = worldPos.y;
+                }
+              }
+            }
+          });
+          
+          // Ayak bone bulunamazsa genel bbox dene
+          if (yOffset === 0) {
+            fbxModel.updateMatrixWorld(true);
+            const bbox = new THREE.Box3();
+            fbxModel.traverse(child => {
+              if (child.isMesh) {
+                bbox.expandByObject(child);
+              }
+            });
+            if (!bbox.isEmpty()) {
+              yOffset = bbox.min.y < 0 ? -bbox.min.y : 0;
+            }
+          } else {
+            yOffset = -yOffset; // Negatifse pozitife çevir
+          }
+          
+          fbxModel.position.y = yOffset;
+          fbxModel.userData.yOffset = yOffset;
+          console.log('📐 Final Y offset:', yOffset.toFixed(4));
         },
         function(xhr) {
           console.log((xhr.loaded / xhr.total * 100) + '% yüklendi');
