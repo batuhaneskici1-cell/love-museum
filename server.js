@@ -31,8 +31,8 @@ io.on('connection', (socket) => {
     rooms.set(roomCode, {
       host: socket.id,
       guest: null,
-      hostPosition: { x: 0, y: 0, z: 8 },
-      guestPosition: { x: 2, y: 0, z: 8 },
+      hostPosition: { x: 0, y: 0, z: 55 },
+      guestPosition: { x: 3, y: 0, z: 55 },
       hostRotation: 0,
       guestRotation: 0
     });
@@ -44,7 +44,7 @@ io.on('connection', (socket) => {
     socket.emit('room_created', { 
       roomCode, 
       isHost: true,
-      position: { x: 0, y: 0, z: 8 }
+      position: { x: 0, y: 0, z: 55 }
     });
 
     console.log(`Room created: ${roomCode} by ${socket.id}`);
@@ -70,7 +70,7 @@ io.on('connection', (socket) => {
       socket.emit('room_joined', { 
         roomCode, 
         isHost: false,
-        position: { x: 2, y: 0, z: 8 }
+        position: { x: 3, y: 0, z: 55 }
       });
       return;
     }
@@ -84,7 +84,7 @@ io.on('connection', (socket) => {
     socket.emit('room_joined', { 
       roomCode, 
       isHost: false,
-      position: { x: 2, y: 0, z: 8 }
+      position: { x: 3, y: 0, z: 55 }
     });
 
     // Tell host that guest joined
