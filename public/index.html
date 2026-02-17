@@ -3104,30 +3104,34 @@
         const pz = playerGroup.position.z;
         
         // ══════════════════════════════════════
-        // MÜZE BİNASI - TAMAMEN KAPALI (fiziksel giriş/çıkış YASAK)
-        // Sadece teleport ile giriş/çıkış yapılabilir (E tuşu + şifre)
+        // MÜZE BİNASI - BULLET-PROOF COLLISION
+        // En yakın duvara it sistemi - geçilemez
         // ══════════════════════════════════════
         
-        if (!window.insideMuseum) {
-          // DIŞARIDA: Müze binasına fiziksel giriş tamamen engel
-          // Ön cephe duvarı - hiç geçilemez
-          if (px > -14.5 && px < 14.5 && pz > 19.0 && pz < 22.0) {
-            playerGroup.position.z = 19.0;
+        // Müze bounding box (world space, biraz geniş tutuldu)
+        const musMinX = -15, musMaxX = 15;
+        const musMinZ = -22, musMaxZ = 22;
+        
+        const inMuseumBox = px > musMinX && px < musMaxX && pz > musMinZ && pz < musMaxZ;
+        
+        if (inMuseumBox && !window.insideMuseum) {
+          // Oyuncu dışarıdayken müze kutusuna girdi → en yakın duvara it
+          const dLeft  = px - musMinX;   // Sol duvara mesafe
+          const dRight = musMaxX - px;   // Sağ duvara mesafe
+          const dBack  = pz - musMinZ;   // Arka duvara mesafe
+          const dFront = musMaxZ - pz;   // Ön duvara mesafe (girişten)
+          
+          const minDist = Math.min(dLeft, dRight, dBack, dFront);
+          
+          if (minDist === dFront) {
+            playerGroup.position.z = musMaxZ; // Ön duvarın dışına
+          } else if (minDist === dBack) {
+            playerGroup.position.z = musMinZ; // Arka duvarın dışına
+          } else if (minDist === dLeft) {
+            playerGroup.position.x = musMinX; // Sol duvarın dışına
+          } else {
+            playerGroup.position.x = musMaxX; // Sağ duvarın dışına
           }
-          // Yan duvarlar (dışarıdan yan giriş engeli)
-          if (pz > -21 && pz < 21) {
-            if (px > 13.5 && px < 16) playerGroup.position.x = 13.5;
-            if (px < -13.5 && px > -16) playerGroup.position.x = -13.5;
-          }
-        } else {
-          // İÇERİDE: İç müze duvarları (insanlar geçemesin)
-          // Ön duvar - kapıdan bile yürüyerek çıkılamaz
-          if (pz > 17.5 && pz < 20) playerGroup.position.z = 17.5;
-          // Arka duvar
-          if (pz < -17.5) playerGroup.position.z = -17.5;
-          // Yan duvarlar
-          if (px > 12.5) playerGroup.position.x = 12.5;
-          if (px < -12.5) playerGroup.position.x = -12.5;
         }
         
         // Nehir geçilmesin
