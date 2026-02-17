@@ -1256,6 +1256,10 @@
       document.getElementById('password-popup').style.display = 'none';
       document.getElementById('password-input').value = '';
       document.getElementById('password-error').style.display = 'none';
+      window.popupOpen = false;
+      if (renderer && renderer.domElement) {
+        setTimeout(() => renderer.domElement.requestPointerLock(), 100);
+      }
     }
 
     // Global fonksiyonlar - HTML onclick için
@@ -1287,20 +1291,27 @@
 
     function enterMuseum() {
       window.insideMuseum = true;
-      window.museumDoor.userData.locked = false;
-      
-      // Müze içini göster
+      if (window.museumDoor) window.museumDoor.userData.locked = false;
       window.museumInterior.visible = true;
       
-      // Karakteri müzenin içine ışınla
-      playerGroup.position.set(0, 0, 15);
+      // Dış dünyayı tamamen gizle
+      scene.children.forEach(child => {
+        if (child !== window.museumInterior && child !== playerGroup && child !== partnerGroup) {
+          child.visible = false;
+        }
+      });
       
-      // Kamerayı ayarla
-      camera.position.set(0, 2, 18);
+      scene.background = new THREE.Color(0xfff0e8);
+      scene.fog = null;
       
-      // Dış ortamı gizle (performans için)
-      scene.background = new THREE.Color(0xffe6f0);
-      scene.fog = new THREE.Fog(0xffe6f0, 1, 50);
+      // Karakteri içeriye ışınla - kapıdan biraz içeride
+      playerGroup.position.set(0, 0, 14);
+      yaw = Math.PI; // İçeriye baksın
+      
+      window.popupOpen = false;
+      setTimeout(() => {
+        if (renderer && renderer.domElement) renderer.domElement.requestPointerLock();
+      }, 200);
       
       console.log('Müzeye hoş geldiniz!');
     }
@@ -1506,41 +1517,74 @@
         placeModel('path_stone',  4, 0, z, 1.0, 0);
       }
 
-      // ── HEYKELLER & SÜTUNLAR ──
-      placeModel('statue_column', -12, 0, -8, 1.5, 0);
-      placeModel('statue_column',  12, 0, -8, 1.5, 0);
-      placeModel('statue_column', -12, 0,  8, 1.5, 0);
-      placeModel('statue_column',  12, 0,  8, 1.5, 0);
-      placeModel('statue_obelisk', -20, 0, -25, 1.2, 0);
-      placeModel('statue_obelisk',  20, 0, -25, 1.2, 0);
-      placeModel('statue_ring', 0, 0, 20, 1.3, 0);
+      // ── MÜZENİN ÖNÜ: HEYKELLİ GİRİŞ ──
+      // Müze kapısı önünde anıtsal sütunlar
+      for (const [sx,sz] of [[-18,24],[18,24],[-18,34],[18,34]]) {
+        placeModel('statue_column', sx, 0, sz, 1.8, 0);
+      }
+      // Obelisk'ler - iki yanda
+      placeModel('statue_obelisk', -22, 0, 16, 1.5, 0);
+      placeModel('statue_obelisk',  22, 0, 16, 1.5, 0);
+      placeModel('statue_obelisk', -22, 0, 38, 1.3, 0);
+      placeModel('statue_obelisk',  22, 0, 38, 1.3, 0);
+      // Statue ring (müze kapısı önü)
+      placeModel('statue_ring', 0, 0, 40, 1.5, 0);
+      placeModel('statue_block', -16, 0, 28, 1.2, 0.4);
+      placeModel('statue_block',  16, 0, 28, 1.2, -0.4);
 
-      // ── KAMP ATEŞİ (sol romantik alan) ──
-      placeModel('campfire_stones', -25, 0, 20, 1.5, 0);
-      placeModel('log_large', -23, 0, 20, 1.0, Math.PI*0.1);
-      placeModel('log_large', -27, 0, 20, 1.0, Math.PI*0.9);
-      placeModel('stump_roundDetailed', -25, 0, 18, 0.8, 0);
-      placeModel('stump_roundDetailed', -25, 0, 22, 0.8, 0);
-      for (let i = 0; i < 10; i++) {
-        const a = (i/10)*Math.PI*2;
-        placeModel(flowers[Math.floor(Math.random()*flowers.length)], -25+Math.cos(a)*5, 0, 20+Math.sin(a)*5, 0.9, Math.random()*Math.PI*2);
+      // ── ÇİT (Müze bahçesi etrafı) ──
+      for (let x = -22; x <= -10; x += 2.5) placeModel('fence_simple', x, 0, 14, 1.1, 0);
+      for (let x =  10; x <=  22; x += 2.5) placeModel('fence_simple', x, 0, 14, 1.1, 0);
+      for (let z = -22; z <= 13; z += 2.5) {
+        placeModel('fence_simple', -23, 0, z, 1.1, Math.PI/2);
+        placeModel('fence_simple',  23, 0, z, 1.1, Math.PI/2);
+      }
+      placeModel('fence_gate', 0, 0, 14, 1.2, 0);
+      // Bahçe köşe direkleri
+      for (const [gx,gz] of [[-23,14],[23,14],[-23,-22],[23,-22]]) {
+        placeModel('statue_column', gx, 0, gz, 0.9, 0);
       }
 
-      // ── ÇİT (Müze bahçesi) ──
-      for (let x = -22; x <= -10; x += 2.5) placeModel('fence_simple', x, 0, 14, 1.0, 0);
-      for (let x =  10; x <=  22; x += 2.5) placeModel('fence_simple', x, 0, 14, 1.0, 0);
-      for (let z = -38; z <= 12; z += 2.5) {
-        placeModel('fence_simple', -23, 0, z, 1.0, Math.PI/2);
-        placeModel('fence_simple',  23, 0, z, 1.0, Math.PI/2);
+      // ── KAMP ATEŞİ (romantik alan) ──
+      placeModel('campfire_stones', -30, 0, 25, 1.6, 0);
+      placeModel('log_large', -28, 0, 25, 1.0, Math.PI*0.1);
+      placeModel('log_large', -32, 0, 25, 1.0, Math.PI*0.9);
+      placeModel('stump_roundDetailed', -30, 0, 23, 0.9, 0);
+      placeModel('stump_roundDetailed', -30, 0, 27, 0.9, 0);
+      placeModel('stump_roundDetailed', -28, 0, 27, 0.8, 0.5);
+      // Kamp etrafı çiçek çemberi
+      for (let i = 0; i < 12; i++) {
+        const a = (i/12)*Math.PI*2;
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], -30+Math.cos(a)*6, 0, 25+Math.sin(a)*6, 1.0, a);
       }
-      placeModel('fence_gate', 0, 0, 14, 1.0, 0);
-      placeModel('sign', 0, 0, 22, 1.2, Math.PI);
+      // Kamp yanında çadır
+      placeModel('tent_detailedOpen', -38, 0, 28, 1.2, Math.PI*0.8);
 
       // ── KÖPRÜ BAŞI KAYALARI ──
       placeModel('rock_largeA', 29, 0, -4, 0.9, 0.3);
       placeModel('rock_largeB', 29, 0,  4, 0.8, 1.1);
       placeModel('stone_largeA', 37, 0, -4, 0.9, 0.5);
       placeModel('stone_largeB', 37, 0,  4, 0.8, 1.2);
+      // Köprü yanı fenerler (stump ile temsil)
+      placeModel('stump_squareDetailed', 30, 0, -2, 0.7, 0);
+      placeModel('stump_squareDetailed', 30, 0,  2, 0.7, 0);
+      placeModel('stump_squareDetailed', 36, 0, -2, 0.7, 0);
+      placeModel('stump_squareDetailed', 36, 0,  2, 0.7, 0);
+      
+      // ── SAĞ TARAF: PİKNİK ALANI ──
+      placeModel('log_stack', 22, 0, 30, 1.1, 0.2);
+      placeModel('log_stack', 25, 0, 35, 1.0, 1.0);
+      placeModel('campfire_logs', 23, 0, 33, 1.2, 0);
+      for (let i = 0; i < 8; i++) {
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], 18+Math.random()*10, 0, 26+Math.random()*12, 1.0, Math.random()*Math.PI*2);
+      }
+      
+      // ── HAVUZ (geometrik - nehir kenarı) ──
+      placeModel('platform_stone', 22, 0, -15, 1.5, 0);
+      placeModel('pot_large', 20, 0, -13, 1.2, 0);
+      placeModel('pot_large', 24, 0, -13, 1.2, Math.PI*0.5);
+      placeModel('lily_large', 22, 0, -15, 1.0, 0);
+      placeModel('lily_small', 20, 0, -16, 0.9, Math.random()*Math.PI);
 
       // ── UZAK DAĞLAR ──
       for (let i = 0; i < 10; i++) {
@@ -1590,274 +1634,264 @@
       }
 
 
-      // MÜZE BİNASI - GÜZELLEŞTİRİLMİŞ
+      // ══════════════════════════════════════════
+      // MÜZE BİNASI - GERÇEKÇİ NEOKLASİK YAPI
+      // ══════════════════════════════════════════
       const museumGroup = new THREE.Group();
-      
-      // Ana duvarlar - daha detaylı
-      const wallMat = new THREE.MeshStandardMaterial({ 
-        color: 0xf5f0e8, 
-        roughness: 0.6
+      const mWallMat  = new THREE.MeshStandardMaterial({ color: 0xf0e8d8, roughness: 0.55 });
+      const mTrimMat  = new THREE.MeshStandardMaterial({ color: 0xddd0b0, roughness: 0.5 });
+      const mRoofMat  = new THREE.MeshStandardMaterial({ color: 0x6b4c2a, roughness: 0.7 });
+      const mDoorMat  = new THREE.MeshStandardMaterial({ color: 0x2e1a0a, roughness: 0.6 });
+      const mDFMat    = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.5 });
+      const mGoldMat  = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+      const mGlassMat = new THREE.MeshBasicMaterial({ color: 0xa8d8ea, transparent: true, opacity: 0.55 });
+      const mWinFMat  = new THREE.MeshStandardMaterial({ color: 0x4a3020, roughness: 0.5 });
+
+      // ── ANA GÖVDE ──
+      const mBody = new THREE.Mesh(new THREE.BoxGeometry(28, 8, 40), mWallMat);
+      mBody.position.set(0, 4, 0); mBody.castShadow = true; mBody.receiveShadow = true;
+      museumGroup.add(mBody);
+
+      // Alt taban basamakları (3 kademeli)
+      [[32,0.8,44],[30.5,0.5,42.5],[29.5,0.35,41.5]].forEach(([w,h,d], i) => {
+        const step = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), mTrimMat);
+        step.position.set(0, h/2 + i*0.05, 0); step.receiveShadow = true;
+        museumGroup.add(step);
       });
-      const mainWalls = new THREE.Mesh(
-        new THREE.BoxGeometry(28, 7, 38),
-        wallMat
-      );
-      mainWalls.position.y = 3.5;
-      mainWalls.castShadow = true;
-      mainWalls.receiveShadow = true;
-      museumGroup.add(mainWalls);
 
-      // PENCERELER - 6 tane
-      const windowMat = new THREE.MeshBasicMaterial({ 
-        color: 0x87ceeb,
-        transparent: true,
-        opacity: 0.7
+      // Üst korniz
+      const corn1 = new THREE.Mesh(new THREE.BoxGeometry(29.5, 0.6, 41.5), mTrimMat);
+      corn1.position.set(0, 8.35, 0); museumGroup.add(corn1);
+      const corn2 = new THREE.Mesh(new THREE.BoxGeometry(29, 0.35, 41), mTrimMat);
+      corn2.position.set(0, 8.7, 0); museumGroup.add(corn2);
+
+      // ── ÇATI (üçgen pediment) ──
+      const pedGeo = new THREE.CylinderGeometry(0.1, 18, 5, 4);
+      const pediment = new THREE.Mesh(pedGeo, mRoofMat);
+      pediment.position.set(0, 12, 0); pediment.rotation.y = Math.PI/4;
+      pediment.castShadow = true; museumGroup.add(pediment);
+      // Çatı tepe topu (altın)
+      const ridgeSphere = new THREE.Mesh(new THREE.SphereGeometry(0.55,10,10), mGoldMat);
+      ridgeSphere.position.set(0, 14.7, 0); museumGroup.add(ridgeSphere);
+      // Çatı köşe süsleri
+      [[-13,8.7,20],[13,8.7,20],[-13,8.7,-20],[13,8.7,-20]].forEach(([x,y,z]) => {
+        const acro = new THREE.Mesh(new THREE.ConeGeometry(0.3,1.2,8), mGoldMat);
+        acro.position.set(x,y,z); museumGroup.add(acro);
       });
-      
-      // Sol taraf pencereleri
-      for (let i = 0; i < 3; i++) {
-        const window1 = new THREE.Mesh(
-          new THREE.BoxGeometry(2, 2.5, 0.1),
-          windowMat
-        );
-        window1.position.set(-14.1, 4, -12 + i * 10);
-        museumGroup.add(window1);
-        
-        // Pencere çerçevesi
-        const frame = new THREE.Mesh(
-          new THREE.BoxGeometry(2.2, 2.7, 0.15),
-          new THREE.MeshStandardMaterial({ color: 0x8B4513 })
-        );
-        frame.position.copy(window1.position);
-        frame.position.x -= 0.02;
-        museumGroup.add(frame);
+
+      // ── SÜTUNLAR (8 adet - ön ve arka cephede) ──
+      const colMat = new THREE.MeshStandardMaterial({ color: 0xf5eedd, roughness: 0.5 });
+      const colXs = [-10,-6.5,-3,0,3,6.5,10]; // 7 ön sütun
+      for (const cx of colXs) {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.38,0.46,9,16), colMat);
+        col.position.set(cx, 4.5, 20.5); col.castShadow = true; museumGroup.add(col);
+        // Başlık
+        const cap = new THREE.Mesh(new THREE.BoxGeometry(1.1,0.5,1.1), mTrimMat);
+        cap.position.set(cx, 9.05, 20.5); museumGroup.add(cap);
+        // Taban
+        const base = new THREE.Mesh(new THREE.BoxGeometry(1.1,0.4,1.1), mTrimMat);
+        base.position.set(cx, 0.8, 20.5); museumGroup.add(base);
       }
-      
-      // Sağ taraf pencereleri
-      for (let i = 0; i < 3; i++) {
-        const window2 = new THREE.Mesh(
-          new THREE.BoxGeometry(2, 2.5, 0.1),
-          windowMat
-        );
-        window2.position.set(14.1, 4, -12 + i * 10);
-        museumGroup.add(window2);
-        
-        const frame = new THREE.Mesh(
-          new THREE.BoxGeometry(2.2, 2.7, 0.15),
-          new THREE.MeshStandardMaterial({ color: 0x8B4513 })
-        );
-        frame.position.copy(window2.position);
-        frame.position.x += 0.02;
-        museumGroup.add(frame);
+      // Sütun üstü kiriş
+      const entab = new THREE.Mesh(new THREE.BoxGeometry(23,1.1,1.2), mTrimMat);
+      entab.position.set(0, 9.55, 20.5); museumGroup.add(entab);
+      // Arka 4 köşe sütun
+      for (const cx of [-12,12]) {
+        const col = new THREE.Mesh(new THREE.CylinderGeometry(0.36,0.44,9,14), colMat);
+        col.position.set(cx, 4.5, -20.5); col.castShadow = true; museumGroup.add(col);
       }
 
-      // SÜTUNLAR - Giriş önünde
-      for (let side of [-2.5, 2.5]) {
-        const column = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.4, 0.5, 6, 12),
-          new THREE.MeshStandardMaterial({ color: 0xf5f0e8 })
-        );
-        column.position.set(side, 3, 19);
-        column.castShadow = true;
-        museumGroup.add(column);
-        
-        // Sütun başlığı
-        const capital = new THREE.Mesh(
-          new THREE.BoxGeometry(0.8, 0.4, 0.8),
-          new THREE.MeshStandardMaterial({ color: 0xe8dcc8 })
-        );
-        capital.position.set(side, 6.2, 19);
-        museumGroup.add(capital);
+      // ── PENCERELER (yanlarda 4×2) ──
+      const winZs = [-13, -4, 5, 14];
+      for (const wz of winZs) {
+        for (const side of [-1,1]) {
+          const wx = side * 14.15;
+          const win = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 3.2), mGlassMat);
+          win.position.set(wx, 4.5, wz);
+          win.rotation.y = side * Math.PI/2; museumGroup.add(win);
+          // Çerçeve yatay
+          for (const wy of [2.85, 6.15]) {
+            const bar = new THREE.Mesh(new THREE.BoxGeometry(0.15,0.15,2.6), mWinFMat);
+            bar.position.set(wx + side*0.07, wy, wz); museumGroup.add(bar);
+          }
+          // Çerçeve dikey
+          for (const dz of [wz-1.2, wz+1.2]) {
+            const bar = new THREE.Mesh(new THREE.BoxGeometry(0.15,3.5,0.12), mWinFMat);
+            bar.position.set(wx + side*0.07, 4.5, dz); museumGroup.add(bar);
+          }
+          // Orta yatay
+          const mid = new THREE.Mesh(new THREE.BoxGeometry(0.1,0.12,2.6), mWinFMat);
+          mid.position.set(wx + side*0.07, 4.5, wz); museumGroup.add(mid);
+        }
       }
 
-      // Çatı - daha görkemli
-      const roofMat = new THREE.MeshStandardMaterial({ color: 0x8b4513 });
-      const roof = new THREE.Mesh(
-        new THREE.ConeGeometry(20, 3, 4),
-        roofMat
-      );
-      roof.position.y = 8.5;
-      roof.rotation.y = Math.PI / 4;
-      roof.castShadow = true;
-      museumGroup.add(roof);
-      
-      // Çatı süslemesi - tepe
-      const roofTop = new THREE.Mesh(
-        new THREE.SphereGeometry(0.5, 8, 8),
-        new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8 })
-      );
-      roofTop.position.y = 10;
-      museumGroup.add(roofTop);
+      // ── ANA KAPI ──
+      // Kapı çerçevesi
+      const dfOuter = new THREE.Mesh(new THREE.BoxGeometry(6.5,7.2,0.45), mDFMat);
+      dfOuter.position.set(0, 3.5, 20.3); museumGroup.add(dfOuter);
+      // Sol kapı
+      const doorL = new THREE.Mesh(new THREE.BoxGeometry(3,6.5,0.22), mDoorMat);
+      doorL.position.set(-1.55, 3.3, 20.5);
+      doorL.castShadow = true;
+      doorL.userData = { type: 'museum_door', locked: true };
+      museumGroup.add(doorL); window.museumDoor = doorL;
+      // Sağ kapı
+      const doorR2 = new THREE.Mesh(new THREE.BoxGeometry(3,6.5,0.22), mDoorMat);
+      doorR2.position.set(1.55, 3.3, 20.5); doorR2.castShadow = true; museumGroup.add(doorR2);
+      // Kapı paneller (dekoratif çerçeveler)
+      for (const [dx,dz] of [[-1.55,20.52],[1.55,20.52]]) {
+        for (const dy of [1.5, 3.3, 5.1]) {
+          const pan = new THREE.Mesh(new THREE.BoxGeometry(2.5,1.4,0.08), new THREE.MeshStandardMaterial({color:0x3d2205}));
+          pan.position.set(dx, dy, dz); museumGroup.add(pan);
+        }
+      }
+      // Kapı kolları
+      for (const sx of [-0.4, 0.4]) {
+        const kn = new THREE.Mesh(new THREE.TorusGeometry(0.1,0.035,8,14), mGoldMat);
+        kn.position.set(sx, 3.3, 20.62); kn.rotation.y = Math.PI/2; museumGroup.add(kn);
+      }
+      // Üst ışık penceresi (fanlight)
+      const fan = new THREE.Mesh(new THREE.CircleGeometry(1.6,14), mGlassMat);
+      fan.position.set(0, 7.1, 20.52); fan.rotation.y = Math.PI/2; museumGroup.add(fan);
+      const fanRim = new THREE.Mesh(new THREE.TorusGeometry(1.6,0.1,8,14), mDFMat);
+      fanRim.position.set(0, 7.1, 20.52); fanRim.rotation.y = Math.PI/2; museumGroup.add(fanRim);
+      // Kapı alın levhası
+      const plaqC = document.createElement('canvas');
+      plaqC.width = 1024; plaqC.height = 220;
+      const plaqX = plaqC.getContext('2d');
+      const plaqG = plaqX.createLinearGradient(0,0,1024,0);
+      plaqG.addColorStop(0,'#3d2205'); plaqG.addColorStop(0.5,'#5a3510'); plaqG.addColorStop(1,'#3d2205');
+      plaqX.fillStyle = plaqG; plaqX.fillRect(0,0,1024,220);
+      plaqX.strokeStyle='#FFD700'; plaqX.lineWidth=8; plaqX.strokeRect(8,8,1008,204);
+      plaqX.fillStyle='#FFD700'; plaqX.font='bold 70px serif'; plaqX.textAlign='center';
+      plaqX.fillText('💕 Aşkımızın Müzesi 💕', 512, 135);
+      const plaqTex = new THREE.CanvasTexture(plaqC);
+      const plaq = new THREE.Mesh(new THREE.PlaneGeometry(11,2.4), new THREE.MeshBasicMaterial({map:plaqTex}));
+      plaq.position.set(0, 8.8, 20.55); plaq.rotation.y = Math.PI; museumGroup.add(plaq);
 
-      // Kapı çerçevesi - daha süslü
-      const doorFrameGeo = new THREE.BoxGeometry(3.4, 4.4, 0.4);
-      const doorFrameMat = new THREE.MeshStandardMaterial({ color: 0x5c4033 });
-      const doorFrame = new THREE.Mesh(doorFrameGeo, doorFrameMat);
-      doorFrame.position.set(0, 2.1, 19.15);
-      museumGroup.add(doorFrame);
-      
-      // Kapı üstü süsleme
-      const archTop = new THREE.Mesh(
-        new THREE.TorusGeometry(1.7, 0.15, 8, 16, Math.PI),
-        doorFrameMat
-      );
-      archTop.position.set(0, 4.3, 19.15);
-      archTop.rotation.x = Math.PI / 2;
-      museumGroup.add(archTop);
-
-      // KAPI (Kapalı ve Kilitli) - daha detaylı
-      const doorGeo = new THREE.BoxGeometry(3, 4, 0.2);
-      const doorMat = new THREE.MeshStandardMaterial({ color: 0x3d2817 });
-      const door = new THREE.Mesh(doorGeo, doorMat);
-      door.position.set(0, 2, 19.2);
-      door.castShadow = true;
-      door.userData = { type: 'museum_door', locked: true };
-      museumGroup.add(door);
-      window.museumDoor = door;
-      
-      // Kapı süslemeleri - çizgiler
-      for (let y of [1, 2, 3]) {
-        const line = new THREE.Mesh(
-          new THREE.BoxGeometry(2.6, 0.05, 0.05),
-          new THREE.MeshStandardMaterial({ color: 0x2a1a0a })
-        );
-        line.position.set(0, y, 19.25);
-        museumGroup.add(line);
+      // ── KIRMIZI HALI (ön basamaklar) ──
+      const mCarpet = new THREE.Mesh(new THREE.PlaneGeometry(5,14), new THREE.MeshStandardMaterial({color:0x8b0000,roughness:0.7}));
+      mCarpet.rotation.x=-Math.PI/2; mCarpet.position.set(0,0.05,27); museumGroup.add(mCarpet);
+      for (const s of [-2.6,2.6]) {
+        const brd = new THREE.Mesh(new THREE.PlaneGeometry(0.28,14), new THREE.MeshStandardMaterial({color:0xd4af37}));
+        brd.rotation.x=-Math.PI/2; brd.position.set(s,0.055,27); museumGroup.add(brd);
       }
 
-      // Kapı kolu - daha belirgin
-      const handleGeo = new THREE.TorusGeometry(0.08, 0.03, 8, 16);
-      const handleMat = new THREE.MeshStandardMaterial({ 
-        color: 0xffd700, 
-        metalness: 0.9,
-        roughness: 0.1
-      });
-      const handle = new THREE.Mesh(handleGeo, handleMat);
-      handle.position.set(1, 2, 19.3);
-      handle.rotation.y = Math.PI / 2;
-      museumGroup.add(handle);
-
-      // KIRMIZI HALI - daha uzun
-      const carpetGeo = new THREE.PlaneGeometry(4, 10);
-      const carpetMat = new THREE.MeshStandardMaterial({ color: 0x8b0000 });
-      const carpet = new THREE.Mesh(carpetGeo, carpetMat);
-      carpet.rotation.x = -Math.PI / 2;
-      carpet.position.set(0, 0.01, 24);
-      carpet.receiveShadow = true;
-      museumGroup.add(carpet);
-      
-      // Halı kenarları - altın
-      for (let side of [-2, 2]) {
-        const border = new THREE.Mesh(
-          new THREE.BoxGeometry(0.1, 0.05, 10),
-          new THREE.MeshStandardMaterial({ color: 0xffd700 })
-        );
-        border.position.set(side, 0.02, 24);
-        museumGroup.add(border);
+      // ── ÖN BAHÇESİ: Küçük çit + süs ──
+      for (const sx of [-13,13]) {
+        const pillar = new THREE.Mesh(new THREE.BoxGeometry(0.8,2.5,0.8), mTrimMat);
+        pillar.position.set(sx, 1.25, 35); museumGroup.add(pillar);
+        const pTop = new THREE.Mesh(new THREE.SphereGeometry(0.45,8,8), mGoldMat);
+        pTop.position.set(sx, 2.75, 35); museumGroup.add(pTop);
       }
-
-      // Tabela - daha büyük
-      const signCanvas = document.createElement('canvas');
-      signCanvas.width = 1024;
-      signCanvas.height = 256;
-      const signCtx = signCanvas.getContext('2d');
-      
-      // Tabela arkaplan - degrade
-      const gradient = signCtx.createLinearGradient(0, 0, 1024, 0);
-      gradient.addColorStop(0, '#8B4513');
-      gradient.addColorStop(0.5, '#A0522D');
-      gradient.addColorStop(1, '#8B4513');
-      signCtx.fillStyle = gradient;
-      signCtx.fillRect(0, 0, 1024, 256);
-      
-      // Altın çerçeve
-      signCtx.strokeStyle = '#FFD700';
-      signCtx.lineWidth = 10;
-      signCtx.strokeRect(10, 10, 1004, 236);
-      
-      signCtx.fillStyle = '#FFD700';
-      signCtx.font = 'bold 80px Arial';
-      signCtx.textAlign = 'center';
-      signCtx.fillText('💕 Aşkımızın Müzesi 💕', 512, 150);
-      
-      const signTexture = new THREE.CanvasTexture(signCanvas);
-      const signGeo = new THREE.PlaneGeometry(12, 3);
-      const signMat = new THREE.MeshBasicMaterial({ map: signTexture });
-      const sign = new THREE.Mesh(signGeo, signMat);
-      sign.position.set(0, 6.8, 19.3);
-      museumGroup.add(sign);
-      
-      // Tabela altına süsleme
-      const decoration = new THREE.Mesh(
-        new THREE.BoxGeometry(12.5, 0.3, 0.3),
-        new THREE.MeshStandardMaterial({ color: 0xffd700 })
-      );
-      decoration.position.set(0, 5.2, 19.3);
-      museumGroup.add(decoration);
 
       scene.add(museumGroup);
       window.museumGroup = museumGroup;
 
-      // MÜZENİN İÇİ (Başlangıçta görünmez, kapı açıldığında aktif)
+      // ══════════════════════════════════════════
+      // MÜZEİÇİ - TAM KAPALI, GERÇEKÇİ
+      // ══════════════════════════════════════════
       window.insideMuseum = false;
       window.museumInterior = new THREE.Group();
       window.museumInterior.visible = false;
 
-      // Walls
-      const wallMaterial = new THREE.MeshStandardMaterial({
-        color: 0xfff0f5,
-        roughness: 0.8
+      const iWallMat = new THREE.MeshStandardMaterial({ color: 0xfdf5ee, roughness: 0.7 });
+      const iFloorMat = new THREE.MeshStandardMaterial({ color: 0xe8d5c0, roughness: 0.4 });
+      const iTrimMat = new THREE.MeshStandardMaterial({ color: 0xd4b896, roughness: 0.5 });
+      const iDoorMat = new THREE.MeshStandardMaterial({ color: 0x3d2010, roughness: 0.6 });
+      const iGoldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.9, roughness: 0.1 });
+
+      // ── ZEMIN (çini desenli) ──
+      const iFloor = new THREE.Mesh(new THREE.PlaneGeometry(26, 36), iFloorMat);
+      iFloor.rotation.x = -Math.PI/2; iFloor.position.y = 0.01;
+      iFloor.receiveShadow = true; window.museumInterior.add(iFloor);
+      // Çini desen
+      const tileMat0 = new THREE.MeshStandardMaterial({color:0xfff5ee,roughness:0.3});
+      const tileMat1 = new THREE.MeshStandardMaterial({color:0xe8d0c0,roughness:0.3});
+      for (let tx = -12; tx <= 12; tx += 4) {
+        for (let tz = -16; tz <= 16; tz += 4) {
+          const tile = new THREE.Mesh(new THREE.PlaneGeometry(3.85,3.85), (Math.abs(tx+tz)/4)%2===0?tileMat0:tileMat1);
+          tile.rotation.x=-Math.PI/2; tile.position.set(tx,0.02,tz); tile.receiveShadow=true;
+          window.museumInterior.add(tile);
+        }
+      }
+
+      // ── SOL DUVAR ──
+      const iLeftWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 7, 36), iWallMat);
+      iLeftWall.position.set(-13, 3.5, 0); iLeftWall.receiveShadow=true; iLeftWall.castShadow=true;
+      window.museumInterior.add(iLeftWall);
+
+      // ── SAĞ DUVAR ──
+      const iRightWall = new THREE.Mesh(new THREE.BoxGeometry(0.4, 7, 36), iWallMat);
+      iRightWall.position.set(13, 3.5, 0); iRightWall.receiveShadow=true; iRightWall.castShadow=true;
+      window.museumInterior.add(iRightWall);
+
+      // ── ARKA DUVAR ──
+      const iBackWall = new THREE.Mesh(new THREE.BoxGeometry(26.4, 7, 0.4), iWallMat);
+      iBackWall.position.set(0, 3.5, -18); iBackWall.receiveShadow=true;
+      window.museumInterior.add(iBackWall);
+
+      // ── ÖN DUVAR (kapı boşluğu var) ──
+      // Sol panel
+      const iFrontL = new THREE.Mesh(new THREE.BoxGeometry(10.5, 7, 0.4), iWallMat);
+      iFrontL.position.set(-7.8, 3.5, 18); window.museumInterior.add(iFrontL);
+      // Sağ panel
+      const iFrontR = new THREE.Mesh(new THREE.BoxGeometry(10.5, 7, 0.4), iWallMat);
+      iFrontR.position.set(7.8, 3.5, 18); window.museumInterior.add(iFrontR);
+      // Üst panel (kapı üstü)
+      const iFrontTop = new THREE.Mesh(new THREE.BoxGeometry(26.4, 2.5, 0.4), iWallMat);
+      iFrontTop.position.set(0, 5.75, 18); window.museumInterior.add(iFrontTop);
+
+      // ── İÇ KAPI ──
+      const iDoorFrameM = new THREE.Mesh(new THREE.BoxGeometry(6.4,5.5,0.45), iDoorMat);
+      iDoorFrameM.position.set(0,2.7,18.02); window.museumInterior.add(iDoorFrameM);
+      const iDoorL = new THREE.Mesh(new THREE.BoxGeometry(2.85,5.1,0.2), new THREE.MeshStandardMaterial({color:0x4a2c0a}));
+      iDoorL.position.set(-1.5,2.55,18.15); window.museumInterior.add(iDoorL);
+      const iDoorRt = new THREE.Mesh(new THREE.BoxGeometry(2.85,5.1,0.2), new THREE.MeshStandardMaterial({color:0x4a2c0a}));
+      iDoorRt.position.set(1.5,2.55,18.15); window.museumInterior.add(iDoorRt);
+      // Kapı kolları
+      for (const s of [-0.35,0.35]) {
+        const kh = new THREE.Mesh(new THREE.TorusGeometry(0.09,0.03,8,12), iGoldMat);
+        kh.position.set(s,2.55,18.27); kh.rotation.y=Math.PI/2; window.museumInterior.add(kh);
+      }
+
+      // ── TAVAN ──
+      const iCeil = new THREE.Mesh(new THREE.PlaneGeometry(26,36), iWallMat);
+      iCeil.rotation.x=Math.PI/2; iCeil.position.y=7; window.museumInterior.add(iCeil);
+      // Tavan çerçeve çizgileri
+      for (const z of [-12,-4,4,12]) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(26,0.25,0.25), iTrimMat);
+        beam.position.set(0,6.85,z); window.museumInterior.add(beam);
+      }
+      for (const x of [-8,0,8]) {
+        const beam = new THREE.Mesh(new THREE.BoxGeometry(0.25,0.25,36), iTrimMat);
+        beam.position.set(x,6.85,0); window.museumInterior.add(beam);
+      }
+
+      // ── DUVAR SÜSÜ (alt bordür) ──
+      const mold = new THREE.MeshStandardMaterial({color:0xc8a882,roughness:0.5});
+      [-13.18,13.18].forEach(x=>{
+        const m = new THREE.Mesh(new THREE.BoxGeometry(0.18,0.3,36),mold);
+        m.position.set(x,1.15,0); window.museumInterior.add(m);
+      });
+      const moldF = new THREE.Mesh(new THREE.BoxGeometry(26.4,0.3,0.18),mold);
+      moldF.position.set(0,1.15,-18.18); window.museumInterior.add(moldF);
+
+      // ── TAVAN LAMBALARI ──
+      const lampMat = new THREE.MeshBasicMaterial({color:0xfffde7});
+      const lampPositions = [[-8,6.9,-10],[0,6.9,-10],[8,6.9,-10],[-8,6.9,2],[0,6.9,2],[8,6.9,2],[-8,6.9,12],[0,6.9,12],[8,6.9,12]];
+      lampPositions.forEach(([lx,ly,lz])=>{
+        const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.22,8,8), lampMat);
+        lamp.position.set(lx,ly,lz); window.museumInterior.add(lamp);
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.3,0.05,6,12), iTrimMat);
+        ring.position.set(lx,6.85,lz); ring.rotation.x=Math.PI/2; window.museumInterior.add(ring);
+        const pt = new THREE.PointLight(0xfffde7, 0.45, 10);
+        pt.position.set(lx,6.5,lz); window.museumInterior.add(pt);
       });
 
-      // MÜZENİN İÇİ - Duvarlar (görünmez başlar)
-      const interiorFloor = new THREE.Mesh(
-        new THREE.PlaneGeometry(26, 36),
-        new THREE.MeshStandardMaterial({ color: 0xf5e6e8, roughness: 0.3 })
-      );
-      interiorFloor.rotation.x = -Math.PI / 2;
-      interiorFloor.receiveShadow = true;
-      interiorFloor.position.y = 0.01;
-      window.museumInterior.add(interiorFloor);
-
-      const leftWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 36), wallMaterial);
-      leftWall.position.set(-13, 3, 0);
-      leftWall.receiveShadow = true;
-      leftWall.castShadow = true;
-      window.museumInterior.add(leftWall);
-
-      const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.3, 6, 36), wallMaterial);
-      rightWall.position.set(13, 3, 0);
-      rightWall.receiveShadow = true;
-      rightWall.castShadow = true;
-      window.museumInterior.add(rightWall);
-
-      const backWall = new THREE.Mesh(new THREE.BoxGeometry(26, 6, 0.3), wallMaterial);
-      backWall.position.set(0, 3, -18);
-      backWall.receiveShadow = true;
-      window.museumInterior.add(backWall);
-
-      const interiorCeiling = new THREE.Mesh(
-        new THREE.PlaneGeometry(26, 36),
-        wallMaterial
-      );
-      interiorCeiling.rotation.x = Math.PI / 2;
-      interiorCeiling.position.y = 6;
-      interiorCeiling.receiveShadow = true;
-      window.museumInterior.add(interiorCeiling);
-
-      // İç aydınlatma (BEYAZ IŞIK - renkleri bozmaz)
-      const interiorAmbient = new THREE.AmbientLight(0xffffff, 0.7); // Beyaz
-      window.museumInterior.add(interiorAmbient);
-
-      const interiorSpot1 = new THREE.SpotLight(0xffffff, 0.8, 20, Math.PI / 6); // Beyaz
-      interiorSpot1.position.set(-8, 5, 0);
-      interiorSpot1.castShadow = true;
-      window.museumInterior.add(interiorSpot1);
-
-      const interiorSpot2 = new THREE.SpotLight(0xffffff, 0.8, 20, Math.PI / 6); // Beyaz
-      interiorSpot2.position.set(8, 5, 0);
-      interiorSpot2.castShadow = true;
-      window.museumInterior.add(interiorSpot2);
+      // ── GENEL AYDINLATMA ──
+      const iAmb = new THREE.AmbientLight(0xffffff, 0.75);
+      window.museumInterior.add(iAmb);
 
       scene.add(window.museumInterior);
 
@@ -2497,14 +2531,14 @@
 
       window.addEventListener('keyup', (e) => {
         keys[e.key.toLowerCase()] = false;
+        if (e.key.toLowerCase() === 'e') window.eKeyUsed = false;
       });
 
       window.addEventListener('mousemove', (e) => {
+        if (window.popupOpen) return; // Popup açıkken kamera dönmesin
         if (document.pointerLockElement === renderer.domElement) {
           yaw -= e.movementX * 0.002;
-          pitch += e.movementY * 0.002; // Fare aşağı = kamera aşağı
-          
-          // Limit pitch
+          pitch += e.movementY * 0.002;
           pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch));
         } else {
           mouseX = (e.clientX / window.innerWidth) * 2 - 1;
@@ -2796,14 +2830,46 @@
         playerGroup.userData.onGround = true;
       }
 
-      // Boundaries - Dış ortam için geniş
-      if (!window.insideMuseum) {
+      // ── MÜZEİÇİ SINIRLAR ──
+      if (window.insideMuseum) {
+        playerGroup.position.x = Math.max(-12.5, Math.min(12.5, playerGroup.position.x));
+        playerGroup.position.z = Math.max(-17.5, Math.min(17.5, playerGroup.position.z));
+      } else {
+        // ── DIŞ SINIRLAR ──
         playerGroup.position.x = Math.max(-50, Math.min(50, playerGroup.position.x));
         playerGroup.position.z = Math.max(-50, Math.min(50, playerGroup.position.z));
-      } else {
-        // Müze içi
-        playerGroup.position.x = Math.max(-12, Math.min(12, playerGroup.position.x));
-        playerGroup.position.z = Math.max(-17, Math.min(17, playerGroup.position.z));
+        
+        const px = playerGroup.position.x;
+        const pz = playerGroup.position.z;
+        
+        // Müze binası - kapı boşluğu hariç geçilemesin
+        // Müze -19 ile +19 arasında (z), -14 ile +14 (x)
+        const inMuseumX = px > -14.5 && px < 14.5;
+        const atFrontWall = pz > 18.5 && pz < 20.5;
+        const atFrontDoor = Math.abs(px) < 2.5 && pz > 18.5;
+        
+        if (inMuseumX && !atFrontDoor) {
+          if (atFrontWall) {
+            playerGroup.position.z = 18.5; // Ön duvara çarp
+          }
+          if (pz < 19 && pz > -20) {
+            if (px > 13.5 && px < 14.5) playerGroup.position.x = 13.5; // Sağ
+            if (px < -13.5 && px > -14.5) playerGroup.position.x = -13.5; // Sol
+            if (pz < -18.5 && pz > -20) playerGroup.position.z = -18.5; // Arka
+          }
+        }
+        
+        // Nehir geçilmesin
+        if (px > 29 && px < 40 && pz > -65 && pz < 65) {
+          playerGroup.position.x = px < 34.5 ? 29 : 40;
+        }
+        
+        // Çit
+        if (pz > 12.5 && pz < 15.5 && Math.abs(px) < 23 && Math.abs(px) > 4) {
+          playerGroup.position.z = pz < 14 ? 12.5 : 15.5;
+        }
+        if (pz > -38 && pz < 14 && px > 22 && px < 24.5) playerGroup.position.x = 22;
+        if (pz > -38 && pz < 14 && px < -22 && px > -24.5) playerGroup.position.x = -22;
       }
 
       // GEOMETRİK KARAKTER ANİMASYONLARI (Sadece Batuhan için)
@@ -2882,16 +2948,12 @@
         
         if (distToDoor < 3) {
           nearDoor = true;
-          if (keys['e']) {
-            // Pointer lock'u kapat
-            if (document.pointerLockElement) {
-              document.exitPointerLock();
-            }
-            
+          if (keys['e'] && !window.eKeyUsed) {
+            window.eKeyUsed = true;
+            window.popupOpen = true;
+            if (document.pointerLockElement) document.exitPointerLock();
             document.getElementById('password-popup').style.display = 'flex';
-            setTimeout(() => {
-              document.getElementById('password-input').focus();
-            }, 100);
+            setTimeout(() => document.getElementById('password-input').focus(), 100);
           }
         }
       }
