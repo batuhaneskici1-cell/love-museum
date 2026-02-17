@@ -1349,14 +1349,15 @@
       
       scene = new THREE.Scene();
       
-      // GÜZEL SKYBOX - Gradient gökyüzü
+      // GÜZEL SKYBOX - Altın saatli yumuşak gökyüzü
       const skyGeo = new THREE.SphereGeometry(500, 32, 15);
       const skyMat = new THREE.ShaderMaterial({
         uniforms: {
-          topColor: { value: new THREE.Color(0x0077ff) },
-          bottomColor: { value: new THREE.Color(0xffffff) },
+          topColor:    { value: new THREE.Color(0x4488ff) },
+          midColor:    { value: new THREE.Color(0x88ccff) },
+          bottomColor: { value: new THREE.Color(0xffd6a0) },
           offset: { value: 33 },
-          exponent: { value: 0.6 }
+          exponent: { value: 0.5 }
         },
         vertexShader: `
           varying vec3 vWorldPosition;
@@ -1368,13 +1369,16 @@
         `,
         fragmentShader: `
           uniform vec3 topColor;
+          uniform vec3 midColor;
           uniform vec3 bottomColor;
           uniform float offset;
           uniform float exponent;
           varying vec3 vWorldPosition;
           void main() {
             float h = normalize(vWorldPosition + offset).y;
-            gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+            vec3 col = h > 0.1 ? mix(midColor, topColor, pow(max(h-0.1, 0.0)*1.11, exponent)) 
+                               : mix(bottomColor, midColor, max(h + 0.1, 0.0) * 10.0);
+            gl_FragColor = vec4(col, 1.0);
           }
         `,
         side: THREE.BackSide
@@ -1382,7 +1386,7 @@
       const sky = new THREE.Mesh(skyGeo, skyMat);
       scene.add(sky);
       
-      scene.fog = new THREE.Fog(0x87CEEB, 50, 200);
+      scene.fog = new THREE.FogExp2(0xaad4f0, 0.006); // Hafif sis efekti
 
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
       camera.position.set(0, 2, 15); // Dışarıda başla
@@ -1409,16 +1413,34 @@
       sunLight.shadow.camera.far = 200;
       scene.add(sunLight);
 
-      // YEŞİL ÇİMEN ZEMIN
-      const groundGeo = new THREE.PlaneGeometry(200, 200);
+      // ZENGİN ÇİMEN ZEMİN - çok katmanlı
+      const groundGeo = new THREE.PlaneGeometry(300, 300, 30, 30);
+      // Hafif renk varyasyonu için vertex colors
       const groundMat = new THREE.MeshStandardMaterial({ 
-        color: 0x5a8f3a,
-        roughness: 0.9
+        color: 0x4a7c2a,
+        roughness: 0.85,
+        metalness: 0.0
       });
       const ground = new THREE.Mesh(groundGeo, groundMat);
       ground.rotation.x = -Math.PI / 2;
       ground.receiveShadow = true;
       scene.add(ground);
+      
+      // Zemin renk katmanları (yol izleri gibi)
+      const darkPatch = new THREE.MeshStandardMaterial({ color: 0x3d6820, roughness: 0.9 });
+      const lightPatch = new THREE.MeshStandardMaterial({ color: 0x5d8f35, roughness: 0.8 });
+      // Rastgele zemin lekeleri
+      for (let i = 0; i < 40; i++) {
+        const w = 4 + Math.random() * 12;
+        const h = 3 + Math.random() * 9;
+        const patch = new THREE.Mesh(new THREE.PlaneGeometry(w, h), i%2===0 ? darkPatch : lightPatch);
+        patch.rotation.x = -Math.PI/2;
+        const angle = Math.random() * Math.PI;
+        const dist = 15 + Math.random() * 60;
+        patch.position.set(Math.cos(angle)*dist, 0.005, Math.sin(angle)*dist);
+        patch.rotation.z = Math.random() * Math.PI;
+        scene.add(patch);
+      }
 
       // ========================================
       // 🌿 KENNEY NATURE KIT - TASARLI DÜNYA
@@ -1474,17 +1496,24 @@
       }
       scatterModels(smallTrees, 12, 30, 50, 0.7, 1.2);
 
-      // ── ÇİÇEKLER ──
+      // ── ÇİÇEKLER - Bol ve renkli ──
       const flowers = ['flower_purpleA','flower_purpleB','flower_purpleC','flower_redA','flower_redB','flower_redC','flower_yellowA','flower_yellowB','flower_yellowC'];
-      scatterModels(flowers, 80, 80, 100, 0.8, 1.4);
-      for (let z = -35; z <= 10; z += 2.5) {
-        placeModel(flowers[Math.floor(Math.random() * flowers.length)], -16, 0, z, 1.0, 0);
-        placeModel(flowers[Math.floor(Math.random() * flowers.length)],  16, 0, z, 1.0, 0);
+      scatterModels(flowers, 120, 85, 110, 0.8, 1.6); // Daha fazla çiçek
+      // Müze yolu boyunca çiçek şeridi
+      for (let z = -38; z <= 30; z += 1.8) {
+        placeModel(flowers[Math.floor(Math.random() * flowers.length)], -16 + Math.random()*2, 0, z, 1.1, Math.random()*Math.PI);
+        placeModel(flowers[Math.floor(Math.random() * flowers.length)],  16 - Math.random()*2, 0, z, 1.1, Math.random()*Math.PI);
       }
+      // Nehir kenarı çiçek şeridi
+      for (let z = -55; z <= 55; z += 2.5) {
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], 27+Math.random()*2, 0, z+Math.random()*2, 1.0, Math.random()*Math.PI);
+      }
+      // Kamp etrafı yoğun çiçekler (güzel alan)
+      scatterModels(flowers, 25, 15, 15, 1.0, 1.5); // -30 bölgesi
 
-      // ── ÇIMEN VE ÇALILAR ──
-      scatterModels(['grass','grass_large','grass_leafs','grass_leafsLarge'], 60, 90, 110, 0.6, 1.2);
-      scatterModels(['plant_bush','plant_bushDetailed','plant_bushLarge','plant_bushSmall'], 30, 80, 90, 0.7, 1.3);
+      // ── ÇIMEN VE ÇALILAR - daha yoğun ──
+      scatterModels(['grass','grass_large','grass_leafs','grass_leafsLarge'], 100, 95, 120, 0.6, 1.4);
+      scatterModels(['plant_bush','plant_bushDetailed','plant_bushLarge','plant_bushSmall'], 50, 85, 95, 0.7, 1.5);
 
       // ── KAYALAR ──
       for (let z = -55; z <= 55; z += 8) {
@@ -1586,27 +1615,81 @@
       placeModel('lily_large', 22, 0, -15, 1.0, 0);
       placeModel('lily_small', 20, 0, -16, 0.9, Math.random()*Math.PI);
 
-      // ── UZAK DAĞLAR ──
-      for (let i = 0; i < 10; i++) {
-        const h = 18 + Math.random()*12;
-        const mountain = new THREE.Mesh(new THREE.ConeGeometry(18+Math.random()*12, h, 5), new THREE.MeshStandardMaterial({color:0x6a7c57,flatShading:true}));
-        const angle = (i/10)*Math.PI*2;
-        mountain.position.set(Math.cos(angle)*130, h/2-3, Math.sin(angle)*130);
+      // ── UZAK DAĞLAR - gerçekçi katmanlı ──
+      const mountainColors = [0x5a7040, 0x4a6030, 0x6a8050, 0x3d5228];
+      for (let i = 0; i < 16; i++) {
+        const h = 22 + Math.random()*18;
+        const r = 20 + Math.random()*16;
+        const sides = 5 + Math.floor(Math.random()*3);
+        const col = mountainColors[i%4];
+        const mountain = new THREE.Mesh(
+          new THREE.ConeGeometry(r, h, sides),
+          new THREE.MeshStandardMaterial({color:col, flatShading:true, roughness:0.9})
+        );
+        const angle = (i/16)*Math.PI*2 + Math.random()*0.4;
+        const dist = 110 + Math.random()*30;
+        mountain.position.set(Math.cos(angle)*dist, h/2-5, Math.sin(angle)*dist);
         scene.add(mountain);
-        const snow = new THREE.Mesh(new THREE.ConeGeometry(7,7,5), new THREE.MeshStandardMaterial({color:0xffffff}));
-        snow.position.copy(mountain.position); snow.position.y += h/2;
+        // Kar tepesi
+        const snowR = r * 0.28;
+        const snowH = h * 0.22;
+        const snow = new THREE.Mesh(
+          new THREE.ConeGeometry(snowR, snowH, sides),
+          new THREE.MeshStandardMaterial({color:0xf5f5f5, roughness:0.4})
+        );
+        snow.position.copy(mountain.position);
+        snow.position.y += h/2 - snowH*0.3;
         scene.add(snow);
+        // Dağ önü sis efekti (yoğun ağaç)
+        if (dist < 130 && Math.random() > 0.5) {
+          for (let t = 0; t < 4; t++) {
+            const treeNames = ['tree_pineRoundA','tree_pineTallA','tree_cone','tree_blocks'];
+            const tn = treeNames[Math.floor(Math.random()*treeNames.length)];
+            const tx = mountain.position.x + (Math.random()-0.5)*r*0.8;
+            const tz = mountain.position.z + (Math.random()-0.5)*r*0.8;
+            placeModel(tn, tx, 0, tz, 1.0+Math.random()*0.8, Math.random()*Math.PI*2);
+          }
+        }
       }
 
-      // ── BULUTLAR ──
-      for (let i = 0; i < 12; i++) {
+      // ── GÜNEŞ ──
+      const sunSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(4, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfffacd })
+      );
+      sunSphere.position.set(80, 90, -120);
+      scene.add(sunSphere);
+      // Güneş etrafı halo
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(6, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true, opacity: 0.25 })
+      );
+      halo.position.copy(sunSphere.position);
+      scene.add(halo);
+      
+      // ── BULUTLAR - Büyük ve katmanlı ──
+      for (let i = 0; i < 20; i++) {
         const cloud = new THREE.Group();
-        for (let j = 0; j < 4; j++) {
-          const s = new THREE.Mesh(new THREE.SphereGeometry(1.2+Math.random()*1.5,7,7), new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.75}));
-          s.position.set(Math.random()*5-2.5, Math.random()*1.5, Math.random()*3-1.5);
+        const cloudCount = 5 + Math.floor(Math.random() * 5);
+        for (let j = 0; j < cloudCount; j++) {
+          const r = 2.5 + Math.random() * 3.5;
+          const s = new THREE.Mesh(
+            new THREE.SphereGeometry(r, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.82 })
+          );
+          s.position.set(
+            (Math.random() - 0.5) * 14,
+            (Math.random() - 0.5) * 4,
+            (Math.random() - 0.5) * 8
+          );
           cloud.add(s);
         }
-        cloud.position.set(Math.random()*160-80, 32+Math.random()*20, Math.random()*160-80);
+        cloud.position.set(
+          Math.random() * 220 - 110,
+          28 + Math.random() * 25,
+          Math.random() * 220 - 110
+        );
+        cloud.scale.set(1.0 + Math.random() * 0.8, 0.7, 1.0 + Math.random() * 0.5);
         scene.add(cloud);
       }
 
@@ -2842,21 +2925,23 @@
         const px = playerGroup.position.x;
         const pz = playerGroup.position.z;
         
-        // Müze binası - kapı boşluğu hariç geçilemesin
-        // Müze -19 ile +19 arasında (z), -14 ile +14 (x)
+        // Müze binası - KİLİTLİYSE TAMAMEN GEÇİLEMEZ
         const inMuseumX = px > -14.5 && px < 14.5;
-        const atFrontWall = pz > 18.5 && pz < 20.5;
-        const atFrontDoor = Math.abs(px) < 2.5 && pz > 18.5;
+        const doorUnlocked = window.museumDoor && !window.museumDoor.userData.locked;
+        const atFrontDoor = Math.abs(px) < 3.5 && pz > 18.5 && doorUnlocked;
         
-        if (inMuseumX && !atFrontDoor) {
-          if (atFrontWall) {
-            playerGroup.position.z = 18.5; // Ön duvara çarp
+        if (inMuseumX) {
+          // Ön duvar - kapı kilitliyse hiç geçirme, açıksa kapı boşluğundan geçir
+          if (pz > 18.5 && pz < 21.5 && !atFrontDoor) {
+            playerGroup.position.z = 18.5;
           }
-          if (pz < 19 && pz > -20) {
-            if (px > 13.5 && px < 14.5) playerGroup.position.x = 13.5; // Sağ
-            if (px < -13.5 && px > -14.5) playerGroup.position.x = -13.5; // Sol
-            if (pz < -18.5 && pz > -20) playerGroup.position.z = -18.5; // Arka
+          // Yan duvarlar
+          if (pz < 19 && pz > -21) {
+            if (px > 13.5) playerGroup.position.x = 13.5;
+            if (px < -13.5) playerGroup.position.x = -13.5;
           }
+          // Arka duvar
+          if (pz < -19.5 && pz > -21) playerGroup.position.z = -19.5;
         }
         
         // Nehir geçilmesin
