@@ -931,17 +931,22 @@
       messages: [
         "Kalbine bağlanılıyor… Lütfen bekleyin 💘",
         "Birlikte sonsuz level'a geçiliyor…",
+        "Sarılma DLC'si yükleniyor…",
         "Sana aşırı düşme hatası algılandı! (çözüm aranmıyor)",
+        "Aşk XP'si kazanılıyor…",
         "Kıskanma modu kapatıldı. (belki 😏)",
+        "Gülüşün sisteme entegre edildi ✔",
         "Seni sevmek varsayılan ayar olarak seçildi ✔",
+        "Sevgi barı fullendi ❤️",
         "Seni görünce sistem ısınıyor…",
+        "Sana bakınca utangaçlık modu açılıyor…",
         "Kalp çarpıntısı güncellemesi indiriliyor…"
       ],
       currentMessageIndex: 0,
       
       init() {
         this.updateMessage();
-        setInterval(() => this.updateMessage(), 3000); // Her 3 saniyede bir mesaj değiştir
+        setInterval(() => this.updateMessage(), 4000); // Her 4 saniyede bir mesaj değiştir
       },
       
       updateMessage() {
@@ -2405,7 +2410,7 @@
           console.log(`✅ ${prefix}Walk.fbx yüklendi!`);
           if (isPlayer) loadingManager.completeItem(`${charName} - Yürüme`);
           fbxModel.scale.set(0.01, 0.01, 0.01);
-          fbxModel.position.y = 0;
+          fbxModel.position.y = 0; // Zemin seviyesi - animasyon root bone ile ayarlanır
           
           fbxModel.traverse((child) => {
             if (child.isMesh) {
@@ -2955,10 +2960,13 @@
         fbxModel.position.set(0, 0, 0);
         fbxModel.rotation.y = 0;
         
-        // Root bone Y'sini sıfırla (dans yükselme + titreme çözümü)
+        // Root bone X/Z sıfırla - Y'ye dokunma (yere batma önlenir)
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
-            child.position.y = 0;
+            child.position.x = 0;
+            child.position.z = 0;
+            // Dans modunda Y de sıfırla
+            if (selectedDance > 0) child.position.y = 0;
           }
         });
       }
@@ -2969,7 +2977,8 @@
         
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
-            child.position.y = 0;
+            child.position.x = 0;
+            child.position.z = 0;
           }
         });
       }
