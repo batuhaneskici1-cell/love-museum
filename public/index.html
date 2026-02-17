@@ -471,13 +471,8 @@
         font-weight: bold;
       ">0%</div>
       
-      <!-- Yüklenen şeyler -->
-      <div id="loading-items" style="
-        margin-top: 30px;
-        font-size: 16px;
-        opacity: 0.8;
-        max-width: 500px;
-      "></div>
+      <!-- Yüklenen şeyler - GİZLİ -->
+      <div id="loading-items" style="display:none;"></div>
     </div>
     
     <style>
@@ -934,18 +929,13 @@
       total: 0,
       loaded: 0,
       messages: [
-        "Seni çok seviyorum canım... 💕",
-        "Her gün seninle geçen bir hediye 🎁",
-        "Gözlerin yıldızlardan güzel ✨",
-        "Gülüşün dünyamı aydınlatıyor ☀️",
-        "Seninle her an özel 💖",
-        "Kalbim sadece senin için atıyor 💓",
-        "Sen benim en güzel maceramısın 🌈",
-        "Yanımdasın ya, başka ne isterim ki 💑",
-        "Seninle olmak cennet gibi 😇",
-        "Her anı seninle yaşamak istiyorum ⏰",
-        "Sen benim dünyadaki en büyük şansımsın 🍀",
-        "Seni sevmek en güzel his 💘"
+        "Kalbine bağlanılıyor… Lütfen bekleyin 💘",
+        "Birlikte sonsuz level'a geçiliyor…",
+        "Sana aşırı düşme hatası algılandı! (çözüm aranmıyor)",
+        "Kıskanma modu kapatıldı. (belki 😏)",
+        "Seni sevmek varsayılan ayar olarak seçildi ✔",
+        "Seni görünce sistem ısınıyor…",
+        "Kalp çarpıntısı güncellemesi indiriliyor…"
       ],
       currentMessageIndex: 0,
       
@@ -1024,8 +1014,7 @@
         this._fakeProgress = 0;
         this._fakeInterval = setInterval(() => {
           if (this._fakeProgress < 40) {
-            this._fakeProgress += 0.5; // Yavaşça ilerle
-            // Sadece gerçek yükleme yoksa sahteyi göster
+            this._fakeProgress += 0.15; // Çok yavaş ilerle
             const realPercent = this.total > 0 ? Math.round((this.loaded / this.total) * 100) : 0;
             if (realPercent < this._fakeProgress) {
               const bar = document.getElementById('loading-bar');
@@ -1036,7 +1025,7 @@
           } else {
             clearInterval(this._fakeInterval);
           }
-        }, 80); // 80ms × 80 adım = ~6 saniyede %40'a ulaşır
+        }, 120); // 120ms × ~267 adım = ~32 saniyede %40'a ulaşır
       },
       
       hide() {
@@ -2515,7 +2504,21 @@
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  return !track.name.includes('.position');
+                  // Tüm position track'lerini kaldır (yükselme sorunu)
+                  if (track.name.includes('.position')) return false;
+                  return true;
+                });
+                
+                // Dans sonrası Y sıfırla - mixer içinde kludge
+                danceClip.tracks.forEach(track => {
+                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
+                    // Y kanalını sıfırla
+                    if (track.values) {
+                      for (let vi = 1; vi < track.values.length; vi += 3) {
+                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
+                      }
+                    }
+                  }
                 });
                 
                 danceAction1 = animMixer.clipAction(danceClip);
@@ -2547,7 +2550,21 @@
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  return !track.name.includes('.position');
+                  // Tüm position track'lerini kaldır (yükselme sorunu)
+                  if (track.name.includes('.position')) return false;
+                  return true;
+                });
+                
+                // Dans sonrası Y sıfırla - mixer içinde kludge
+                danceClip.tracks.forEach(track => {
+                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
+                    // Y kanalını sıfırla
+                    if (track.values) {
+                      for (let vi = 1; vi < track.values.length; vi += 3) {
+                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
+                      }
+                    }
+                  }
                 });
                 
                 danceAction2 = animMixer.clipAction(danceClip);
@@ -2579,7 +2596,21 @@
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  return !track.name.includes('.position');
+                  // Tüm position track'lerini kaldır (yükselme sorunu)
+                  if (track.name.includes('.position')) return false;
+                  return true;
+                });
+                
+                // Dans sonrası Y sıfırla - mixer içinde kludge
+                danceClip.tracks.forEach(track => {
+                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
+                    // Y kanalını sıfırla
+                    if (track.values) {
+                      for (let vi = 1; vi < track.values.length; vi += 3) {
+                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
+                      }
+                    }
+                  }
                 });
                 
                 danceAction3 = animMixer.clipAction(danceClip);
@@ -2611,7 +2642,21 @@
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  return !track.name.includes('.position');
+                  // Tüm position track'lerini kaldır (yükselme sorunu)
+                  if (track.name.includes('.position')) return false;
+                  return true;
+                });
+                
+                // Dans sonrası Y sıfırla - mixer içinde kludge
+                danceClip.tracks.forEach(track => {
+                  if (track.name.toLowerCase().includes('hips') || track.name.toLowerCase().includes('root')) {
+                    // Y kanalını sıfırla
+                    if (track.values) {
+                      for (let vi = 1; vi < track.values.length; vi += 3) {
+                        track.values[vi] = track.values[1]; // İlk frame Y'sini koru (zemin)
+                      }
+                    }
+                  }
                 });
                 
                 danceAction4 = animMixer.clipAction(danceClip);
@@ -3021,6 +3066,8 @@
         if (selectedDance > 0) {
           // Dans seçilmiş (1-4)
           targetAnimation = `dance${selectedDance}`;
+          // Dans ederken karakter yükselmesin - Y'yi sabitle
+          playerGroup.position.y = 0;
         } else if (isMoving && isRunning) {
           targetAnimation = 'run';
         } else if (isMoving) {
