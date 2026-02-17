@@ -2925,23 +2925,43 @@
         const px = playerGroup.position.x;
         const pz = playerGroup.position.z;
         
-        // Müze binası - KİLİTLİYSE TAMAMEN GEÇİLEMEZ
-        const inMuseumX = px > -14.5 && px < 14.5;
+        // ══════════════════════════════════════
+        // MÜZE BİNASI - TAMAMEN KAPALI (şifre gerekmeden içeri girilemez)
+        // ══════════════════════════════════════
+        const museumMinX = -14.5;
+        const museumMaxX = 14.5;
+        const museumMinZ = -21;
+        const museumMaxZ = 21;
         const doorUnlocked = window.museumDoor && !window.museumDoor.userData.locked;
-        const atFrontDoor = Math.abs(px) < 3.5 && pz > 18.5 && doorUnlocked;
         
-        if (inMuseumX) {
-          // Ön duvar - kapı kilitliyse hiç geçirme, açıksa kapı boşluğundan geçir
-          if (pz > 18.5 && pz < 21.5 && !atFrontDoor) {
-            playerGroup.position.z = 18.5;
-          }
-          // Yan duvarlar
-          if (pz < 19 && pz > -21) {
+        // Oyuncu müze alanında mı?
+        const inMuseumArea = px > museumMinX && px < museumMaxX && pz > museumMinZ && pz < museumMaxZ;
+        
+        if (inMuseumArea) {
+          // Kapı bölgesi: x = -3.5 ile 3.5 arası, z > 18.5
+          const inDoorX = Math.abs(px) < 3.5;
+          const atFrontWall = pz > 18.5;
+          
+          // Eğer kapı kilitliyse, hiçbir şekilde geçiremez
+          if (!doorUnlocked) {
+            // ÖN DUVAR - tamamen kapalı
+            if (pz > 18.5) playerGroup.position.z = 18.5;
+            // YAN DUVARLAR
             if (px > 13.5) playerGroup.position.x = 13.5;
             if (px < -13.5) playerGroup.position.x = -13.5;
+            // ARKA DUVAR
+            if (pz < -19.5) playerGroup.position.z = -19.5;
+          } else {
+            // Kapı açıksa, sadece kapı boşluğundan geçebilir
+            if (atFrontWall && !inDoorX) {
+              playerGroup.position.z = 18.5;
+            }
+            // Yan duvarlar
+            if (px > 13.5) playerGroup.position.x = 13.5;
+            if (px < -13.5) playerGroup.position.x = -13.5;
+            // Arka duvar
+            if (pz < -19.5) playerGroup.position.z = -19.5;
           }
-          // Arka duvar
-          if (pz < -19.5 && pz > -21) playerGroup.position.z = -19.5;
         }
         
         // Nehir geçilmesin
