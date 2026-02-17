@@ -176,54 +176,57 @@
 
     .hud {
       position: absolute;
-      top: 20px;
+      top: 16px;
       left: 50%;
       transform: translateX(-50%);
-      background: linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(255, 182, 193, 0.95));
-      padding: 20px 40px;
-      border-radius: 20px;
+      background: rgba(255, 105, 180, 0.82);
+      padding: 8px 22px;
+      border-radius: 30px;
       text-align: center;
       color: white;
-      box-shadow: 0 10px 30px rgba(255, 105, 180, 0.4);
-      backdrop-filter: blur(10px);
+      box-shadow: 0 4px 15px rgba(255, 105, 180, 0.35);
+      backdrop-filter: blur(8px);
       z-index: 100;
+      white-space: nowrap;
     }
 
     .hud h1 {
-      margin: 0 0 10px 0;
-      font-size: 36px;
-      font-weight: bold;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
     }
 
     .hud p {
       margin: 0;
-      font-size: 18px;
+      font-size: 11px;
       opacity: 0.9;
     }
 
     .controls {
       position: absolute;
-      bottom: 30px;
-      left: 30px;
-      background: rgba(255, 255, 255, 0.95);
-      padding: 20px;
-      border-radius: 15px;
-      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-      max-width: 300px;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 10px 14px;
+      border-radius: 12px;
+      max-width: 190px;
       z-index: 100;
+      backdrop-filter: blur(6px);
     }
 
     .controls h3 {
-      margin: 0 0 15px 0;
-      color: #ff1493;
-      font-size: 20px;
+      margin: 0 0 6px 0;
+      color: #ff9ec8;
+      font-size: 12px;
+      letter-spacing: 0.5px;
     }
 
     .controls p {
-      margin: 5px 0;
-      color: #333;
-      font-size: 14px;
+      margin: 2px 0;
+      color: rgba(255,255,255,0.85);
+      font-size: 11px;
+      font-family: monospace;
     }
 
     .message-indicator {
@@ -1086,6 +1089,14 @@
       isHost = data.isHost;
       partnerConnected = true;
       
+      // Partner status güncelle (misafir odaya girince host zaten orada)
+      const statusEl = document.getElementById('partner-status');
+      if (statusEl) {
+        statusEl.textContent = 'Bağlandı 💑';
+        statusEl.classList.remove('waiting');
+        statusEl.classList.add('connected');
+      }
+      
       // Menu ekranını gizle, karakter seçim ekranını göster
       document.getElementById('menu-screen').style.display = 'none';
       document.getElementById('character-screen').style.display = 'flex';
@@ -1094,6 +1105,14 @@
     socket.on('partner_joined', () => {
       partnerConnected = true;
       console.log('💑 Partner katıldı!');
+      
+      // Partner status güncelle
+      const statusEl = document.getElementById('partner-status');
+      if (statusEl) {
+        statusEl.textContent = 'Bağlandı 💑';
+        statusEl.classList.remove('waiting');
+        statusEl.classList.add('connected');
+      }
       
       // Make partner visible immediately
       if (partnerGroup) {
@@ -1148,10 +1167,11 @@
             partnerDance4.setEffectiveWeight(1);
           }
           
-          // Partner dans ediyorsa fbxModel Y'sini sabitle (yükselme + titreme yok)
+          // Partner dans ediyorsa hem fbxModel hem partnerGroup Y'sini sıfırla
           if (data.animation && data.animation.startsWith('dance')) {
             const partnerFbx = partnerGroup.userData.fbxModel;
             if (partnerFbx) partnerFbx.position.y = 0;
+            partnerGroup.position.y = 0; // Partner da yerin altına girmesin!
           }
         }
         
@@ -2965,8 +2985,8 @@
           if (child.userData.isRootBone) {
             child.position.x = 0;
             child.position.z = 0;
-            // Dans modunda Y de sıfırla
-            if (selectedDance > 0) child.position.y = 0;
+            // Dans modunda Y de sıfırla (yerin altına girmeyi önle)
+            child.position.y = 0;
           }
         });
       }
@@ -2979,6 +2999,7 @@
           if (child.userData.isRootBone) {
             child.position.x = 0;
             child.position.z = 0;
+            child.position.y = 0; // Partner da yerin altına girmesin!
           }
         });
       }
@@ -3031,9 +3052,10 @@
         if (selectedDance > 0) {
           // Dans seçilmiş (1-4)
           targetAnimation = `dance${selectedDance}`;
-          // Dans ederken FBX model yükselmesin - sadece fbxModel Y'sini sabitle
+          // Dans ederken hem fbxModel hem playerGroup Y'sini sıfırla
           const fbxM = playerGroup.userData.fbxModel;
           if (fbxM) fbxM.position.y = 0;
+          playerGroup.position.y = 0; // Yerin altına girmeyi önle!
         } else if (isMoving && isRunning) {
           targetAnimation = 'run';
         } else if (isMoving) {
