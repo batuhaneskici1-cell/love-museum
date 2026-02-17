@@ -1167,11 +1167,9 @@
             partnerDance4.setEffectiveWeight(1);
           }
           
-          // Partner dans ediyorsa hem fbxModel hem partnerGroup Y'sini sıfırla
           if (data.animation && data.animation.startsWith('dance')) {
             const partnerFbx = partnerGroup.userData.fbxModel;
-            if (partnerFbx) partnerFbx.position.y = partnerFbx.userData.yOffset || 0;
-            partnerGroup.position.y = 0;
+            if (partnerFbx) { partnerFbx.position.x = 0; partnerFbx.position.z = 0; }
           }
         }
         
@@ -2430,7 +2428,8 @@
           console.log(`✅ ${prefix}Walk.fbx yüklendi!`);
           if (isPlayer) loadingManager.completeItem(`${charName} - Yürüme`);
           fbxModel.scale.set(0.01, 0.01, 0.01);
-          fbxModel.position.y = 0;
+          fbxModel.position.set(0, 0, 0);
+          fbxModel.userData.yOffset = 0;
           
           fbxModel.traverse((child) => {
             if (child.isMesh) {
@@ -2446,9 +2445,6 @@
               child.userData.isRootBone = true;
             }
           });
-          
-          // Bounding box gruba eklendikten sonra hesaplanacak (aşağıda)
-          fbxModel.userData.yOffset = 0; // Başlangıçta 0, sonra güncellenecek
           
           // Animation mixer oluştur
           const animMixer = new THREE.AnimationMixer(fbxModel);
@@ -2819,43 +2815,7 @@
           parentGroup.add(fbxModel);
           parentGroup.userData.fbxModel = fbxModel;
           
-          // Mixamo karakterleri için Y offset hesapla
-          // SkinnedMesh'lerde bbox güvenilmez, skeleton'daki foot bone'ları kullanalım
-          let yOffset = 0;
-          fbxModel.traverse((child) => {
-            // Ayak bone'larını bul
-            if (child.isBone) {
-              const name = child.name.toLowerCase();
-              if (name.includes('foot') || name.includes('toe') || name.includes('ankle')) {
-                // Bu bone'un dünya pozisyonunu al
-                const worldPos = new THREE.Vector3();
-                child.getWorldPosition(worldPos);
-                if (worldPos.y < yOffset || yOffset === 0) {
-                  yOffset = worldPos.y;
-                }
-              }
-            }
-          });
-          
-          // Ayak bone bulunamazsa genel bbox dene
-          if (yOffset === 0) {
-            fbxModel.updateMatrixWorld(true);
-            const bbox = new THREE.Box3();
-            fbxModel.traverse(child => {
-              if (child.isMesh) {
-                bbox.expandByObject(child);
-              }
-            });
-            if (!bbox.isEmpty()) {
-              yOffset = bbox.min.y < 0 ? -bbox.min.y : 0;
-            }
-          } else {
-            yOffset = -yOffset; // Negatifse pozitife çevir
-          }
-          
-          fbxModel.position.y = yOffset;
-          fbxModel.userData.yOffset = yOffset;
-          console.log('📐 Final Y offset:', yOffset.toFixed(4));
+          console.log('✅ FBX modeli gruba eklendi, animasyonlar Y yüksekliğini ayarlayacak');
         },
         function(xhr) {
           console.log((xhr.loaded / xhr.total * 100) + '% yüklendi');
@@ -3007,32 +2967,32 @@
       if (mixer) mixer.update(delta);
       if (partnerMixer) partnerMixer.update(delta);
       
-      // ROOT MOTION TAMAMEN DEVRE DIŞI - FBX model yOffset ile zeminde
+      // ROOT MOTION: Sadece X ve Z sıfırla, Y'ye ASLA dokunma!
+      // Y'yi sıfırlarsak kalça yere iner, ayaklar yeraltına girer!
       if (playerGroup.userData.fbxModel) {
         const fbxModel = playerGroup.userData.fbxModel;
-        const yOff = fbxModel.userData.yOffset || 0;
-        fbxModel.position.set(0, yOff, 0); // yOffset ile zemine oturt
-        fbxModel.rotation.y = 0;
+        fbxModel.position.x = 0;
+        fbxModel.position.z = 0;
+        // fbxModel.position.y → DOKUNMA! Animasyon doğal yüksekliği ayarlar
         
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
-            child.position.x = 0;
-            child.position.z = 0;
-            child.position.y = 0;
+            child.position.x = 0; // Sadece X sıfırla (yan kayma yok)
+            child.position.z = 0; // Sadece Z sıfırla (ileri kayma yok)
+            // child.position.y → DOKUNMA! Kalçanın doğal yüksekliği korunsun
           }
         });
       }
       if (partnerGroup && partnerGroup.userData.fbxModel) {
         const fbxModel = partnerGroup.userData.fbxModel;
-        const yOff = fbxModel.userData.yOffset || 0;
-        fbxModel.position.set(0, yOff, 0); // yOffset ile zemine oturt
-        fbxModel.rotation.y = 0;
+        fbxModel.position.x = 0;
+        fbxModel.position.z = 0;
         
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
             child.position.x = 0;
             child.position.z = 0;
-            child.position.y = 0;
+            // child.position.y → DOKUNMA!
           }
         });
       }
@@ -3085,10 +3045,10 @@
         if (selectedDance > 0) {
           // Dans seçilmiş (1-4)
           targetAnimation = `dance${selectedDance}`;
-          // Dans ederken hem fbxModel hem playerGroup Y'sini sıfırla
+          // Dans ederken sadece X/Z sıfırla, Y doğal kalsın
           const fbxM = playerGroup.userData.fbxModel;
-          if (fbxM) fbxM.position.y = fbxM.userData.yOffset || 0;
-          playerGroup.position.y = 0; // Yerin altına girmeyi önle!
+          if (fbxM) { fbxM.position.x = 0; fbxM.position.z = 0; }
+          // playerGroup.position.y → dokunma
         } else if (isMoving && isRunning) {
           targetAnimation = 'run';
         } else if (isMoving) {
