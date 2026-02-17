@@ -1170,8 +1170,8 @@
           // Partner dans ediyorsa hem fbxModel hem partnerGroup Y'sini sıfırla
           if (data.animation && data.animation.startsWith('dance')) {
             const partnerFbx = partnerGroup.userData.fbxModel;
-            if (partnerFbx) partnerFbx.position.y = 0;
-            partnerGroup.position.y = 0; // Partner da yerin altına girmesin!
+            if (partnerFbx) partnerFbx.position.y = partnerFbx.userData.yOffset || 0;
+            partnerGroup.position.y = 0;
           }
         }
         
@@ -2430,20 +2430,12 @@
           console.log(`✅ ${prefix}Walk.fbx yüklendi!`);
           if (isPlayer) loadingManager.completeItem(`${charName} - Yürüme`);
           fbxModel.scale.set(0.01, 0.01, 0.01);
-          fbxModel.position.y = 0; // Zemin seviyesi - animasyon root bone ile ayarlanır
+          fbxModel.position.y = 0;
           
           fbxModel.traverse((child) => {
             if (child.isMesh) {
               child.castShadow = true;
               child.receiveShadow = true;
-              
-              // Debug: Materyal bilgilerini göster
-              if (child.material) {
-                console.log('📦 Mesh:', child.name, 'Materyal:', child.material.type, 'Renk:', child.material.color);
-              }
-              
-              // ORİJİNAL MATERYALLERİ KORU! (Ten rengi, kıyafet vs.)
-              // Hiçbir renk değişikliği yapma!
             }
             
             // Root bone'u bul ve kilitle
@@ -2455,12 +2447,18 @@
             }
           });
           
+          // Bounding box ile zemine oturt
+          const bbox = new THREE.Box3().setFromObject(fbxModel);
+          const yOffset = -bbox.min.y; // Ayaklar y=0'da olsun
+          fbxModel.position.y = yOffset;
+          console.log('📐 Y offset:', yOffset.toFixed(3), '| BBox min:', bbox.min.y.toFixed(3), 'max:', bbox.max.y.toFixed(3));
+          fbxModel.userData.yOffset = yOffset; // Sonra kullanmak için sakla
+          
           // Animation mixer oluştur
           const animMixer = new THREE.AnimationMixer(fbxModel);
           
-          // ROOT MOTION'I DEVRE DIŞI BIRAK
-          // FBX içindeki hareket offset'ini yok say
-          fbxModel.position.set(0, 0, 0);
+          // Root motion track'lerini filtrele (X/Z pozisyon hareketi yok)
+          // Y pozisyonu yOffset ile sabitlenecek
           
           // YÜRÜME animasyonunu sakla
           let walkAction, runAction, danceAction, idleAction;
@@ -2974,32 +2972,32 @@
       if (mixer) mixer.update(delta);
       if (partnerMixer) partnerMixer.update(delta);
       
-      // ROOT MOTION TAMAMEN DEVRE DIŞI - FBX model'i her zaman 0,0,0'da
+      // ROOT MOTION TAMAMEN DEVRE DIŞI - FBX model yOffset ile zeminde
       if (playerGroup.userData.fbxModel) {
         const fbxModel = playerGroup.userData.fbxModel;
-        fbxModel.position.set(0, 0, 0);
+        const yOff = fbxModel.userData.yOffset || 0;
+        fbxModel.position.set(0, yOff, 0); // yOffset ile zemine oturt
         fbxModel.rotation.y = 0;
         
-        // Root bone X/Z sıfırla - Y'ye dokunma (yere batma önlenir)
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
             child.position.x = 0;
             child.position.z = 0;
-            // Dans modunda Y de sıfırla (yerin altına girmeyi önle)
             child.position.y = 0;
           }
         });
       }
       if (partnerGroup && partnerGroup.userData.fbxModel) {
         const fbxModel = partnerGroup.userData.fbxModel;
-        fbxModel.position.set(0, 0, 0);
+        const yOff = fbxModel.userData.yOffset || 0;
+        fbxModel.position.set(0, yOff, 0); // yOffset ile zemine oturt
         fbxModel.rotation.y = 0;
         
         fbxModel.traverse((child) => {
           if (child.userData.isRootBone) {
             child.position.x = 0;
             child.position.z = 0;
-            child.position.y = 0; // Partner da yerin altına girmesin!
+            child.position.y = 0;
           }
         });
       }
@@ -3054,7 +3052,7 @@
           targetAnimation = `dance${selectedDance}`;
           // Dans ederken hem fbxModel hem playerGroup Y'sini sıfırla
           const fbxM = playerGroup.userData.fbxModel;
-          if (fbxM) fbxM.position.y = 0;
+          if (fbxM) fbxM.position.y = fbxM.userData.yOffset || 0;
           playerGroup.position.y = 0; // Yerin altına girmeyi önle!
         } else if (isMoving && isRunning) {
           targetAnimation = 'run';
