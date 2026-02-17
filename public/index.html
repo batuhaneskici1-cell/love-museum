@@ -1104,19 +1104,11 @@
     socket.on('room_joined', (data) => {
       roomCode = data.roomCode;
       isHost = data.isHost;
-      partnerConnected = true; // Katılan kişi de partner'ı görebilmeli!
+      partnerConnected = true;
       
-      // Menu ekranını gizle
+      // Menu ekranını gizle, karakter seçim ekranını göster
       document.getElementById('menu-screen').style.display = 'none';
-      
-      // Karakter seçim ekranını göster
-      const charScreen = document.getElementById('character-screen');
-      charScreen.style.display = 'flex';
-      document.getElementById('character-screen').style.left = '0';
-      document.getElementById('character-screen').style.width = '100vw';
-      document.getElementById('character-screen').style.height = '100vh';
-      document.getElementById('character-screen').style.background = 'linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(255, 182, 193, 0.95))';
-      document.getElementById('character-screen').style.zIndex = '1000';
+      document.getElementById('character-screen').style.display = 'flex';
     });
 
     socket.on('partner_joined', () => {
@@ -1132,8 +1124,6 @@
       if (!selectedCharacter) {
         document.getElementById('menu-screen').style.display = 'none';
         document.getElementById('character-screen').style.display = 'flex';
-      }
-        document.getElementById('character-screen').style.zIndex = '1000';
       }
     });
 
