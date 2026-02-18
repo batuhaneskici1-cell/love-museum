@@ -3105,6 +3105,26 @@
       });
     }
 
+    function createMessages() {
+      const messageData = [
+        { x: -4, z: -15, text: "Seninle geçirdiğim her an, hayatımın en güzel anı ❤️" },
+        { x: 10, z: -10, text: "İlk buluşmamızı hatırlıyor musun? Kalbim hâlâ aynı hızla atıyor 💕" },
+        { x: -5, z: -5, text: "Gülüşün benim en sevdiğim ses 🌹" },
+        { x: 5, z: 0, text: "Seninle her gün Sevgililer Günü 💝" },
+        { x: 0, z: 5, text: "Seni seviyorum, bugün ve her zaman 💖" }
+      ];
+      messageData.forEach((msgData, index) => {
+        const envelopeGeo = new THREE.BoxGeometry(0.3, 0.2, 0.15);
+        const envelopeMat = new THREE.MeshStandardMaterial({ color: 0xffb6c1, emissive: 0xff69b4, emissiveIntensity: 0.3 });
+        const envelope = new THREE.Mesh(envelopeGeo, envelopeMat);
+        envelope.position.set(msgData.x, 0.15, msgData.z);
+        envelope.castShadow = true;
+        envelope.userData = { type: 'message', text: msgData.text, index, baseY: 0.15 };
+        scene.add(envelope);
+        messages.push(envelope);
+      });
+    }
+
     function createFloatingHearts() {
       for (let i = 0; i < 15; i++) {
         const heartShape = new THREE.Shape();
