@@ -1353,14 +1353,17 @@
       scene.background = null;
       scene.fog = new THREE.FogExp2(0xaad4f0, 0.006);
       
-      // Karakteri dışarıya ışınla - müze kapısı önüne
-      playerGroup.position.set(0, 0, 24);
-      yaw = 0; // Dışarıya baksın
+      // Karakteri dışarıya ışınla — kapıdan UZAĞA (z:30 → kapı z:21'de, arası 9 birim)
+      playerGroup.position.set(0, 0, 30);
+      yaw = Math.PI; // Dışarıya baksın
       
-      window.eKeyUsed = false;
-      setTimeout(() => {
+      // Kapı etkileşimini bir süre kilitle (tekrar açılmasın)
+      window.eKeyUsed = true;
+      window.popupOpen = false;
+      setTimeout(() => { 
+        window.eKeyUsed = false;
         if (renderer && renderer.domElement) renderer.domElement.requestPointerLock();
-      }, 200);
+      }, 800);
       
       console.log('Müzeden çıkıldı!');
     }
@@ -1922,22 +1925,21 @@
       bCtx.strokeRect(9, 9, 2030, 366);
       bCtx.strokeStyle = '#ffd700'; bCtx.lineWidth = 7;
       bCtx.strokeRect(24, 24, 2000, 336);
-      // Yazıyı AYNALAYARAK çiz (DoubleSide'da arka yüzden okunabilsin)
-      bCtx.save();
-      bCtx.translate(2048, 0); bCtx.scale(-1, 1);
+      // Yazıyı normal çiz (mesh rotation.y = PI ile yön düzeltildi)
       bCtx.fillStyle = 'rgba(220,0,100,0.2)';
       bCtx.font = 'bold 160px serif'; bCtx.textAlign = 'center';
       bCtx.fillText('Seni Çok Seviyorum 💕', 1028, 240);
       bCtx.fillStyle = '#cc0055';
       bCtx.fillText('Seni Çok Seviyorum 💕', 1024, 236);
-      bCtx.restore();
       
       const bannerTex = new THREE.CanvasTexture(bannerCanvas);
       const bannerMesh = new THREE.Mesh(
         new THREE.PlaneGeometry(18, 3.2),
         new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide, transparent: true })
       );
-      bannerMesh.position.x = -18; airplaneGroup.add(bannerMesh);
+      bannerMesh.position.x = -18;
+      bannerMesh.rotation.y = Math.PI; // Yüzü doğru yöne dönsün
+      airplaneGroup.add(bannerMesh);
       
       airplaneGroup.position.set(-80, 55, -30);
       scene.add(airplaneGroup);
@@ -3953,6 +3955,11 @@
         msg.rotation.y += 0.01;
       });
 
+      // Her frame başında indicator sıfırla
+      const indicator = document.getElementById('message-indicator');
+      indicator.classList.remove('show');
+      indicator.textContent = '💌 E tuşuna bas ve mesajı oku!';
+
       // Check near message — dilek panosu bölgesini hariç tut
       nearMessage = null;
       const wishStandWorldPos = new THREE.Vector3(-10, 0, -14);
@@ -4000,7 +4007,7 @@
       if (window.wishTreePos && !window.insideMuseum) {
         const distToWish = playerGroup.position.distanceTo(window.wishTreePos);
         if (distToWish < 4 && !nearNPC) {
-          const indicator = document.getElementById('message-indicator');
+          // indicator already declared above
           indicator.textContent = '🌳 E tuşuna bas - Dilek tut';
           indicator.classList.add('show');
           if (keys['e'] && !window.eKeyUsed && !window.popupOpen) {
@@ -4041,19 +4048,8 @@
       }
 
       if (nearDoor) {
-        if (window.insideMuseum) {
-          document.getElementById('message-indicator').textContent = '🚪 E tuşuna bas - Müzeden Çık';
-        } else {
-          document.getElementById('message-indicator').textContent = '🔐 E tuşuna bas - Müzeye Gir';
-        }
-        document.getElementById('message-indicator').classList.add('show');
-      } else if (!nearMessage) {
-        // NPC ve dilek ağacı değilse gizle (onlar kendi show'larını yapıyor)
-        const ind = document.getElementById('message-indicator');
-        if (!ind.textContent.includes('NPC') && !ind.textContent.includes('Dilek') && !ind.textContent.includes('💬') && !ind.textContent.includes('🌳')) {
-          ind.classList.remove('show');
-          ind.textContent = '💌 E tuşuna bas ve mesajı oku!';
-        }
+        indicator.textContent = window.insideMuseum ? '🚪 E tuşuna bas - Müzeden Çık' : '🔐 E tuşuna bas - Müzeye Gir';
+        indicator.classList.add('show');
       }
 
       // Animate floating hearts
@@ -4201,7 +4197,7 @@
         
         // NPC yakınsa göster
         if (nearNPC && !window.insideMuseum) {
-          const indicator = document.getElementById('message-indicator');
+          // indicator already declared above
           indicator.textContent = `💬 E tuşuna bas - ${nearNPC.userData.name} ile konuş`;
           indicator.classList.add('show');
           
