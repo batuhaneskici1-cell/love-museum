@@ -726,7 +726,7 @@
       ">✨ Karakterini Seç ✨</h1>
       
       <p style="color: rgba(255,255,255,0.95); font-size: 24px; margin-bottom: 60px; text-shadow: 1px 1px 10px rgba(0,0,0,0.2);">
-        Kim olarak aşk müzemizi keşfedeceksin? 💕
+        Kim olarak aşk müzenizi keşfedeceksiniz? 💕
       </p>
     
       <div style="display: flex; gap: 80px; justify-content: center; align-items: center;">
@@ -819,7 +819,7 @@
         backdrop-filter: blur(10px);
         display: inline-block;
       ">
-        💝 Karakterini seç ve birlikte aşk müzemizi keşfedelim! 💝
+        💝 Karakterini seç ve birlikte aşk müzenizi keşfedin! 💝
       </p>
     </div>
     
@@ -886,6 +886,27 @@
       </div>
     </div>
 
+    <!-- DİLEK GİRİŞ POPUP -->
+    <div id="wish-popup" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center;">
+      <div style="background: linear-gradient(135deg, #2d1b4e, #4a1942); padding: 50px; border-radius: 30px; max-width: 580px; width: 90%; text-align: center; box-shadow: 0 0 60px rgba(180,100,255,0.5); border: 2px solid rgba(255,215,0,0.4);">
+        <div style="font-size: 60px; margin-bottom: 10px;">🌳</div>
+        <h2 style="color: #ffd700; font-size: 28px; margin: 0 0 8px 0; font-family: serif;">Dilek Ağacı</h2>
+        <p style="color: rgba(255,255,255,0.8); font-size: 16px; margin-bottom: 25px; font-style: italic;">Dileğini yaz — sonsuza dek bu ağaçta saklı kalacak 🌟</p>
+        <textarea id="wish-input" placeholder="Dileğini buraya yaz..." maxlength="120" style="
+          width: 100%; padding: 16px; font-size: 18px; font-family: serif;
+          border: 2px solid rgba(255,215,0,0.5); border-radius: 15px;
+          background: rgba(255,255,255,0.1); color: white;
+          resize: none; height: 100px; outline: none; box-sizing: border-box;
+          placeholder-color: rgba(255,255,255,0.4);
+        " oninput="document.getElementById('wish-char-count').textContent = (120 - this.value.length) + ' karakter kaldı'"></textarea>
+        <p id="wish-char-count" style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 5px 0 20px 0;">120 karakter kaldı</p>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+          <button onclick="submitWish()" style="padding: 14px 40px; font-size: 18px; background: linear-gradient(135deg, #ffd700, #ffaa00); color: #2d1b4e; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; font-family: serif; box-shadow: 0 5px 20px rgba(255,215,0,0.4);">✨ Dileğimi Yap</button>
+          <button onclick="closeWishPopup()" style="padding: 14px 30px; font-size: 16px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 50px; cursor: pointer; font-family: serif;">İptal</button>
+        </div>
+      </div>
+    </div>
+    
     <!-- Password Popup for Museum Door -->
     <div id="password-popup" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
       <div style="background: linear-gradient(135deg, #ff69b4, #ffb6c1); padding: 50px; border-radius: 30px; max-width: 600px; text-align: center; box-shadow: 0 20px 60px rgba(255, 105, 180, 0.6);">
@@ -1346,6 +1367,72 @@
     
     window.exitMuseum = exitMuseum;
     
+    // R TUŞU - SPAWN NOKTASINA IŞINLA
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'r' && playerGroup && !window.popupOpen) {
+        if (window.insideMuseum) {
+          exitMuseum();
+        }
+        playerGroup.position.set(0, 0, 55);
+        yaw = Math.PI;
+        // Kısa flash efekti
+        const flashDiv = document.createElement('div');
+        flashDiv.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;opacity:0.8;z-index:9999;pointer-events:none;transition:opacity 0.5s';
+        document.body.appendChild(flashDiv);
+        setTimeout(() => { flashDiv.style.opacity = '0'; setTimeout(() => flashDiv.remove(), 500); }, 50);
+      }
+    });
+    
+    // DİLEK POPUP FONKSİYONLARI
+    window.wishText = '';
+    
+    function openWishPopup() {
+      window.popupOpen = true;
+      if (document.pointerLockElement) document.exitPointerLock();
+      const popup = document.getElementById('wish-popup');
+      popup.style.display = 'flex';
+      setTimeout(() => document.getElementById('wish-input').focus(), 100);
+    }
+    
+    function closeWishPopup() {
+      document.getElementById('wish-popup').style.display = 'none';
+      document.getElementById('wish-input').value = '';
+      document.getElementById('wish-char-count').textContent = '120 karakter kaldı';
+      window.popupOpen = false;
+      window.eKeyUsed = false;
+      setTimeout(() => { if (renderer && renderer.domElement) renderer.domElement.requestPointerLock(); }, 100);
+    }
+    
+    function submitWish() {
+      const text = document.getElementById('wish-input').value.trim();
+      if (!text) return;
+      
+      window.wishText = text;
+      closeWishPopup();
+      
+      // Dilek kabul mesajını göster
+      const wishes = [
+        '🌟 "Hep birlikte, hep mutlu..." — Dileğin kabul oldu! 💫',
+        '✨ Ağaç fısıldıyor: "Sevginiz sonsuza dek sürsün..." 🌸',
+        '💕 Dileğin ağacın köküne işlendi — gerçek olacak! 🌺',
+        '🌈 "En büyük dilek zaten gerçek — birbirinizi buldunuz." 💝',
+      ];
+      const wish = wishes[Math.floor(Math.random()*wishes.length)];
+      
+      setTimeout(() => {
+        window.popupOpen = true;
+        if (document.pointerLockElement) document.exitPointerLock();
+        showNPCDialog('🌳 Dilek Ağacı', wish + '\n\n📜 Dileğin müze duvarına işlendi!');
+        
+        // Müze duvarına ekle (hemen)
+        if (window.addWishToWall) window.addWishToWall(text);
+      }, 200);
+    }
+    
+    window.openWishPopup = openWishPopup;
+    window.closeWishPopup = closeWishPopup;
+    window.submitWish = submitWish;
+    
     function showNPCDialog(name, text) {
       // Mevcut message popup'ı kullan ama NPC stili ile
       document.getElementById('message-text').innerHTML = text.replace(/\n/g, '<br>');
@@ -1759,6 +1846,83 @@
       }
 
       // ── KUŞLAR ──
+      // ══════════════════════════════════════════
+      // ✈️ UÇAK + PANKART - "Seni çok seviyorum"
+      // ══════════════════════════════════════════
+      const airplaneGroup = new THREE.Group();
+      
+      // Gövde
+      const fuselageMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.3, metalness: 0.4 });
+      const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 5, 10), fuselageMat);
+      fuselage.rotation.z = Math.PI/2; airplaneGroup.add(fuselage);
+      // Burun
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.2, 10), fuselageMat);
+      nose.rotation.z = -Math.PI/2; nose.position.x = 3.1; airplaneGroup.add(nose);
+      // Kuyruk
+      const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 0.8), fuselageMat);
+      tailFin.position.set(-2.2, 0.5, 0); airplaneGroup.add(tailFin);
+      const tailH = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 2.2), fuselageMat);
+      tailH.position.set(-2.3, 0, 0); airplaneGroup.add(tailH);
+      // Ana kanatlar
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.3, metalness: 0.5 });
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 5.5), wingMat);
+      wingL.position.set(0.2, -0.1, 0); airplaneGroup.add(wingL);
+      // Motor
+      const engineMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4, metalness: 0.6 });
+      [-1.5, 1.5].forEach(ez => {
+        const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.7, 8), engineMat);
+        eng.rotation.z = Math.PI/2; eng.position.set(0.5, -0.3, ez); airplaneGroup.add(eng);
+        const prop = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 0.06), engineMat);
+        prop.position.set(0.9, -0.3, ez); prop.userData.isProp = true; airplaneGroup.add(prop);
+      });
+      // Pencereler
+      const winMat = new THREE.MeshBasicMaterial({ color: 0xa8d8f0, transparent: true, opacity: 0.8 });
+      for (let i = 0; i < 4; i++) {
+        const w = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.18), winMat);
+        w.position.set(0.37, 0.12, -1.2 + i * 0.7); airplaneGroup.add(w);
+      }
+      
+      // Pankart ipi
+      const bannerRopeMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+      const bannerRope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 8, 4), bannerRopeMat);
+      bannerRope.rotation.z = Math.PI/2; bannerRope.position.x = -6.5; airplaneGroup.add(bannerRope);
+      
+      // Pankart canvas texture
+      const bannerCanvas = document.createElement('canvas');
+      bannerCanvas.width = 1024; bannerCanvas.height = 256;
+      const bCtx = bannerCanvas.getContext('2d');
+      // Arka plan - beyaz/krem
+      bCtx.fillStyle = '#fffef0';
+      bCtx.fillRect(0, 0, 1024, 256);
+      // Kenarlık
+      bCtx.strokeStyle = '#ff1493';
+      bCtx.lineWidth = 12;
+      bCtx.strokeRect(6, 6, 1012, 244);
+      bCtx.strokeStyle = '#ffd700';
+      bCtx.lineWidth = 5;
+      bCtx.strokeRect(16, 16, 992, 224);
+      // Yazı gölgesi
+      bCtx.fillStyle = 'rgba(255,20,147,0.25)';
+      bCtx.font = 'bold 90px serif';
+      bCtx.textAlign = 'center';
+      bCtx.fillText('Seni Çok Seviyorum 💕', 516, 148);
+      // Ana yazı
+      bCtx.fillStyle = '#cc0066';
+      bCtx.fillText('Seni Çok Seviyorum 💕', 512, 144);
+      
+      const bannerTex = new THREE.CanvasTexture(bannerCanvas);
+      const bannerMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(10, 2.5),
+        new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide, transparent: true })
+      );
+      bannerMesh.position.x = -12; airplaneGroup.add(bannerMesh);
+      
+      airplaneGroup.position.set(-80, 55, -30);
+      scene.add(airplaneGroup);
+      window.airplane = airplaneGroup;
+      window.airplaneAngle = 0;
+      window.airplaneProps = airplaneGroup.children.filter(c => c.userData.isProp);
+
       window.birds = [];
       for (let i = 0; i < 8; i++) {
         const bg = new THREE.Group();
@@ -2102,36 +2266,35 @@
       // NPC 1: Müze bekçisi - müze önünde bekliyor
       const guard = createNPC(18, 22, {
         name: 'Bekçi Mehmet',
-        dialog: '🎩 Merhaba! Burası Aşkımızın Müzesi. Müzeye girmek için kapıda sana özel bir soru sorulacak... Kolay gelsin! 😊',
+        dialog: '🎩 Merhaba! Burası Aşkınızın Müzesi. Müzeye girmek için kapıda sana özel bir soru sorulacak... Kolay gelsin! 😊',
         skin: 0xd4a574,
-        bodyColor: 0x1a237e,  // lacivert üniforma
+        bodyColor: 0x1a237e,
         pantColor: 0x0d47a1,
         hairColor: 0x1a1a1a,
-        type: 'static',
-        patrol: null
+        type: 'patrol',
+        patrolPoints: [[18,22],[14,26],[10,21],[14,18],[18,22]],
+        patrolIndex: 0, patrolT: 0
       });
-      guard.rotation.y = -Math.PI/4;
       
       // NPC 2: Bahçıvan - bahçede dolaşıyor
       const gardener = createNPC(-28, 5, {
         name: 'Bahçıvan Ali',
         dialog: '🌺 Günaydın! Bu bahçeyi yıllardır bakıyorum. En güzel çiçekleri sizin için yetiştirdim. Şelalenin yanındaki mor çiçeklere mutlaka bakın! 🌸',
         skin: 0xc8a882,
-        bodyColor: 0x388e3c,  // yeşil önlük
+        bodyColor: 0x388e3c,
         pantColor: 0x4e342e,
         hairColor: 0x3e2723,
         type: 'patrol',
-        patrolPoints: [[-28,5], [-20,8], [-15,2], [-22,-5], [-28,5]],
-        patrolIndex: 0,
-        patrolT: 0
+        patrolPoints: [[-28,5], [-20,8], [-15,2], [-22,-5], [-30,-3], [-28,5]],
+        patrolIndex: 0, patrolT: 0
       });
       
-      // NPC 3: Aşık çift - piknik alanı yanında
+      // NPC 3: Aşık çift - piknik alanı yanında (idle_sway - yürümüyor)
       const romantic1 = createNPC(-38, -2, {
         name: 'Romantik Çift ❤️',
         dialog: '💕 Ne kadar güzel bir yer burası değil mi? Biz de ilk yıl dönümümüzde geldik. Siz de mi ilk kez buradasınız?',
         skin: 0xfdbcb4,
-        bodyColor: 0xf06292,  // pembe
+        bodyColor: 0xf06292,
         pantColor: 0xad1457,
         hairColor: 0x4a148c,
         type: 'idle_sway'
@@ -2149,19 +2312,20 @@
       });
       romantic2.rotation.y = -Math.PI*0.3;
       
-      // NPC 4: Şair - Dilek ağacı altında
+      // NPC 4: Şair - Dilek ağacı çevresinde dolaşıyor
       const poet = createNPC(-22, -18, {
         name: 'Şair Baba',
         dialog: '📜 "Sevgi bir ağaçtır,\nkökleri kalpte,\ndallari gökte...\nSen benim baharımsın." \n\n— Sana özel yazdım 🌸',
         skin: 0xc8a882,
-        bodyColor: 0x6d4c41,  // kahverengi
+        bodyColor: 0x6d4c41,
         pantColor: 0x3e2723,
-        hairColor: 0x757575,  // gri (yaşlı)
-        type: 'idle_sway'
+        hairColor: 0x757575,
+        type: 'patrol',
+        patrolPoints: [[-22,-18],[-17,-15],[-16,-20],[-20,-24],[-24,-22],[-22,-18]],
+        patrolIndex: 0, patrolT: 0
       });
-      poet.rotation.y = Math.PI*0.6;
       
-      // NPC 5: Balıkçı - Nehir kenarında
+      // NPC 5: Balıkçı - Nehir boyunca dolaşıyor
       const fisherman = createNPC(26, -20, {
         name: 'Balıkçı Dede',
         dialog: '🎣 50 yıldır bu nehirde balık tutarım. Ama en güzel avım karımı buraya getirdiğim gün oldu. Siz de değerli anlar geçirin! 🐟',
@@ -2169,21 +2333,23 @@
         bodyColor: 0x546e7a,
         pantColor: 0x37474f,
         hairColor: 0xf5f5f5,
-        type: 'idle_sway'
+        type: 'patrol',
+        patrolPoints: [[26,-20],[26,-35],[26,-48],[26,-35],[26,-20],[26,-10],[26,-20]],
+        patrolIndex: 0, patrolT: 0
       });
-      fisherman.rotation.y = Math.PI/2;
       
-      // NPC 6: Fotoğrafçı - müze avenusu girişinde
+      // NPC 6: Fotoğrafçı - avenu boyunca dolaşıyor
       const photographer = createNPC(3, 50, {
         name: 'Fotoğrafçı Zeynep',
-        dialog: '📸 Dur dur dur! Tam burada durun — arka plan müthiş! Bu avenuenin her köşesi fotoğraf karesine giriyor. Keşke sizi çekebilseydim! 😄',
+        dialog: '📸 Dur dur dur! Tam burada durun — arka plan müthiş! Bu müzenin her köşesi fotoğraf karesine giriyor. Keşke sizi çekebilseydim! 😄',
         skin: 0xf4c2a1,
-        bodyColor: 0xce93d8,  // lila
+        bodyColor: 0xce93d8,
         pantColor: 0x7b1fa2,
         hairColor: 0x1a1a1a,
-        type: 'idle_sway'
+        type: 'patrol',
+        patrolPoints: [[3,50],[6,44],[3,38],[-4,44],[3,50]],
+        patrolIndex: 0, patrolT: 0
       });
-      photographer.rotation.y = Math.PI;
 
       // ══════════════════════════════════════════
       // MÜZE BİNASI - GERÇEKÇİ NEOKLASİK YAPI
@@ -2596,6 +2762,97 @@
       // ── GENEL AYDINLATMA ──
       const iAmb = new THREE.AmbientLight(0xffffff, 0.75);
       window.museumInterior.add(iAmb);
+      
+      // ── DİLEK DUVARI (sol duvar) ──
+      const wishBoardMat = new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.8 });
+      const wishBoard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 4, 7), wishBoardMat);
+      wishBoard.position.set(-12.9, 3.5, -5); window.museumInterior.add(wishBoard);
+      // Altın çerçeve
+      const wbFrameMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
+      [[0,5.6,0.3],[0,-5.6,0.3],[2.2,0,0.3],[-2.2,0,0.3]].forEach(([dy,dz,dx]) => {
+        const bar = new THREE.Mesh(dy===0 ? new THREE.BoxGeometry(0.15,4.3,0.2) : new THREE.BoxGeometry(0.15,0.2,7.4), wbFrameMat);
+        bar.position.set(-12.82, 3.5 + dy, -5 + dz); window.museumInterior.add(bar);
+      });
+      // Başlık
+      const wbTitleCanvas = document.createElement('canvas');
+      wbTitleCanvas.width = 512; wbTitleCanvas.height = 128;
+      const wbTCtx = wbTitleCanvas.getContext('2d');
+      wbTCtx.fillStyle = '#5c3317'; wbTCtx.fillRect(0,0,512,128);
+      wbTCtx.fillStyle = '#ffd700'; wbTCtx.font = 'bold 48px serif'; wbTCtx.textAlign = 'center';
+      wbTCtx.fillText('🌟 Dilek Duvarı 🌟', 256, 80);
+      const wbTitleTex = new THREE.CanvasTexture(wbTitleCanvas);
+      const wbTitle = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.7),
+        new THREE.MeshBasicMaterial({ map: wbTitleTex, side: THREE.DoubleSide }));
+      wbTitle.position.set(-12.75, 5.7, -5); wbTitle.rotation.y = Math.PI/2;
+      window.museumInterior.add(wbTitle);
+      
+      // Dilek notları (dinamik - başlangıçta boş, canvas ile doldurulur)
+      window.wishNotes = [];
+      window.wishNotePositions = [
+        [-12.8, 4.5, -7.5], [-12.8, 4.5, -6], [-12.8, 4.5, -4.5],
+        [-12.8, 4.5, -3], [-12.8, 4.5, -1.5],
+        [-12.8, 3.2, -7.5], [-12.8, 3.2, -6], [-12.8, 3.2, -4.5],
+        [-12.8, 3.2, -3], [-12.8, 3.2, -1.5],
+        [-12.8, 2.0, -7.5], [-12.8, 2.0, -6], [-12.8, 2.0, -4.5],
+      ];
+      window.wishNoteColors = ['#fff9c4','#fce4ec','#e8f5e9','#e3f2fd','#fff3e0','#f3e5f5','#ffe0b2'];
+      
+      function addWishToWall(text) {
+        if (!window.insideMuseum) return;
+        const idx = window.wishNotes.length % window.wishNotePositions.length;
+        const pos = window.wishNotePositions[idx];
+        const col = window.wishNoteColors[window.wishNotes.length % window.wishNoteColors.length];
+        
+        const nc = document.createElement('canvas');
+        nc.width = 256; nc.height = 192;
+        const nCtx = nc.getContext('2d');
+        nCtx.fillStyle = col; nCtx.fillRect(0,0,256,192);
+        nCtx.fillStyle = 'rgba(0,0,0,0.15)'; nCtx.fillRect(0,188,256,4);
+        nCtx.fillStyle = '#333';
+        nCtx.font = 'bold 22px sans-serif'; nCtx.textAlign = 'center';
+        // Satıra böl
+        const words = text.split(' ');
+        let line = '', lines2 = [], y2 = 40;
+        for (const w of words) {
+          const test = line + w + ' ';
+          if (nCtx.measureText(test).width > 220 && line) { lines2.push(line); line = w + ' '; }
+          else line = test;
+        }
+        lines2.push(line);
+        lines2.forEach((l, i) => nCtx.fillText(l.trim(), 128, y2 + i*30));
+        // İmza çizgisi
+        nCtx.strokeStyle = '#aaa'; nCtx.lineWidth = 1;
+        nCtx.beginPath(); nCtx.moveTo(20, 170); nCtx.lineTo(236, 170); nCtx.stroke();
+        nCtx.fillStyle = '#888'; nCtx.font = 'italic 16px serif';
+        nCtx.fillText('— Dilek Ağacı\'ndan 🌳', 128, 185);
+        
+        const nTex = new THREE.CanvasTexture(nc);
+        const note = new THREE.Mesh(
+          new THREE.PlaneGeometry(1.2, 0.9),
+          new THREE.MeshBasicMaterial({ map: nTex, side: THREE.DoubleSide })
+        );
+        note.position.set(pos[0], pos[1], pos[2]);
+        note.rotation.y = Math.PI/2;
+        // Hafif rastgele eğim
+        note.rotation.z = (Math.random()-0.5)*0.15;
+        window.museumInterior.add(note);
+        window.wishNotes.push(note);
+        
+        // Küçük raptiye
+        const pinMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
+        const pin = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), pinMat);
+        pin.position.set(pos[0], pos[1]+0.38, pos[2]);
+        window.museumInterior.add(pin);
+      }
+      window.addWishToWall = addWishToWall;
+      
+      // Örnek başlangıç dilekleri
+      setTimeout(() => {
+        if (window.addWishToWall) {
+          window.addWishToWall('Hep birlikte mutlu olalım 💕');
+          window.addWishToWall('Sevgimiz sonsuza dek sürsün ✨');
+        }
+      }, 2000);
 
       scene.add(window.museumInterior);
 
@@ -3657,11 +3914,11 @@
         const dist = playerGroup.position.distanceTo(msg.position);
         if (dist < 1.5) nearMessage = msg.userData;
       });
-
-      // NPC ve Dilek Ağacı için erken scope tanımla
+      
+      // NPC scope için erken tanımla
       let nearNPC = null;
 
-      // DİLEK AĞACI ETKİLEŞİMİ
+      // DİLEK AĞACI ETKİLEŞİMİ - Önce input, sonra mesaj
       if (window.wishTreePos && !window.insideMuseum) {
         const distToWish = playerGroup.position.distanceTo(window.wishTreePos);
         if (distToWish < 4 && !nearNPC) {
@@ -3670,16 +3927,7 @@
           indicator.classList.add('show');
           if (keys['e'] && !window.eKeyUsed && !window.popupOpen) {
             window.eKeyUsed = true;
-            window.popupOpen = true;
-            if (document.pointerLockElement) document.exitPointerLock();
-            const wishes = [
-              '🌟 "Hep birlikte, hep mutlu..." — Dileğin kabul oldu! 💫',
-              '✨ Ağaç fısıldıyor: "Sevginiz sonsuza dek sürsün..." 🌸',
-              '💕 Dilek taşına dokunan herkes mutlu olur, sen çoktan oldun! 🌺',
-              '🌈 "En büyük dilek zaten gerçek — birbirinizi buldunuz." 💝',
-            ];
-            const wish = wishes[Math.floor(Math.random()*wishes.length)];
-            showNPCDialog('🌳 Dilek Ağacı', wish);
+            openWishPopup();
           }
         }
       }
@@ -3904,6 +4152,24 @@
           // Yönlendir
           bird.rotation.y = data.angle + Math.PI / 2;
         });
+      }
+
+      // ✈️ UÇAK ANİMASYONU
+      if (window.airplane) {
+        window.airplaneAngle += 0.0008;
+        const radius = 120;
+        const height = 55 + Math.sin(window.airplaneAngle * 0.5) * 5;
+        window.airplane.position.x = Math.cos(window.airplaneAngle) * radius;
+        window.airplane.position.z = Math.sin(window.airplaneAngle) * radius;
+        window.airplane.position.y = height;
+        // Uçuş yönüne döndür
+        window.airplane.rotation.y = -window.airplaneAngle + Math.PI / 2;
+        // Hafif yalpalama
+        window.airplane.rotation.z = Math.sin(window.airplaneAngle * 2) * 0.04;
+        // Pervane dönüşü
+        if (window.airplaneProps) {
+          window.airplaneProps.forEach(p => { p.rotation.x += 0.4; });
+        }
       }
 
       renderer.render(scene, camera);
