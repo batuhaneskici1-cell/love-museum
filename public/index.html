@@ -3658,6 +3658,9 @@
         if (dist < 1.5) nearMessage = msg.userData;
       });
 
+      // NPC ve Dilek Ağacı için erken scope tanımla
+      let nearNPC = null;
+
       // DİLEK AĞACI ETKİLEŞİMİ
       if (window.wishTreePos && !window.insideMuseum) {
         const distToWish = playerGroup.position.distanceTo(window.wishTreePos);
@@ -3826,7 +3829,7 @@
       
       // NPC ANİMASYONLARI + ETKİLEŞİM MESAFESI
       if (window.npcs && playerGroup) {
-        let nearNPC = null;
+        nearNPC = null;
         let nearNPCDist = 999;
         
         window.npcs.forEach((npc, idx) => {
@@ -3886,6 +3889,9 @@
           }
         }
       }
+
+      // KUŞ ANİMASYONLARI
+      if (window.birds) {
         window.birds.forEach((bird) => {
           const data = bird.userData;
           data.angle += data.speed * 0.01;
