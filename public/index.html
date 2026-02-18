@@ -1609,20 +1609,6 @@
       ground.receiveShadow = true;
       scene.add(ground);
       
-      // Çok az zemin lekeleri
-      const darkPatch = new THREE.MeshStandardMaterial({ color: 0x3d6820, roughness: 0.9, transparent: true, opacity: 0.35 });
-      const lightPatch = new THREE.MeshStandardMaterial({ color: 0x6aab3f, roughness: 0.8, transparent: true, opacity: 0.25 });
-      for (let i = 0; i < 20; i++) {
-        const w = 8 + Math.random() * 20;
-        const h = 5 + Math.random() * 14;
-        const patch = new THREE.Mesh(new THREE.PlaneGeometry(w, h), i%2===0 ? darkPatch : lightPatch);
-        patch.rotation.x = -Math.PI/2;
-        const angle = Math.random() * Math.PI * 2;
-        const dist = 20 + Math.random() * 70;
-        patch.position.set(Math.cos(angle)*dist, 0.01, Math.sin(angle)*dist);
-        patch.rotation.z = Math.random() * Math.PI;
-        scene.add(patch);
-      }
 
       // ========================================
       // 🌿 KENNEY NATURE KIT - TASARLI DÜNYA
@@ -3017,7 +3003,7 @@
 
     function createMessages() {
       const messageData = [
-        { x: -10, z: -15, text: "Seninle geçirdiğim her an, hayatımın en güzel anı ❤️" },
+        { x: -4, z: -15, text: "Seninle geçirdiğim her an, hayatımın en güzel anı ❤️" },
         { x: 10, z: -10, text: "İlk buluşmamızı hatırlıyor musun? Kalbim hâlâ aynı hızla atıyor 💕" },
         { x: -5, z: -5, text: "Gülüşün benim en sevdiğim ses 🌹" },
         { x: 5, z: 0, text: "Seninle her gün Sevgililer Günü 💝" },
@@ -3967,13 +3953,46 @@
         msg.rotation.y += 0.01;
       });
 
-      // Check near message
+      // Check near message — dilek panosu bölgesini hariç tut
       nearMessage = null;
-      messages.forEach((msg) => {
-        const dist = playerGroup.position.distanceTo(msg.position);
-        if (dist < 1.5) nearMessage = msg.userData;
-      });
-      
+      const wishStandWorldPos = new THREE.Vector3(-10, 0, -14);
+      const distToWishStand = playerGroup.position.distanceTo(wishStandWorldPos);
+      if (distToWishStand > 2.5) { // Pano yakınında değilse mesaj zarflarını kontrol et
+        messages.forEach((msg) => {
+          const dist = playerGroup.position.distanceTo(msg.position);
+          if (dist < 1.5) nearMessage = msg.userData;
+        });
+      }
+
+      if (nearMessage) {
+        document.getElementById('message-indicator').classList.add('show');
+        document.getElementById('message-indicator').textContent = '💌 E tuşuna bas ve mesajı oku!';
+        if (keys['e'] && !window.eKeyUsed && !window.popupOpen) {
+          window.eKeyUsed = true;
+          window.popupOpen = true;
+          if (document.pointerLockElement) document.exitPointerLock();
+          const popup = document.getElementById('message-popup');
+          popup.querySelector('.icon').textContent = '💕';
+          const titleEl = popup.querySelector('.npc-name');
+          if (titleEl) titleEl.textContent = '';
+          document.getElementById('message-text').textContent = nearMessage.text;
+          popup.classList.add('show');
+          // Tıklayınca kapat
+          function closeMsg() {
+            popup.classList.remove('show');
+            window.popupOpen = false;
+            window.eKeyUsed = false;
+            popup.removeEventListener('click', closeMsg);
+            const btn = popup.querySelector('.npc-close-btn');
+            if (btn) btn.removeEventListener('click', closeMsg);
+            setTimeout(() => { if (renderer && renderer.domElement) renderer.domElement.requestPointerLock(); }, 100);
+          }
+          popup.addEventListener('click', closeMsg);
+          const closeBtn = popup.querySelector('.npc-close-btn');
+          if (closeBtn) closeBtn.addEventListener('click', closeMsg);
+        }
+      }
+
       // NPC scope için erken tanımla
       let nearNPC = null;
 
@@ -4021,22 +4040,20 @@
         }
       }
 
-      if (nearMessage) {
-        document.getElementById('message-indicator').classList.add('show');
-        if (keys['e']) {
-          document.getElementById('message-text').textContent = nearMessage.text;
-          document.getElementById('message-popup').classList.add('show');
-        }
-      } else if (nearDoor) {
+      if (nearDoor) {
         if (window.insideMuseum) {
           document.getElementById('message-indicator').textContent = '🚪 E tuşuna bas - Müzeden Çık';
         } else {
           document.getElementById('message-indicator').textContent = '🔐 E tuşuna bas - Müzeye Gir';
         }
         document.getElementById('message-indicator').classList.add('show');
-      } else {
-        document.getElementById('message-indicator').classList.remove('show');
-        document.getElementById('message-indicator').textContent = '💌 E tuşuna bas ve mesajı oku!';
+      } else if (!nearMessage) {
+        // NPC ve dilek ağacı değilse gizle (onlar kendi show'larını yapıyor)
+        const ind = document.getElementById('message-indicator');
+        if (!ind.textContent.includes('NPC') && !ind.textContent.includes('Dilek') && !ind.textContent.includes('💬') && !ind.textContent.includes('🌳')) {
+          ind.classList.remove('show');
+          ind.textContent = '💌 E tuşuna bas ve mesajı oku!';
+        }
       }
 
       // Animate floating hearts
