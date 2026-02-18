@@ -3020,23 +3020,26 @@
 
       const labels = ['🌨️ Kış Günü', '🌅 Gün Batımı', '🎉 Özel Gece', '🚂 Yolculuk', '🍽️ Akşam Yemeği', '🌄 Doğa', '🌙 Gece Out', '🍜 Restoran', '📸 Balık Tutma', '🌊 Deniz', '☀️ Güneşli', '🎱 Bilardo', '💑 İkimiz', '✈️ Seyahat', '☕ Kafe', '🌇 Şehir'];
 
+      // Tek sıra, tek tek çerçeveler — sol duvar 8 adet, sağ duvar 8 adet
       const framePositions = [
-        {x:-12.68, y:4.3, z:-14, ry:Math.PI/2},
-        {x:-12.68, y:4.3, z:-8, ry:Math.PI/2},
-        {x:-12.68, y:4.3, z:-2, ry:Math.PI/2},
-        {x:-12.68, y:4.3, z:4, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:-14, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:-8, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:-2, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:4, ry:Math.PI/2},
-        {x:12.68, y:4.3, z:-14, ry:-Math.PI/2},
-        {x:12.68, y:4.3, z:-8, ry:-Math.PI/2},
-        {x:12.68, y:4.3, z:-2, ry:-Math.PI/2},
-        {x:12.68, y:4.3, z:4, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:-14, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:-8, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:-2, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:4, ry:-Math.PI/2},
+        // Sol duvar (x:-12.68), tek sıra y:3.2, z boyunca eşit aralık
+        {x:-12.68, y:3.2, z:-13,   ry:Math.PI/2},
+        {x:-12.68, y:3.2, z:-9.5,  ry:Math.PI/2},
+        {x:-12.68, y:3.2, z:-6,    ry:Math.PI/2},
+        {x:-12.68, y:3.2, z:-2.5,  ry:Math.PI/2},
+        {x:-12.68, y:3.2, z:1,     ry:Math.PI/2},
+        {x:-12.68, y:3.2, z:4.5,   ry:Math.PI/2},
+        {x:-12.68, y:3.2, z:8,     ry:Math.PI/2},
+        {x:-12.68, y:3.2, z:11.5,  ry:Math.PI/2},
+        // Sağ duvar (x:12.68), tek sıra y:3.2
+        {x:12.68,  y:3.2, z:-13,   ry:-Math.PI/2},
+        {x:12.68,  y:3.2, z:-9.5,  ry:-Math.PI/2},
+        {x:12.68,  y:3.2, z:-6,    ry:-Math.PI/2},
+        {x:12.68,  y:3.2, z:-2.5,  ry:-Math.PI/2},
+        {x:12.68,  y:3.2, z:1,     ry:-Math.PI/2},
+        {x:12.68,  y:3.2, z:4.5,   ry:-Math.PI/2},
+        {x:12.68,  y:3.2, z:8,     ry:-Math.PI/2},
+        {x:12.68,  y:3.2, z:11.5,  ry:-Math.PI/2},
       ];
 
       framePositions.forEach((pos, idx) => {
@@ -3044,28 +3047,27 @@
         // Dışa doğru offset (duvardan odaya doğru)
         const outDir = pos.x < 0 ? 1 : -1; // sol duvar +X, sağ duvar -X
 
-        // 1. Dış altın çerçeve (duvar yüzeyine bitişik)
-        const outerFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.0, 1.6), goldMat);
+        // 1. Dış altın çerçeve — tek fotoğraf boyutu
+        const outerFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.4, 1.1), goldMat);
         outerFrame.position.set(pos.x, pos.y, pos.z);
         outerFrame.rotation.y = pos.ry;
         window.museumInterior.add(outerFrame);
 
-        // 2. İç siyah mat paspas (çerçeve içi, hafif geriden)
-        const paspas = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.78, 1.38), innerMat);
+        // 2. İç siyah mat paspas
+        const paspas = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.22, 0.92), innerMat);
         paspas.position.set(pos.x + outDir * 0.02, pos.y, pos.z);
         paspas.rotation.y = pos.ry;
         window.museumInterior.add(paspas);
 
-        // 3. Fotoğraf plane (paspasın önünde, odaya bakan yüzde)
+        // 3. Fotoğraf plane
         const img = new Image();
         img.onload = function() {
           const tex = new THREE.Texture(img);
           tex.needsUpdate = true;
           const photoMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.3, 1.72),
+            new THREE.PlaneGeometry(0.85, 1.15),
             new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
           );
-          // Fotoğraf: paspasın tam önünde, duvardan odaya dönük
           photoMesh.position.set(pos.x + outDir * 0.07, pos.y, pos.z);
           photoMesh.rotation.y = pos.ry;
           window.museumInterior.add(photoMesh);
@@ -3086,14 +3088,14 @@
         const pTex = new THREE.CanvasTexture(pc);
         const plaket = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.24),
           new THREE.MeshBasicMaterial({map:pTex, side:THREE.DoubleSide}));
-        plaket.position.set(pos.x + outDir * 0.09, pos.y - 1.12, pos.z);
+        plaket.position.set(pos.x + outDir * 0.09, pos.y - 0.84, pos.z);
         plaket.rotation.y = pos.ry;
         window.museumInterior.add(plaket);
 
         // 5. Köşe rozetleri
         const rzMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.95, roughness: 0.05 });
-        [[-0.65, 0.9],[0.65, 0.9],[-0.65,-0.9],[0.65,-0.9]].forEach(([dz,dy]) => {
-          const rz = new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8), rzMat);
+        [[-0.45, 0.65],[0.45, 0.65],[-0.45,-0.65],[0.45,-0.65]].forEach(([dz,dy]) => {
+          const rz = new THREE.Mesh(new THREE.SphereGeometry(0.045,8,8), rzMat);
           rz.position.set(pos.x + outDir*0.05, pos.y + dy, pos.z + dz);
           window.museumInterior.add(rz);
         });
