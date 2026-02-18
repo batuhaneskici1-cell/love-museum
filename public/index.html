@@ -1558,12 +1558,58 @@
       sunLight.shadow.camera.far = 200;
       scene.add(sunLight);
 
-      // ZENGİN ÇİMEN ZEMİN - çok katmanlı
-      const groundGeo = new THREE.PlaneGeometry(300, 300, 30, 30);
-      // Hafif renk varyasyonu için vertex colors
+      // ZENGİN ÇİMEN ZEMİN - Canvas texture ile gerçekçi
+      const grassCanvas = document.createElement('canvas');
+      grassCanvas.width = 512; grassCanvas.height = 512;
+      const gCtx = grassCanvas.getContext('2d');
+      
+      // Temel yeşil zemin
+      gCtx.fillStyle = '#4a7a28';
+      gCtx.fillRect(0, 0, 512, 512);
+      
+      // Çimen lekeleri - farklı ton yeşiller
+      const grassTones = ['#3d6820','#527a2a','#5d8f35','#426622','#639a3a','#3a5f1c','#6aab3f','#4f7a2c','#2e5218','#72b845'];
+      for (let i = 0; i < 1800; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const r = 2 + Math.random() * 18;
+        const col = grassTones[Math.floor(Math.random() * grassTones.length)];
+        gCtx.beginPath();
+        gCtx.ellipse(x, y, r, r * (0.5 + Math.random() * 0.8), Math.random() * Math.PI, 0, Math.PI * 2);
+        gCtx.fillStyle = col + 'cc';
+        gCtx.fill();
+      }
+      // Toprak/kuru otlar - küçük sarı/kahve noktalar
+      for (let i = 0; i < 400; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        const r = 1 + Math.random() * 5;
+        const col = ['#8b7355','#a0936a','#c4b07a','#7a6a3a','#b8a060'][Math.floor(Math.random()*5)];
+        gCtx.beginPath();
+        gCtx.arc(x, y, r, 0, Math.PI * 2);
+        gCtx.fillStyle = col + '99';
+        gCtx.fill();
+      }
+      // Çimen çizgileri (blade of grass texture)
+      gCtx.strokeStyle = 'rgba(80,130,30,0.3)';
+      gCtx.lineWidth = 1;
+      for (let i = 0; i < 600; i++) {
+        const x = Math.random() * 512;
+        const y = Math.random() * 512;
+        gCtx.beginPath();
+        gCtx.moveTo(x, y);
+        gCtx.lineTo(x + (Math.random()-0.5)*6, y - 6 - Math.random()*8);
+        gCtx.stroke();
+      }
+      
+      const grassTex = new THREE.CanvasTexture(grassCanvas);
+      grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+      grassTex.repeat.set(30, 30);
+      
+      const groundGeo = new THREE.PlaneGeometry(300, 300, 1, 1);
       const groundMat = new THREE.MeshStandardMaterial({ 
-        color: 0x4a7c2a,
-        roughness: 0.85,
+        map: grassTex,
+        roughness: 0.92,
         metalness: 0.0
       });
       const ground = new THREE.Mesh(groundGeo, groundMat);
@@ -1571,18 +1617,17 @@
       ground.receiveShadow = true;
       scene.add(ground);
       
-      // Zemin renk katmanları (yol izleri gibi)
-      const darkPatch = new THREE.MeshStandardMaterial({ color: 0x3d6820, roughness: 0.9 });
-      const lightPatch = new THREE.MeshStandardMaterial({ color: 0x5d8f35, roughness: 0.8 });
-      // Rastgele zemin lekeleri
-      for (let i = 0; i < 40; i++) {
-        const w = 4 + Math.random() * 12;
-        const h = 3 + Math.random() * 9;
+      // Zemin renk katmanları (koyu/açık çimen bölgeleri)
+      const darkPatch = new THREE.MeshStandardMaterial({ color: 0x3d6820, roughness: 0.9, transparent: true, opacity: 0.5 });
+      const lightPatch = new THREE.MeshStandardMaterial({ color: 0x6aab3f, roughness: 0.8, transparent: true, opacity: 0.4 });
+      for (let i = 0; i < 30; i++) {
+        const w = 6 + Math.random() * 18;
+        const h = 4 + Math.random() * 12;
         const patch = new THREE.Mesh(new THREE.PlaneGeometry(w, h), i%2===0 ? darkPatch : lightPatch);
         patch.rotation.x = -Math.PI/2;
-        const angle = Math.random() * Math.PI;
-        const dist = 15 + Math.random() * 60;
-        patch.position.set(Math.cos(angle)*dist, 0.005, Math.sin(angle)*dist);
+        const angle = Math.random() * Math.PI * 2;
+        const dist = 15 + Math.random() * 70;
+        patch.position.set(Math.cos(angle)*dist, 0.01, Math.sin(angle)*dist);
         patch.rotation.z = Math.random() * Math.PI;
         scene.add(patch);
       }
@@ -1884,38 +1929,37 @@
       
       // Pankart ipi
       const bannerRopeMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
-      const bannerRope = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 8, 4), bannerRopeMat);
-      bannerRope.rotation.z = Math.PI/2; bannerRope.position.x = -6.5; airplaneGroup.add(bannerRope);
+      const bannerRope = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 12, 4), bannerRopeMat);
+      bannerRope.rotation.z = Math.PI/2; bannerRope.position.x = -9; airplaneGroup.add(bannerRope);
       
-      // Pankart canvas texture
+      // Pankart canvas texture — yazı ters çizilir çünkü pano arkadan görünüyor
       const bannerCanvas = document.createElement('canvas');
-      bannerCanvas.width = 1024; bannerCanvas.height = 256;
+      bannerCanvas.width = 2048; bannerCanvas.height = 384;
       const bCtx = bannerCanvas.getContext('2d');
-      // Arka plan - beyaz/krem
+      // Arka plan
       bCtx.fillStyle = '#fffef0';
-      bCtx.fillRect(0, 0, 1024, 256);
+      bCtx.fillRect(0, 0, 2048, 384);
       // Kenarlık
-      bCtx.strokeStyle = '#ff1493';
-      bCtx.lineWidth = 12;
-      bCtx.strokeRect(6, 6, 1012, 244);
-      bCtx.strokeStyle = '#ffd700';
-      bCtx.lineWidth = 5;
-      bCtx.strokeRect(16, 16, 992, 224);
-      // Yazı gölgesi
-      bCtx.fillStyle = 'rgba(255,20,147,0.25)';
-      bCtx.font = 'bold 90px serif';
-      bCtx.textAlign = 'center';
-      bCtx.fillText('Seni Çok Seviyorum 💕', 516, 148);
-      // Ana yazı
-      bCtx.fillStyle = '#cc0066';
-      bCtx.fillText('Seni Çok Seviyorum 💕', 512, 144);
+      bCtx.strokeStyle = '#ff1493'; bCtx.lineWidth = 18;
+      bCtx.strokeRect(9, 9, 2030, 366);
+      bCtx.strokeStyle = '#ffd700'; bCtx.lineWidth = 7;
+      bCtx.strokeRect(24, 24, 2000, 336);
+      // Yazıyı AYNALAYARAK çiz (DoubleSide'da arka yüzden okunabilsin)
+      bCtx.save();
+      bCtx.translate(2048, 0); bCtx.scale(-1, 1);
+      bCtx.fillStyle = 'rgba(220,0,100,0.2)';
+      bCtx.font = 'bold 160px serif'; bCtx.textAlign = 'center';
+      bCtx.fillText('Seni Çok Seviyorum 💕', 1028, 240);
+      bCtx.fillStyle = '#cc0055';
+      bCtx.fillText('Seni Çok Seviyorum 💕', 1024, 236);
+      bCtx.restore();
       
       const bannerTex = new THREE.CanvasTexture(bannerCanvas);
       const bannerMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(10, 2.5),
+        new THREE.PlaneGeometry(18, 3.2),
         new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide, transparent: true })
       );
-      bannerMesh.position.x = -12; airplaneGroup.add(bannerMesh);
+      bannerMesh.position.x = -18; airplaneGroup.add(bannerMesh);
       
       airplaneGroup.position.set(-80, 55, -30);
       scene.add(airplaneGroup);
@@ -2763,96 +2807,124 @@
       const iAmb = new THREE.AmbientLight(0xffffff, 0.75);
       window.museumInterior.add(iAmb);
       
-      // ── DİLEK DUVARI (sol duvar) ──
-      const wishBoardMat = new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.8 });
-      const wishBoard = new THREE.Mesh(new THREE.BoxGeometry(0.12, 4, 7), wishBoardMat);
-      wishBoard.position.set(-12.9, 3.5, -5); window.museumInterior.add(wishBoard);
-      // Altın çerçeve
-      const wbFrameMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.8, roughness: 0.2 });
-      [[0,5.6,0.3],[0,-5.6,0.3],[2.2,0,0.3],[-2.2,0,0.3]].forEach(([dy,dz,dx]) => {
-        const bar = new THREE.Mesh(dy===0 ? new THREE.BoxGeometry(0.15,4.3,0.2) : new THREE.BoxGeometry(0.15,0.2,7.4), wbFrameMat);
-        bar.position.set(-12.82, 3.5 + dy, -5 + dz); window.museumInterior.add(bar);
-      });
-      // Başlık
-      const wbTitleCanvas = document.createElement('canvas');
-      wbTitleCanvas.width = 512; wbTitleCanvas.height = 128;
-      const wbTCtx = wbTitleCanvas.getContext('2d');
-      wbTCtx.fillStyle = '#5c3317'; wbTCtx.fillRect(0,0,512,128);
-      wbTCtx.fillStyle = '#ffd700'; wbTCtx.font = 'bold 48px serif'; wbTCtx.textAlign = 'center';
-      wbTCtx.fillText('🌟 Dilek Duvarı 🌟', 256, 80);
-      const wbTitleTex = new THREE.CanvasTexture(wbTitleCanvas);
-      const wbTitle = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 0.7),
-        new THREE.MeshBasicMaterial({ map: wbTitleTex, side: THREE.DoubleSide }));
-      wbTitle.position.set(-12.75, 5.7, -5); wbTitle.rotation.y = Math.PI/2;
-      window.museumInterior.add(wbTitle);
+      // ── DİLEK TABELASI - Taşınabilir mantar pano (köşede) ──
+      const wishStandGroup = new THREE.Group();
+      wishStandGroup.position.set(-10, 0, -14); // Köşede, duvardan uzakta
+      wishStandGroup.rotation.y = Math.PI * 0.25; // Hafif açılı
       
-      // Dilek notları (dinamik - başlangıçta boş, canvas ile doldurulur)
+      const standMat = new THREE.MeshStandardMaterial({ color: 0x5c3317, roughness: 0.8 });
+      const corkMat = new THREE.MeshStandardMaterial({ color: 0xc8956a, roughness: 0.95 });
+      const frameGoldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.7, roughness: 0.3 });
+      
+      // Sehpa ayakları (A çerçeve)
+      [[-0.55, 0.35], [0.55, 0.35], [-0.3, -0.25], [0.3, -0.25]].forEach(([lx, lz]) => {
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 2.2, 7), standMat);
+        leg.position.set(lx, 1.1, lz);
+        leg.rotation.z = lx > 0 ? -0.13 : 0.13;
+        leg.rotation.x = lz > 0 ? 0.12 : -0.05;
+        wishStandGroup.add(leg);
+      });
+      // Yatay destek çubuğu
+      const crossBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.3, 6), standMat);
+      crossBar.rotation.z = Math.PI / 2; crossBar.position.set(0, 0.7, 0.3);
+      wishStandGroup.add(crossBar);
+      
+      // Pano çerçevesi
+      const boardFrame = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.08), standMat);
+      boardFrame.position.set(0, 2.3, 0); wishStandGroup.add(boardFrame);
+      // Altın çerçeve kenarlar
+      [[0,0.82,0.05,2.3,0.1],[0,-0.82,0.05,2.3,0.1],[1.12,0,0.05,0.1,1.7],[-1.12,0,0.05,0.1,1.7]].forEach(([bx,by,bz,bw,bh]) => {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,0.06), frameGoldMat);
+        b.position.set(bx, 2.3+by, bz); wishStandGroup.add(b);
+      });
+      // Mantar dolgu
+      const cork = new THREE.Mesh(new THREE.BoxGeometry(1.95, 1.3, 0.05), corkMat);
+      cork.position.set(0, 2.3, 0.055); wishStandGroup.add(cork);
+      
+      // Tabela başlığı (küçük)
+      const tCanvas = document.createElement('canvas');
+      tCanvas.width = 512; tCanvas.height = 128;
+      const tCtx = tCanvas.getContext('2d');
+      tCtx.fillStyle = '#7a4520'; tCtx.fillRect(0,0,512,128);
+      tCtx.fillStyle = '#ffd700'; tCtx.font = 'bold 44px serif';
+      tCtx.textAlign = 'center'; tCtx.fillText('🌟 Dilek Panosu', 256, 78);
+      const tTex = new THREE.CanvasTexture(tCanvas);
+      const tLabel = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.4),
+        new THREE.MeshBasicMaterial({ map: tTex, side: THREE.DoubleSide }));
+      tLabel.position.set(0, 2.72, 0.12); wishStandGroup.add(tLabel);
+      
+      window.museumInterior.add(wishStandGroup);
+      window.wishStandGroup = wishStandGroup;
+      
+      // Not kağıdı pozisyonları - mantar pano üzerinde
       window.wishNotes = [];
       window.wishNotePositions = [
-        [-12.8, 4.5, -7.5], [-12.8, 4.5, -6], [-12.8, 4.5, -4.5],
-        [-12.8, 4.5, -3], [-12.8, 4.5, -1.5],
-        [-12.8, 3.2, -7.5], [-12.8, 3.2, -6], [-12.8, 3.2, -4.5],
-        [-12.8, 3.2, -3], [-12.8, 3.2, -1.5],
-        [-12.8, 2.0, -7.5], [-12.8, 2.0, -6], [-12.8, 2.0, -4.5],
+        // [localX, localY, localZ] — wishStandGroup'a göre relative
+        [-0.62, 2.45, 0.13], [0.0, 2.45, 0.13], [0.62, 2.45, 0.13],
+        [-0.62, 2.1, 0.13],  [0.0, 2.1, 0.13],  [0.62, 2.1, 0.13],
+        [-0.62, 1.78, 0.13], [0.0, 1.78, 0.13],  [0.62, 1.78, 0.13],
       ];
       window.wishNoteColors = ['#fff9c4','#fce4ec','#e8f5e9','#e3f2fd','#fff3e0','#f3e5f5','#ffe0b2'];
       
       function addWishToWall(text) {
-        if (!window.insideMuseum) return;
         const idx = window.wishNotes.length % window.wishNotePositions.length;
         const pos = window.wishNotePositions[idx];
         const col = window.wishNoteColors[window.wishNotes.length % window.wishNoteColors.length];
         
         const nc = document.createElement('canvas');
-        nc.width = 256; nc.height = 192;
+        nc.width = 256; nc.height = 220;
         const nCtx = nc.getContext('2d');
-        nCtx.fillStyle = col; nCtx.fillRect(0,0,256,192);
-        nCtx.fillStyle = 'rgba(0,0,0,0.15)'; nCtx.fillRect(0,188,256,4);
-        nCtx.fillStyle = '#333';
-        nCtx.font = 'bold 22px sans-serif'; nCtx.textAlign = 'center';
-        // Satıra böl
+        // Not kağıdı arka planı - hafif gölgeli
+        nCtx.fillStyle = col; nCtx.fillRect(0,0,256,220);
+        // Alt gölge efekti
+        nCtx.fillStyle = 'rgba(0,0,0,0.08)'; nCtx.fillRect(4,4,252,216);
+        nCtx.fillStyle = col; nCtx.fillRect(0,0,252,216);
+        // Çizgiler (not defteri çizgileri)
+        nCtx.strokeStyle = 'rgba(100,120,200,0.2)'; nCtx.lineWidth = 1;
+        for (let ln = 55; ln < 210; ln += 28) {
+          nCtx.beginPath(); nCtx.moveTo(15, ln); nCtx.lineTo(241, ln); nCtx.stroke();
+        }
+        // Yazı
+        nCtx.fillStyle = '#2c2c2c';
+        nCtx.font = 'bold 24px sans-serif'; nCtx.textAlign = 'center';
         const words = text.split(' ');
-        let line = '', lines2 = [], y2 = 40;
+        let line = '', lines2 = [], maxW = 210;
         for (const w of words) {
           const test = line + w + ' ';
-          if (nCtx.measureText(test).width > 220 && line) { lines2.push(line); line = w + ' '; }
+          if (nCtx.measureText(test).width > maxW && line) { lines2.push(line); line = w + ' '; }
           else line = test;
         }
         lines2.push(line);
-        lines2.forEach((l, i) => nCtx.fillText(l.trim(), 128, y2 + i*30));
-        // İmza çizgisi
-        nCtx.strokeStyle = '#aaa'; nCtx.lineWidth = 1;
-        nCtx.beginPath(); nCtx.moveTo(20, 170); nCtx.lineTo(236, 170); nCtx.stroke();
-        nCtx.fillStyle = '#888'; nCtx.font = 'italic 16px serif';
-        nCtx.fillText('— Dilek Ağacı\'ndan 🌳', 128, 185);
+        const startY = lines2.length > 2 ? 60 : 75;
+        lines2.forEach((l, i) => nCtx.fillText(l.trim(), 128, startY + i*32));
+        // Küçük kalp
+        nCtx.font = '28px serif'; nCtx.fillText('💕', 128, 195);
         
         const nTex = new THREE.CanvasTexture(nc);
         const note = new THREE.Mesh(
-          new THREE.PlaneGeometry(1.2, 0.9),
+          new THREE.PlaneGeometry(0.48, 0.42),
           new THREE.MeshBasicMaterial({ map: nTex, side: THREE.DoubleSide })
         );
         note.position.set(pos[0], pos[1], pos[2]);
-        note.rotation.y = Math.PI/2;
-        // Hafif rastgele eğim
-        note.rotation.z = (Math.random()-0.5)*0.15;
-        window.museumInterior.add(note);
+        note.rotation.z = (Math.random()-0.5)*0.18;
+        wishStandGroup.add(note);
         window.wishNotes.push(note);
         
-        // Küçük raptiye
-        const pinMat = new THREE.MeshBasicMaterial({ color: 0xff4444 });
-        const pin = new THREE.Mesh(new THREE.SphereGeometry(0.05,6,6), pinMat);
-        pin.position.set(pos[0], pos[1]+0.38, pos[2]);
-        window.museumInterior.add(pin);
+        // Raptiye (iğne başı)
+        const pinMat = new THREE.MeshBasicMaterial({ color: [0xff4444,0x4444ff,0x44bb44,0xffaa00][Math.floor(Math.random()*4)] });
+        const pin = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), pinMat);
+        pin.position.set(pos[0], pos[1]+0.19, pos[2]+0.01);
+        wishStandGroup.add(pin);
       }
       window.addWishToWall = addWishToWall;
       
-      // Örnek başlangıç dilekleri
+      // Örnek başlangıç dilekleri (müzeye girilince yüklenir)
       setTimeout(() => {
         if (window.addWishToWall) {
           window.addWishToWall('Hep birlikte mutlu olalım 💕');
           window.addWishToWall('Sevgimiz sonsuza dek sürsün ✨');
         }
-      }, 2000);
+      }, 2500);
 
       scene.add(window.museumInterior);
 
@@ -4162,8 +4234,10 @@
         window.airplane.position.x = Math.cos(window.airplaneAngle) * radius;
         window.airplane.position.z = Math.sin(window.airplaneAngle) * radius;
         window.airplane.position.y = height;
-        // Uçuş yönüne döndür
-        window.airplane.rotation.y = -window.airplaneAngle + Math.PI / 2;
+        // Doğru yön: burun (local +X) hareket yönüne baksın
+        // Hareket yönü: d/dt(cos(a), 0, sin(a)) = (-sin(a), 0, cos(a))
+        // Local +X'i bu vektöre hizalamak için: rotation.y = -a - PI/2
+        window.airplane.rotation.y = -window.airplaneAngle - Math.PI / 2;
         // Hafif yalpalama
         window.airplane.rotation.z = Math.sin(window.airplaneAngle * 2) * 0.04;
         // Pervane dönüşü
