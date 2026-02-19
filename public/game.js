@@ -2080,132 +2080,156 @@
 
       const labels = ['🌨️ Kış Günü', '🌅 Gün Batımı', '🎉 Özel Gece', '🚂 Yolculuk', '🍽️ Akşam Yemeği', '🌄 Doğa', '🌙 Gece Out', '🍜 Restoran', '📸 Balık Tutma', '🌊 Deniz', '☀️ Güneşli', '🎱 Bilardo', '💑 İkimiz', '✈️ Seyahat', '☕ Kafe', '🌇 Şehir'];
 
+      // ====== YENİ TEK SIRA, BÜYÜK, SÜSLÜ ÇERÇEVELER ======
+      // Sol duvar: 8 fotoğraf, sağ duvar: 8 fotoğraf - tek sıra yan yana
+      const FW = 2.9;  // çerçeve genişliği
+      const FH = 2.25; // çerçeve yüksekliği
+      const frameY = 3.6; // tek sıra merkezi
+      const frameZPositions = [-15, -11, -7, -3, 1, 5, 9, 13]; // 8 konum
+
       const framePositions = [
-        {x:-12.68, y:4.3, z:-14, ry:Math.PI/2},
-        {x:-12.68, y:4.3, z:-8, ry:Math.PI/2},
-        {x:-12.68, y:4.3, z:-2, ry:Math.PI/2},
-        {x:-12.68, y:4.3, z:4, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:-14, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:-8, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:-2, ry:Math.PI/2},
-        {x:-12.68, y:2.2, z:4, ry:Math.PI/2},
-        {x:12.68, y:4.3, z:-14, ry:-Math.PI/2},
-        {x:12.68, y:4.3, z:-8, ry:-Math.PI/2},
-        {x:12.68, y:4.3, z:-2, ry:-Math.PI/2},
-        {x:12.68, y:4.3, z:4, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:-14, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:-8, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:-2, ry:-Math.PI/2},
-        {x:12.68, y:2.2, z:4, ry:-Math.PI/2},
+        ...frameZPositions.map(z => ({x:-12.68, y:frameY, z, ry:Math.PI/2})),
+        ...frameZPositions.map(z => ({x:12.68,  y:frameY, z, ry:-Math.PI/2})),
       ];
+
+      // Çerçeve malzemeleri - lüks müze stili
+      const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x1a0800, roughness: 0.5, metalness: 0.05 });
+      const goldMoldMat = new THREE.MeshStandardMaterial({ color: 0xd4a820, metalness: 0.9, roughness: 0.1, emissive: 0x8b6000, emissiveIntensity: 0.08 });
+      const matBlackMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
 
       framePositions.forEach((pos, idx) => {
         if (idx >= photoData.length) return;
-        // Dışa doğru offset (duvardan odaya doğru)
-        const outDir = pos.x < 0 ? 1 : -1; // sol duvar +X, sağ duvar -X
+        const outDir = pos.x < 0 ? 1 : -1;
+        const d = outDir * 0.01; // duvardan hafif dışarı
 
-        // 1. Dış altın çerçeve (duvar yüzeyine bitişik)
-        const outerFrame = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.6, 0.08), goldMat);
-        outerFrame.position.set(pos.x, pos.y, pos.z);
-        outerFrame.rotation.y = pos.ry;
-        window.museumInterior.add(outerFrame);
+        // ── KATMANLI ÇERÇEVE SİSTEMİ ──
 
-        // 2. İç siyah mat paspas (çerçeve içi, hafif geriden)
-        const paspas = new THREE.Mesh(new THREE.BoxGeometry(1.78, 1.38, 0.06), innerMat);
-        paspas.position.set(pos.x + outDir * 0.02, pos.y, pos.z);
-        paspas.rotation.y = pos.ry;
-        window.museumInterior.add(paspas);
+        // Katman 1: Koyu ahşap dış çerçeve (en arkada, duvara yapışık)
+        const woodFrame = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.30, FH + 0.30, 0.10), darkWoodMat);
+        woodFrame.position.set(pos.x + d*0, pos.y, pos.z);
+        woodFrame.rotation.y = pos.ry;
+        window.museumInterior.add(woodFrame);
 
-        // 3. Fotoğraf plane (paspasın önünde, odaya bakan yüzde)
+        // Katman 2: Altın dış bordür şerit
+        const goldOuter = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.18, FH + 0.18, 0.11), goldMoldMat);
+        goldOuter.position.set(pos.x + outDir*0.005, pos.y, pos.z);
+        goldOuter.rotation.y = pos.ry;
+        window.museumInterior.add(goldOuter);
+
+        // Katman 3: İkinci koyu ahşap şerit (iç)
+        const woodInner = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.06, FH + 0.06, 0.12), darkWoodMat);
+        woodInner.position.set(pos.x + outDir*0.01, pos.y, pos.z);
+        woodInner.rotation.y = pos.ry;
+        window.museumInterior.add(woodInner);
+
+        // Katman 4: İnce altın iç şerit
+        const goldInner = new THREE.Mesh(new THREE.BoxGeometry(FW - 0.02, FH - 0.02, 0.13), goldMoldMat);
+        goldInner.position.set(pos.x + outDir*0.015, pos.y, pos.z);
+        goldInner.rotation.y = pos.ry;
+        window.museumInterior.add(goldInner);
+
+        // Katman 5: Siyah mat paspas
+        const matMesh = new THREE.Mesh(new THREE.BoxGeometry(FW - 0.12, FH - 0.12, 0.13), matBlackMat);
+        matMesh.position.set(pos.x + outDir*0.02, pos.y, pos.z);
+        matMesh.rotation.y = pos.ry;
+        window.museumInterior.add(matMesh);
+
+        // Katman 6: Fotoğraf (mat üzerinde)
         const img = new Image();
         img.onload = function() {
           const tex = new THREE.Texture(img);
           tex.needsUpdate = true;
           const photoMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(1.72, 1.3),
+            new THREE.PlaneGeometry(FW - 0.22, FH - 0.22),
             new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
           );
-          // Fotoğraf: paspasın tam önünde, duvardan odaya dönük
-          photoMesh.position.set(pos.x + outDir * 0.07, pos.y, pos.z);
+          photoMesh.position.set(pos.x + outDir*0.075, pos.y, pos.z);
           photoMesh.rotation.y = pos.ry;
           window.museumInterior.add(photoMesh);
           photoFrames.push(photoMesh);
         };
         img.src = photoData[idx];
 
-        // 4. Altın plaket (çerçeve altında)
-        const pc = document.createElement('canvas');
-        pc.width = 512; pc.height = 88;
-        const pCtx = pc.getContext('2d');
-        const grad = pCtx.createLinearGradient(0,0,512,0);
-        grad.addColorStop(0,'#6b4c00'); grad.addColorStop(0.5,'#e0b830'); grad.addColorStop(1,'#6b4c00');
-        pCtx.fillStyle = grad; pCtx.fillRect(0,0,512,88);
-        pCtx.strokeStyle='#c8a000'; pCtx.lineWidth=3; pCtx.strokeRect(2,2,508,84);
-        pCtx.fillStyle = '#1a0800'; pCtx.font = 'bold 36px serif';
-        pCtx.textAlign = 'center'; pCtx.fillText(labels[idx]||'💕', 256, 58);
-        const pTex = new THREE.CanvasTexture(pc);
-        const plaket = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.24),
-          new THREE.MeshBasicMaterial({map:pTex, side:THREE.DoubleSide}));
-        plaket.position.set(pos.x + outDir * 0.09, pos.y - 1.12, pos.z);
-        plaket.rotation.y = pos.ry;
-        window.museumInterior.add(plaket);
-
-        // 5. Köşe rozetleri
-        const rzMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.95, roughness: 0.05 });
-        [[-0.9, 0.65],[0.9, 0.65],[-0.9,-0.65],[0.9,-0.65]].forEach(([dz,dy]) => {
-          const rz = new THREE.Mesh(new THREE.SphereGeometry(0.055,8,8), rzMat);
-          rz.position.set(pos.x + outDir*0.05, pos.y + dy, pos.z + dz);
-          window.museumInterior.add(rz);
+        // ── KÖŞE ROZET SÜSLER (4 köşe) ──
+        const rozetGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.97, roughness: 0.03 });
+        const cornerOffsets = [
+          [-(FW/2+0.09), +(FH/2+0.09)],
+          [+(FW/2+0.09), +(FH/2+0.09)],
+          [-(FW/2+0.09), -(FH/2+0.09)],
+          [+(FW/2+0.09), -(FH/2+0.09)],
+        ];
+        cornerOffsets.forEach(([dz, dy]) => {
+          // Büyük köşe gül
+          const rose = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 10), rozetGold);
+          rose.rotation.x = Math.PI / 2;
+          rose.position.set(pos.x + outDir*0.06, pos.y + dy, pos.z + dz);
+          rose.rotation.y = pos.ry;
+          window.museumInterior.add(rose);
+          // Merkez top
+          const top = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), rozetGold);
+          top.position.set(pos.x + outDir*0.09, pos.y + dy, pos.z + dz);
+          window.museumInterior.add(top);
         });
 
-        // 6. Spot ışık
-        const spot = new THREE.SpotLight(0xfff5e0, 0.65, 7, Math.PI/10, 0.4);
-        spot.position.set(pos.x + outDir*5, pos.y + 3, pos.z);
+        // ── ALTIN ASKı KANCASI (üstte) ──
+        const hookMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.95, roughness: 0.05 });
+        const hook = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.018, 8, 14, Math.PI), hookMat);
+        hook.position.set(pos.x + outDir*0.12, pos.y + FH/2 + 0.20, pos.z);
+        hook.rotation.y = pos.ry;
+        window.museumInterior.add(hook);
+        // İnce zincir/ip (kancadan resim rayına)
+        const wireGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.38, 6);
+        const wire = new THREE.Mesh(wireGeo, hookMat);
+        wire.position.set(pos.x + outDir*0.10, pos.y + FH/2 + 0.40, pos.z);
+        window.museumInterior.add(wire);
+
+        // Plaket kaldırıldı
+
+        // ── SPOT IŞIK ──
+        const spot = new THREE.SpotLight(0xfff5e0, 0.85, 9, Math.PI/9, 0.35);
+        spot.position.set(pos.x + outDir*5, pos.y + 3.5, pos.z);
         spot.target.position.set(pos.x, pos.y, pos.z);
         window.museumInterior.add(spot);
         window.museumInterior.add(spot.target);
       });
 
-      // ====== ALTIN DİREK + KIRMIZI İP BARIYERLER ======
+      // ====== BOYDAN BOYA TEK İP BARIYERLER ======
       const stanchionMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.92, roughness: 0.08 });
-      const ropeMat = new THREE.MeshStandardMaterial({ color: 0x8b0000, roughness: 0.85 });
+      const ropeMat     = new THREE.MeshStandardMaterial({ color: 0x6b0000, roughness: 0.7, metalness: 0.05 });
 
-      framePositions.forEach((pos) => {
-        const outDir = pos.x < 0 ? 1 : -1;
-        const barrierX = pos.x + outDir * 1.4; // Tablodan 1.4 birim içeride
+      // Her duvar için: tek uzun ip + belirli aralıklarla direkler
+      [-1, 1].forEach(side => {
+        const wallX  = side * 12.68;
+        const barrierX = wallX + (-side) * 1.5; // duvara göre içeri
+        const ropeStartZ = -17;
+        const ropeEndZ   =  15;
+        const ropeLength = ropeEndZ - ropeStartZ; // 32 birim
 
-        // Sol direk
-        const leftPost = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.1, 12), stanchionMat);
-        leftPost.position.set(barrierX, 0.55, pos.z - 0.95);
-        window.museumInterior.add(leftPost);
-        // Sol direk başlığı (top ball)
-        const leftTop = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), stanchionMat);
-        leftTop.position.set(barrierX, 1.15, pos.z - 0.95);
-        window.museumInterior.add(leftTop);
-        // Sol direk tabanı
-        const leftBase = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 12), stanchionMat);
-        leftBase.position.set(barrierX, 0.03, pos.z - 0.95);
-        window.museumInterior.add(leftBase);
+        // ── TEK UZUN İP ──
+        const longRope = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.022, 0.022, ropeLength, 10),
+          ropeMat
+        );
+        longRope.rotation.x = Math.PI / 2;
+        longRope.position.set(barrierX, 1.05, (ropeStartZ + ropeEndZ) / 2);
+        window.museumInterior.add(longRope);
 
-        // Sağ direk
-        const rightPost = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 1.1, 12), stanchionMat);
-        rightPost.position.set(barrierX, 0.55, pos.z + 0.95);
-        window.museumInterior.add(rightPost);
-        // Sağ direk başlığı
-        const rightTop = new THREE.Mesh(new THREE.SphereGeometry(0.065, 10, 10), stanchionMat);
-        rightTop.position.set(barrierX, 1.15, pos.z + 0.95);
-        window.museumInterior.add(rightTop);
-        // Sağ direk tabanı
-        const rightBase = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 12), stanchionMat);
-        rightBase.position.set(barrierX, 0.03, pos.z + 0.95);
-        window.museumInterior.add(rightBase);
-
-        // Kırmızı kadife ip (iki direk arasında, Z ekseni boyunca)
-        const ropeGeo = new THREE.CylinderGeometry(0.018, 0.018, 1.9, 8);
-        const rope = new THREE.Mesh(ropeGeo, ropeMat);
-        rope.rotation.x = Math.PI / 2; // Z ekseni boyunca (postlar arasında)
-        rope.position.set(barrierX, 1.05, pos.z);
-        window.museumInterior.add(rope);
+        // ── DİREKLER (her 8 birimde bir) ──
+        const postZPositions = [-17, -11, -5, 1, 7, 13];
+        postZPositions.forEach(pz => {
+          // Gövde
+          const post = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 1.1, 14), stanchionMat);
+          post.position.set(barrierX, 0.55, pz);
+          window.museumInterior.add(post);
+          // Üst top
+          const topBall = new THREE.Mesh(new THREE.SphereGeometry(0.075, 12, 12), stanchionMat);
+          topBall.position.set(barrierX, 1.15, pz);
+          window.museumInterior.add(topBall);
+          // Taban disk
+          const base = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 0.07, 14), stanchionMat);
+          base.position.set(barrierX, 0.035, pz);
+          window.museumInterior.add(base);
+        });
       });
 
       // ====== YÜZÜK HEYKELİ KALDIRILDI ======
@@ -3038,7 +3062,8 @@
 
       // ── MÜZEİÇİ SINIRLAR ──
       if (window.insideMuseum) {
-        playerGroup.position.x = Math.max(-12.5, Math.min(12.5, playerGroup.position.x));
+        // Yan duvar ipleri geçilemesin (ip x = ±11.18)
+        playerGroup.position.x = Math.max(-11.0, Math.min(11.0, playerGroup.position.x));
         playerGroup.position.z = Math.max(-17.5, Math.min(17.5, playerGroup.position.z));
       } else {
         // ── DIŞ SINIRLAR ──
@@ -3446,35 +3471,12 @@
 
       // YÜZÜK HEYKELİ ANİMASYONU KALDIRILDI
 
-      // ====== EL ELE TUTUŞMA MEKANİĞİ ======
+      // ====== YAKINLIK KALP SİSTEMİ ======
       if (partnerGroup && partnerConnected) {
-        const handDist = playerGroup.position.distanceTo(partnerGroup.position);
+        const dist = playerGroup.position.distanceTo(partnerGroup.position);
 
-        if (handDist <= 1.5) {
-          // El ele aktif
-          if (!window.handHoldingActive) {
-            window.handHoldingActive = true;
-            // Sabitlenme anındaki offset'i kaydet (yan yana pozisyon)
-            window.handHoldOffset = {
-              x: playerGroup.position.x - partnerGroup.position.x,
-              z: playerGroup.position.z - partnerGroup.position.z
-            };
-            // Offset'i normalize edip sabit mesafeye ayarla (0.85 birim)
-            const offLen = Math.sqrt(window.handHoldOffset.x**2 + window.handHoldOffset.z**2) || 0.85;
-            window.handHoldOffset.x = (window.handHoldOffset.x / offLen) * 0.85;
-            window.handHoldOffset.z = (window.handHoldOffset.z / offLen) * 0.85;
-            // Ekranda bildirim göster
-            const hh = document.getElementById('hand-holding-indicator');
-            if (hh) { hh.style.opacity = '1'; hh.style.transform = 'translateX(-50%) scale(1)'; }
-          }
-
-          // 🧲 MIKANATIZ SNAP: Oyuncuyu partner'ın yanına sabitle
-          if (window.handHoldOffset) {
-            playerGroup.position.x = partnerGroup.position.x + window.handHoldOffset.x;
-            playerGroup.position.z = partnerGroup.position.z + window.handHoldOffset.z;
-          }
-
-          // Kalp simgesi oluştur (yoksa)
+        if (dist <= 1.8) {
+          // Kalp oluştur (yoksa)
           if (!window.heartMesh) {
             const heartCanvas = document.createElement('canvas');
             heartCanvas.width = 128; heartCanvas.height = 128;
@@ -3485,27 +3487,20 @@
             hCtx.fillText('❤️', 64, 64);
             const heartTex = new THREE.CanvasTexture(heartCanvas);
             window.heartMesh = new THREE.Mesh(
-              new THREE.PlaneGeometry(0.6, 0.6),
+              new THREE.PlaneGeometry(0.7, 0.7),
               new THREE.MeshBasicMaterial({ map: heartTex, transparent: true, depthWrite: false, side: THREE.DoubleSide })
             );
             scene.add(window.heartMesh);
           }
 
-          // Kalbi iki karakter arasında, üstte konumlandır
+          // İki karakterin tam ortası, üstünde sallan
           window.heartMesh.visible = true;
           window.heartMesh.position.x = (playerGroup.position.x + partnerGroup.position.x) / 2;
-          window.heartMesh.position.y = Math.max(playerGroup.position.y, partnerGroup.position.y) + 2.8 + Math.sin(time * 0.003) * 0.15;
+          window.heartMesh.position.y = Math.max(playerGroup.position.y, partnerGroup.position.y) + 2.8 + Math.sin(time * 0.003) * 0.18;
           window.heartMesh.position.z = (playerGroup.position.z + partnerGroup.position.z) / 2;
           window.heartMesh.lookAt(camera.position);
-
         } else {
-          // El ele bitti - ayrıldılar
-          if (window.handHoldingActive) {
-            window.handHoldingActive = false;
-            window.handHoldOffset = null;
-            const hh = document.getElementById('hand-holding-indicator');
-            if (hh) { hh.style.opacity = '0'; hh.style.transform = 'translateX(-50%) scale(0.8)'; }
-          }
+          // Uzaklaştılar - kalbi gizle
           if (window.heartMesh) window.heartMesh.visible = false;
         }
       }
