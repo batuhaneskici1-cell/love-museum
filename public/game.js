@@ -2443,35 +2443,6 @@
 
     // FBX KARAKTER YÜKLEME - TÜM ANİMASYONLARLA
     
-    // Timeout'lu FBX yükleme wrapper'ı - yavaş/donuk bağlantılarda dosyayı atlar
-    function loadFBXWithTimeout(loader, url, onLoad, onError, timeoutMs = 20000) {
-      let done = false;
-      const timer = setTimeout(() => {
-        if (!done) {
-          done = true;
-          console.warn(`⏱️ Timeout: ${url} ${timeoutMs/1000}sn içinde gelmedi, atlanıyor`);
-          onError(new Error('timeout'));
-        }
-      }, timeoutMs);
-      
-      loader.load(url,
-        function(fbx) {
-          if (!done) { done = true; clearTimeout(timer); onLoad(fbx); }
-        },
-        function(xhr) {
-          // progress - timeout'u sıfırla (dosya geliyor)
-          if (xhr.loaded > 0) {
-            clearTimeout(timer);
-            // Yeni timeout koy - ilerleme durdu mu diye
-          }
-          console.log(`📦 ${url}: ${xhr.loaded} byte`);
-        },
-        function(err) {
-          if (!done) { done = true; clearTimeout(timer); onError(err); }
-        }
-      );
-    }
-    
     function loadFBXCharacter(parentGroup, isPlayer, isBatuhan) {
       const loader = new THREE.FBXLoader();
       
@@ -2553,7 +2524,7 @@
           }
           
           // KOŞMA animasyonunu yükle
-          loadFBXWithTimeout(loader, `/${prefix}Run.fbx`,
+          loader.load(`/${prefix}Run.fbx`,
             function(runFbx) {
               console.log(`✅ ${prefix}Run.fbx yüklendi!`);
               if (runFbx.animations && runFbx.animations.length > 0) {
@@ -2588,7 +2559,7 @@
           let danceAction1, danceAction2, danceAction3, danceAction4;
           
           // Dans 1
-          loadFBXWithTimeout(loader, `/${prefix}Dance1.fbx`,
+          loader.load(`/${prefix}Dance1.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance1.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
@@ -2623,7 +2594,7 @@
           );
           
           // Dans 2
-          loadFBXWithTimeout(loader, `/${prefix}Dance2.fbx`,
+          loader.load(`/${prefix}Dance2.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance2.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
@@ -2658,7 +2629,7 @@
           );
           
           // Dans 3
-          loadFBXWithTimeout(loader, `/${prefix}Dance3.fbx`,
+          loader.load(`/${prefix}Dance3.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance3.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
@@ -2693,7 +2664,7 @@
           );
           
           // Dans 4
-          loadFBXWithTimeout(loader, `/${prefix}Dance4.fbx`,
+          loader.load(`/${prefix}Dance4.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance4.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
@@ -2735,7 +2706,7 @@
           }
           
           // IDLE animasyonunu yükle (OPSİYONEL)
-          loadFBXWithTimeout(loader, `/${prefix}Idle.fbx`,
+          loader.load(`/${prefix}Idle.fbx`,
             function(idleFbx) {
               console.log(`✅ ${prefix}Idle.fbx yüklendi!`);
               if (idleFbx.animations && idleFbx.animations.length > 0) {
