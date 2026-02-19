@@ -1857,14 +1857,7 @@
       // Tavan
       const iCeiling = new THREE.Mesh(new THREE.BoxGeometry(26.4, 0.4, 36.4), new THREE.MeshStandardMaterial({color:0xfaf7f2,roughness:0.5}));
       iCeiling.position.set(0,7.2,0); window.museumInterior.add(iCeiling);
-      // Tavan ortasında süslü rozet
-      const rozetCanvas = document.createElement('canvas'); rozetCanvas.width=256; rozetCanvas.height=256;
-      const rzCtx = rozetCanvas.getContext('2d');
-      rzCtx.fillStyle='#faf7f2'; rzCtx.fillRect(0,0,256,256);
-      for (let r=0;r<6;r++){rzCtx.beginPath();rzCtx.arc(128,128,20+r*14,0,Math.PI*2);rzCtx.strokeStyle=r%2===0?'#d4a830':'#e8dcc8';rzCtx.lineWidth=r%2===0?4:2;rzCtx.stroke();}
-      for(let p=0;p<12;p++){const a=p*Math.PI/6;rzCtx.beginPath();rzCtx.moveTo(128+25*Math.cos(a),128+25*Math.sin(a));rzCtx.lineTo(128+100*Math.cos(a),128+100*Math.sin(a));rzCtx.strokeStyle='rgba(212,168,48,0.5)';rzCtx.lineWidth=2;rzCtx.stroke();}
-      const rozet = new THREE.Mesh(new THREE.PlaneGeometry(6,6), new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(rozetCanvas),transparent:true}));
-      rozet.rotation.x=Math.PI/2; rozet.position.set(0,7,0); window.museumInterior.add(rozet);
+      // Tavan ortasındaki rozet kaldırıldı
       // Avize
       const chandelierMat = new THREE.MeshStandardMaterial({color:0xffd700,metalness:0.95,roughness:0.05,emissive:0xffaa00,emissiveIntensity:0.3});
       const chanBase = new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.15,12), chandelierMat);
@@ -2112,13 +2105,13 @@
         const outDir = pos.x < 0 ? 1 : -1; // sol duvar +X, sağ duvar -X
 
         // 1. Dış altın çerçeve (duvar yüzeyine bitişik)
-        const outerFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1.6, 2.0), goldMat);
+        const outerFrame = new THREE.Mesh(new THREE.BoxGeometry(2.0, 1.6, 0.08), goldMat);
         outerFrame.position.set(pos.x, pos.y, pos.z);
         outerFrame.rotation.y = pos.ry;
         window.museumInterior.add(outerFrame);
 
         // 2. İç siyah mat paspas (çerçeve içi, hafif geriden)
-        const paspas = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.38, 1.78), innerMat);
+        const paspas = new THREE.Mesh(new THREE.BoxGeometry(1.78, 1.38, 0.06), innerMat);
         paspas.position.set(pos.x + outDir * 0.02, pos.y, pos.z);
         paspas.rotation.y = pos.ry;
         window.museumInterior.add(paspas);
@@ -2207,66 +2200,15 @@
         rightBase.position.set(barrierX, 0.03, pos.z + 0.95);
         window.museumInterior.add(rightBase);
 
-        // Kırmızı kadife ip (iki direk arasında, hafif sarkmış)
+        // Kırmızı kadife ip (iki direk arasında, Z ekseni boyunca)
         const ropeGeo = new THREE.CylinderGeometry(0.018, 0.018, 1.9, 8);
         const rope = new THREE.Mesh(ropeGeo, ropeMat);
-        rope.rotation.z = Math.PI / 2; // Yatay
+        rope.rotation.x = Math.PI / 2; // Z ekseni boyunca (postlar arasında)
         rope.position.set(barrierX, 1.05, pos.z);
         window.museumInterior.add(rope);
       });
 
-      // ====== YÜZÜK HEYKELİ - MÜZE MERKEZİ ======
-      const ringScupltureGroup = new THREE.Group();
-      ringScupltureGroup.position.set(0, 2.2, -4);
-
-      const ringMat = new THREE.MeshStandardMaterial({
-        color: 0xffd700, metalness: 0.97, roughness: 0.03,
-        emissive: 0xffaa00, emissiveIntensity: 0.15
-      });
-      const ring2Mat = new THREE.MeshStandardMaterial({
-        color: 0xe8e8ff, metalness: 0.97, roughness: 0.03,
-        emissive: 0xaaaaff, emissiveIntensity: 0.1
-      });
-
-      // Dış altın yüzük
-      const outerRingMesh = new THREE.Mesh(new THREE.TorusGeometry(1.0, 0.09, 20, 60), ringMat);
-      outerRingMesh.rotation.x = Math.PI / 6;
-      ringScupltureGroup.add(outerRingMesh);
-
-      // İç gümüş/platin yüzük (iç içe geçmiş)
-      const innerRingMesh = new THREE.Mesh(new THREE.TorusGeometry(0.72, 0.07, 20, 60), ring2Mat);
-      innerRingMesh.rotation.y = Math.PI / 4;
-      innerRingMesh.rotation.x = -Math.PI / 5;
-      ringScupltureGroup.add(innerRingMesh);
-
-      // Pırlanta taşları (dış yüzük üzerinde)
-      const gemMat = new THREE.MeshStandardMaterial({ color: 0xaaf0ff, metalness: 0.0, roughness: 0.0, emissive: 0x66ddff, emissiveIntensity: 0.8 });
-      for (let i = 0; i < 5; i++) {
-        const angle = (i / 5) * Math.PI * 2;
-        const gem = new THREE.Mesh(new THREE.OctahedronGeometry(0.07, 0), gemMat);
-        gem.position.set(Math.cos(angle) * 1.0, Math.sin(angle) * 1.0, 0);
-        outerRingMesh.add(gem);
-      }
-
-      // Altın baz/platform
-      const baseMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.4, 0.12, 20), stanchionMat);
-      baseMesh.position.set(0, -1.3, 0);
-      ringScupltureGroup.add(baseMesh);
-
-      // Baz sütunu
-      const pillarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 1.2, 12), stanchionMat);
-      pillarMesh.position.set(0, -0.75, 0);
-      ringScupltureGroup.add(pillarMesh);
-
-      // Spot ışık heykel için
-      const sculptureSpot = new THREE.SpotLight(0xfff8e0, 1.5, 12, Math.PI / 8, 0.3);
-      sculptureSpot.position.set(0, 5, -4);
-      sculptureSpot.target.position.set(0, 2.2, -4);
-      window.museumInterior.add(sculptureSpot);
-      window.museumInterior.add(sculptureSpot.target);
-
-      window.museumInterior.add(ringScupltureGroup);
-      window.ringSculpture = ringScupltureGroup; // Animasyon için referans
+      // ====== YÜZÜK HEYKELİ KALDIRILDI ======
     }
 
     function createMessages() {
@@ -3502,12 +3444,7 @@
         }
       }
 
-      // ====== YÜZÜK HEYKELİ ANİMASYONU ======
-      if (window.ringSculpture) {
-        window.ringSculpture.children[0].rotation.y += 0.008; // Dış altın yüzük
-        window.ringSculpture.children[1].rotation.z += 0.012; // İç gümüş yüzük farklı hız
-        window.ringSculpture.rotation.y += 0.003; // Tüm grup hafif dönsün
-      }
+      // YÜZÜK HEYKELİ ANİMASYONU KALDIRILDI
 
       // ====== EL ELE TUTUŞMA MEKANİĞİ ======
       if (partnerGroup && partnerConnected) {
@@ -3517,9 +3454,24 @@
           // El ele aktif
           if (!window.handHoldingActive) {
             window.handHoldingActive = true;
+            // Sabitlenme anındaki offset'i kaydet (yan yana pozisyon)
+            window.handHoldOffset = {
+              x: playerGroup.position.x - partnerGroup.position.x,
+              z: playerGroup.position.z - partnerGroup.position.z
+            };
+            // Offset'i normalize edip sabit mesafeye ayarla (0.85 birim)
+            const offLen = Math.sqrt(window.handHoldOffset.x**2 + window.handHoldOffset.z**2) || 0.85;
+            window.handHoldOffset.x = (window.handHoldOffset.x / offLen) * 0.85;
+            window.handHoldOffset.z = (window.handHoldOffset.z / offLen) * 0.85;
             // Ekranda bildirim göster
             const hh = document.getElementById('hand-holding-indicator');
             if (hh) { hh.style.opacity = '1'; hh.style.transform = 'translateX(-50%) scale(1)'; }
+          }
+
+          // 🧲 MIKANATIZ SNAP: Oyuncuyu partner'ın yanına sabitle
+          if (window.handHoldOffset) {
+            playerGroup.position.x = partnerGroup.position.x + window.handHoldOffset.x;
+            playerGroup.position.z = partnerGroup.position.z + window.handHoldOffset.z;
           }
 
           // Kalp simgesi oluştur (yoksa)
@@ -3547,9 +3499,10 @@
           window.heartMesh.lookAt(camera.position);
 
         } else {
-          // El ele bitti
+          // El ele bitti - ayrıldılar
           if (window.handHoldingActive) {
             window.handHoldingActive = false;
+            window.handHoldOffset = null;
             const hh = document.getElementById('hand-holding-indicator');
             if (hh) { hh.style.opacity = '0'; hh.style.transform = 'translateX(-50%) scale(0.8)'; }
           }
