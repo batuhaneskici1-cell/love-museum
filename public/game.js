@@ -1,3 +1,1436 @@
+    // YÜKLEME EKRANI KONTROLCÜSÜ
+    const loadingManager = {
+      total: 0,
+      loaded: 0,
+      messages: [
+        "Kalbine bağlanılıyor… Lütfen bekleyin 💘",
+        "Birlikte sonsuz level'a geçiliyor…",
+        "Sarılma DLC'si yükleniyor…",
+        "Sana aşırı düşme hatası algılandı! (çözüm aranmıyor)",
+        "Aşk XP'si kazanılıyor…",
+        "Kıskanma modu kapatıldı. (belki 😏)",
+        "Gülüşün sisteme entegre edildi ✔",
+        "Seni sevmek varsayılan ayar olarak seçildi ✔",
+        "Sevgi barı fullendi ❤️",
+        "Seni görünce sistem ısınıyor…",
+        "Sana bakınca utangaçlık modu açılıyor…",
+        "Kalp çarpıntısı güncellemesi indiriliyor…"
+      ],
+      currentMessageIndex: 0,
+      
+      init() {
+        this.updateMessage();
+        setInterval(() => this.updateMessage(), 4000); // Her 4 saniyede bir mesaj değiştir
+      },
+      
+      updateMessage() {
+        const msgElement = document.getElementById('loading-messages');
+        if (msgElement) {
+          msgElement.style.animation = 'none';
+          setTimeout(() => {
+            msgElement.textContent = this.messages[this.currentMessageIndex];
+            msgElement.style.animation = 'fadeIn 1s';
+            this.currentMessageIndex = (this.currentMessageIndex + 1) % this.messages.length;
+          }, 50);
+        }
+      },
+      
+      addItem(name) {
+        this.total++;
+        const itemsElement = document.getElementById('loading-items');
+        if (itemsElement) {
+          const item = document.createElement('div');
+          item.id = `loading-item-${this.total}`;
+          item.textContent = `⏳ ${name}...`;
+          item.style.opacity = '0';
+          item.style.transition = 'opacity 0.5s';
+          itemsElement.appendChild(item);
+          setTimeout(() => item.style.opacity = '1', 10);
+        }
+      },
+      
+      completeItem(name) {
+        this.loaded++;
+        const percentage = Math.round((this.loaded / this.total) * 100);
+        // Gerçek yükleme sahte ilerlemeden büyükse güncelle
+        const displayPercent = Math.max(percentage, Math.round(this._fakeProgress || 0));
+        
+        // Update bar
+        const bar = document.getElementById('loading-bar');
+        if (bar) bar.style.width = displayPercent + '%';
+        
+        // Update percentage
+        const perc = document.getElementById('loading-percentage');
+        if (perc) perc.textContent = displayPercent + '%';
+        
+        // Mark item complete
+        const itemsElement = document.getElementById('loading-items');
+        if (itemsElement) {
+          const items = itemsElement.children;
+          for (let item of items) {
+            if (item.textContent.includes(name)) {
+              item.textContent = `✅ ${name}`;
+              item.style.color = '#4ade80';
+            }
+          }
+        }
+        
+        // Tümü yüklendiyse ekranı kapat
+        if (this.loaded >= this.total && this.total > 0) {
+          if (this._fakeInterval) clearInterval(this._fakeInterval);
+          setTimeout(() => this.hide(), 500);
+        }
+      },
+      
+      show() {
+        const screen = document.getElementById('loading-screen');
+        if (screen) {
+          screen.style.display = 'flex';
+          screen.style.opacity = '1';
+        }
+        
+        // Sahte ön ilerleme: 0% → 40% (dosyalar yüklenene kadar oyalar)
+        this._fakeProgress = 0;
+        this._fakeInterval = setInterval(() => {
+          if (this._fakeProgress < 40) {
+            this._fakeProgress += 0.15; // Çok yavaş ilerle
+            const realPercent = this.total > 0 ? Math.round((this.loaded / this.total) * 100) : 0;
+            if (realPercent < this._fakeProgress) {
+              const bar = document.getElementById('loading-bar');
+              if (bar) bar.style.width = this._fakeProgress + '%';
+              const perc = document.getElementById('loading-percentage');
+              if (perc) perc.textContent = Math.round(this._fakeProgress) + '%';
+            }
+          } else {
+            clearInterval(this._fakeInterval);
+          }
+        }, 120); // 120ms × ~267 adım = ~32 saniyede %40'a ulaşır
+      },
+      
+      hide() {
+        const screen = document.getElementById('loading-screen');
+        if (screen) {
+          screen.style.transition = 'opacity 1s';
+          screen.style.opacity = '0';
+          setTimeout(() => {
+            screen.style.display = 'none';
+          }, 1000);
+        }
+      }
+    };
+    
+    // Yükleme ekranını başlat
+    loadingManager.init();
+    
+    // Socket.io connection
+    const socket = io();
+    
+    let scene, camera, renderer;
+    let playerGroup, partnerGroup;
+    let mixer, partnerMixer;
+    let clock = new THREE.Clock();
+    let keys = {};
+    let mouseX = 0;
+    let mouseY = 0;
+    let yaw = 0;
+    let pitch = 0.3; // Kamera açısı (yukarı/aşağı)
+    let isHost = false;
+    let roomCode = '';
+    let partnerConnected = false;
+    let photoFrames = [];
+    let messages = [];
+    let nearMessage = null;
+    let selectedCharacter = null;
+    let pendingAction = null; // 'create' or 'join'
+    let selectedDance = 0; // 0 = dans yok, 1-4 = dans numarası
+    let currentDanceAction = null; // Şu an çalan dans animasyonu
+
+    let moveSpeed = 0.1; // Yürüme hızı
+
+    // Socket events
+    socket.on('room_created', (data) => {
+      roomCode = data.roomCode;
+      isHost = data.isHost;
+      document.getElementById('room-code-text').textContent = roomCode;
+      document.getElementById('room-display').style.display = 'block';
+    });
+
+    socket.on('room_joined', (data) => {
+      roomCode = data.roomCode;
+      isHost = data.isHost;
+      partnerConnected = true;
+      
+      // Partner status güncelle (misafir odaya girince host zaten orada)
+      const statusEl = document.getElementById('partner-status');
+      if (statusEl) {
+        statusEl.textContent = 'Bağlandı 💑';
+        statusEl.classList.remove('waiting');
+        statusEl.classList.add('connected');
+      }
+      
+      // Menu ekranını gizle, karakter seçim ekranını göster
+      document.getElementById('menu-screen').style.display = 'none';
+      document.getElementById('character-screen').style.display = 'flex';
+    });
+
+    socket.on('partner_joined', () => {
+      partnerConnected = true;
+      console.log('💑 Partner katıldı!');
+      
+      // Partner status güncelle
+      const statusEl = document.getElementById('partner-status');
+      if (statusEl) {
+        statusEl.textContent = 'Bağlandı 💑';
+        statusEl.classList.remove('waiting');
+        statusEl.classList.add('connected');
+      }
+      
+      // Make partner visible immediately
+      if (partnerGroup) {
+        partnerGroup.visible = true;
+      }
+      
+      // If we're waiting, show character selection
+      if (!selectedCharacter) {
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('character-screen').style.display = 'flex';
+      }
+    });
+
+    socket.on('partner_moved', (data) => {
+      if (partnerGroup) {
+        partnerGroup.position.set(data.position.x, data.position.y, data.position.z);
+        partnerGroup.rotation.y = data.rotation;
+        
+        // ANİMASYON SENKRONİZASYONU
+        if (data.animation && partnerGroup.userData) {
+          const partnerWalk = partnerGroup.userData.walkAction;
+          const partnerRun = partnerGroup.userData.runAction;
+          const partnerIdle = partnerGroup.userData.idleAction;
+          const partnerDance1 = partnerGroup.userData.danceAction1;
+          const partnerDance2 = partnerGroup.userData.danceAction2;
+          const partnerDance3 = partnerGroup.userData.danceAction3;
+          const partnerDance4 = partnerGroup.userData.danceAction4;
+          
+          // Tüm animasyonları gizle
+          if (partnerWalk) partnerWalk.setEffectiveWeight(0);
+          if (partnerRun) partnerRun.setEffectiveWeight(0);
+          if (partnerIdle) partnerIdle.setEffectiveWeight(0);
+          if (partnerDance1) partnerDance1.setEffectiveWeight(0);
+          if (partnerDance2) partnerDance2.setEffectiveWeight(0);
+          if (partnerDance3) partnerDance3.setEffectiveWeight(0);
+          if (partnerDance4) partnerDance4.setEffectiveWeight(0);
+          
+          // İlgili animasyonu göster
+          if (data.animation === 'walk' && partnerWalk) {
+            partnerWalk.setEffectiveWeight(1);
+          } else if (data.animation === 'run' && partnerRun) {
+            partnerRun.setEffectiveWeight(1);
+          } else if (data.animation === 'idle' && partnerIdle) {
+            partnerIdle.setEffectiveWeight(1);
+          } else if (data.animation === 'dance1' && partnerDance1) {
+            partnerDance1.setEffectiveWeight(1);
+          } else if (data.animation === 'dance2' && partnerDance2) {
+            partnerDance2.setEffectiveWeight(1);
+          } else if (data.animation === 'dance3' && partnerDance3) {
+            partnerDance3.setEffectiveWeight(1);
+          } else if (data.animation === 'dance4' && partnerDance4) {
+            partnerDance4.setEffectiveWeight(1);
+          }
+          
+          if (data.animation && data.animation.startsWith('dance')) {
+            const partnerFbx = partnerGroup.userData.fbxModel;
+            if (partnerFbx) { partnerFbx.position.x = 0; partnerFbx.position.z = 0; }
+          }
+        }
+        
+        // Make sure partner is visible
+        if (!partnerGroup.visible && partnerConnected) {
+          partnerGroup.visible = true;
+        }
+      }
+    });
+
+    socket.on('partner_disconnected', () => {
+      partnerConnected = false;
+      document.getElementById('partner-status').textContent = 'Ayrıldı 💔';
+      document.getElementById('partner-status').classList.remove('connected');
+      document.getElementById('partner-status').classList.add('waiting');
+      if (partnerGroup) {
+        partnerGroup.visible = false;
+      }
+    });
+
+    socket.on('error', (data) => {
+      showError(data.message);
+    });
+
+    // Menu functions
+    function createRoom() {
+      console.log('🏠 Oda oluşturuluyor...');
+      pendingAction = 'create';
+      socket.emit('create_room');
+    }
+
+    function showJoinInput() {
+      console.log('🚪 Katılma ekranı açılıyor...');
+      document.getElementById('join-input').style.display = 'block';
+      document.getElementById('room-code-input').focus();
+    }
+
+    function joinRoom() {
+      const code = document.getElementById('room-code-input').value.toUpperCase();
+      console.log('🔑 Odaya katılmaya çalışıyor:', code);
+      if (code.length === 6) {
+        pendingAction = 'join';
+        socket.emit('join_room', code);
+      } else {
+        showError('Geçersiz oda kodu!');
+      }
+    }
+
+    function selectCharacter(character) {
+      console.log('👤 Karakter seçildi:', character);
+      selectedCharacter = character;
+      startGame();
+    }
+
+    function showError(message) {
+      const errorEl = document.getElementById('error-msg');
+      errorEl.textContent = message;
+      errorEl.style.display = 'block';
+      setTimeout(() => {
+        errorEl.style.display = 'none';
+      }, 3000);
+    }
+
+    function checkPassword() {
+      const input = document.getElementById('password-input').value.toLowerCase().trim();
+      const errorEl = document.getElementById('password-error');
+      
+      if (input === 'batuhan') {
+        // Doğru şifre!
+        closePasswordPopup();
+        enterMuseum();
+      } else {
+        // Yanlış şifre
+        errorEl.textContent = '❌ Yanlış cevap! Tekrar dene.';
+        errorEl.style.display = 'block';
+        document.getElementById('password-input').value = '';
+        setTimeout(() => {
+          errorEl.style.display = 'none';
+        }, 2000);
+      }
+    }
+
+    function closePasswordPopup() {
+      document.getElementById('password-popup').style.display = 'none';
+      document.getElementById('password-input').value = '';
+      document.getElementById('password-error').style.display = 'none';
+      window.popupOpen = false;
+      if (renderer && renderer.domElement) {
+        setTimeout(() => renderer.domElement.requestPointerLock(), 100);
+      }
+    }
+
+    // Global fonksiyonlar - HTML onclick için
+    window.checkPassword = checkPassword;
+    window.closePasswordPopup = closePasswordPopup;
+    
+    // DANS SEÇİM FONKSİYONLARI
+    window.selectDance = function(danceNumber) {
+      selectedDance = danceNumber;
+      document.getElementById('dance-menu').style.display = 'none';
+      console.log('💃 Dans seçildi:', danceNumber);
+      
+      // Pointer lock'u geri al
+      if (document.pointerLockElement === null && renderer && renderer.domElement) {
+        renderer.domElement.requestPointerLock();
+      }
+    };
+    
+    window.closeDanceMenu = function() {
+      selectedDance = 0; // Dans kapalı
+      document.getElementById('dance-menu').style.display = 'none';
+      console.log('❌ Dans iptal edildi');
+      
+      // Pointer lock'u geri al
+      if (document.pointerLockElement === null && renderer && renderer.domElement) {
+        renderer.domElement.requestPointerLock();
+      }
+    };
+
+    function enterMuseum() {
+      window.insideMuseum = true;
+      // KAPIYA DOKUNMA - Her zaman fiziksel olarak kilitli kalır
+      // window.museumDoor.userData.locked = false; // BU SATIR KALDIRILD!
+      window.museumInterior.visible = true;
+      
+      // Dış dünyayı tamamen gizle
+      scene.children.forEach(child => {
+        if (child !== window.museumInterior && child !== playerGroup && child !== partnerGroup) {
+          child.visible = false;
+        }
+      });
+      
+      scene.background = new THREE.Color(0xfff0e8);
+      scene.fog = null;
+      
+      // Karakteri içeriye ışınla - kapıdan biraz içeride
+      playerGroup.position.set(0, 0, 14);
+      yaw = Math.PI; // İçeriye baksın
+      
+      window.popupOpen = false;
+      setTimeout(() => {
+        if (renderer && renderer.domElement) renderer.domElement.requestPointerLock();
+      }, 200);
+      
+      console.log('Müzeye hoş geldiniz!');
+    }
+    
+    function exitMuseum() {
+      window.insideMuseum = false;
+      window.museumInterior.visible = false;
+      
+      // Dış dünyayı geri göster
+      scene.children.forEach(child => {
+        if (child !== window.museumInterior) {
+          child.visible = true;
+        }
+      });
+      
+      // Gökyüzü rengini geri al
+      scene.background = null;
+      scene.fog = new THREE.FogExp2(0xaad4f0, 0.006);
+      
+      // Karakteri dışarıya ışınla — kapıdan UZAĞA (z:30 → kapı z:21'de, arası 9 birim)
+      playerGroup.position.set(0, 0, 30);
+      yaw = Math.PI; // Dışarıya baksın
+      
+      // Kapı etkileşimini bir süre kilitle (tekrar açılmasın)
+      window.eKeyUsed = true;
+      window.popupOpen = false;
+      setTimeout(() => { 
+        window.eKeyUsed = false;
+        if (renderer && renderer.domElement) renderer.domElement.requestPointerLock();
+      }, 800);
+      
+      console.log('Müzeden çıkıldı!');
+    }
+    
+    window.exitMuseum = exitMuseum;
+    
+    // R TUŞU - SPAWN NOKTASINA IŞINLA
+    window.addEventListener('keydown', (e) => {
+      if (e.key.toLowerCase() === 'r' && playerGroup && !window.popupOpen) {
+        if (window.insideMuseum) {
+          exitMuseum();
+        }
+        playerGroup.position.set(0, 0, 55);
+        yaw = Math.PI;
+        // Kısa flash efekti
+        const flashDiv = document.createElement('div');
+        flashDiv.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;background:white;opacity:0.8;z-index:9999;pointer-events:none;transition:opacity 0.5s';
+        document.body.appendChild(flashDiv);
+        setTimeout(() => { flashDiv.style.opacity = '0'; setTimeout(() => flashDiv.remove(), 500); }, 50);
+      }
+    });
+    
+    // DİLEK POPUP FONKSİYONLARI
+    window.wishText = '';
+    
+    function openWishPopup() {
+      window.popupOpen = true;
+      if (document.pointerLockElement) document.exitPointerLock();
+      const popup = document.getElementById('wish-popup');
+      popup.style.display = 'flex';
+      setTimeout(() => document.getElementById('wish-input').focus(), 100);
+    }
+    
+    function closeWishPopup() {
+      document.getElementById('wish-popup').style.display = 'none';
+      document.getElementById('wish-input').value = '';
+      document.getElementById('wish-char-count').textContent = '120 karakter kaldı';
+      window.popupOpen = false;
+      window.eKeyUsed = false;
+      setTimeout(() => { if (renderer && renderer.domElement) renderer.domElement.requestPointerLock(); }, 100);
+    }
+    
+    function submitWish() {
+      const text = document.getElementById('wish-input').value.trim();
+      if (!text) return;
+      
+      window.wishText = text;
+      closeWishPopup();
+      
+      // Dilek kabul mesajını göster
+      const wishes = [
+        '🌟 "Hep birlikte, hep mutlu..." — Dileğin kabul oldu! 💫',
+        '✨ Ağaç fısıldıyor: "Sevginiz sonsuza dek sürsün..." 🌸',
+        '💕 Dileğin ağacın köküne işlendi — gerçek olacak! 🌺',
+        '🌈 "En büyük dilek zaten gerçek — birbirinizi buldunuz." 💝',
+      ];
+      const wish = wishes[Math.floor(Math.random()*wishes.length)];
+      
+      setTimeout(() => {
+        window.popupOpen = true;
+        if (document.pointerLockElement) document.exitPointerLock();
+        showNPCDialog('🌳 Dilek Ağacı', wish + '\n\n📜 Dileğin müze duvarına işlendi!');
+        
+        // Müze duvarına ekle (hemen)
+        if (window.addWishToWall) window.addWishToWall(text);
+      }, 200);
+    }
+    
+    window.openWishPopup = openWishPopup;
+    window.closeWishPopup = closeWishPopup;
+    window.submitWish = submitWish;
+    
+    function showNPCDialog(name, text) {
+      document.getElementById('message-text').innerHTML = text.replace(/\n/g, '<br>');
+      const popup = document.getElementById('message-popup');
+      const icon = popup.querySelector('.icon');
+      if (icon) icon.textContent = '💬';
+      let titleEl = popup.querySelector('.npc-name');
+      if (!titleEl) {
+        titleEl = document.createElement('h3');
+        titleEl.className = 'npc-name';
+        titleEl.style.cssText = 'color:white;font-size:22px;margin-bottom:15px;text-shadow:1px 1px 5px rgba(0,0,0,0.3)';
+        popup.querySelector('.message-content').insertBefore(titleEl, popup.querySelector('.icon').nextSibling);
+      }
+      titleEl.textContent = name;
+      
+      // Kapat butonu ekle (yoksa)
+      let closeBtn = popup.querySelector('.npc-close-btn');
+      if (!closeBtn) {
+        closeBtn = document.createElement('button');
+        closeBtn.className = 'npc-close-btn';
+        closeBtn.textContent = '✕ Kapat';
+        closeBtn.style.cssText = 'margin-top:20px;padding:10px 28px;font-size:16px;background:rgba(255,255,255,0.2);color:white;border:1px solid rgba(255,255,255,0.4);border-radius:30px;cursor:pointer;font-family:serif;display:block;margin-left:auto;margin-right:auto;';
+        popup.querySelector('.message-content').appendChild(closeBtn);
+      }
+      
+      popup.classList.add('show');
+      
+      function closeDialog() {
+        popup.classList.remove('show');
+        window.popupOpen = false;
+        window.eKeyUsed = false;
+        popup.removeEventListener('click', onPopupClick);
+        closeBtn.removeEventListener('click', closeDialog);
+        setTimeout(() => { if (renderer && renderer.domElement) renderer.domElement.requestPointerLock(); }, 100);
+      }
+      function onPopupClick(e) {
+        if (e.target === popup) closeDialog(); // sadece overlay'e tıklayınca
+      }
+      popup.addEventListener('click', onPopupClick);
+      closeBtn.addEventListener('click', closeDialog);
+    }
+    window.showNPCDialog = showNPCDialog;
+
+    function startGame() {
+      if (!selectedCharacter) return;
+      
+      // Menü ve karakter ekranlarını gizle
+      document.getElementById('menu-screen').style.display = 'none';
+      document.getElementById('character-screen').style.display = 'none';
+      
+      // YÜKLEME EKRANINI GÖSTER
+      loadingManager.show();
+      
+      // Kısa bir süre sonra yüklemeyi başlat (ekran görünsün diye)
+      setTimeout(() => {
+        const gameContainer = document.getElementById('game-container');
+        gameContainer.style.display = 'block';
+        initThreeJS();
+      }, 100);
+      
+      // Müziği başlatmayı dene (kullanıcı etkileşimi sonrası)
+      setTimeout(() => {
+        const music = document.getElementById('background-music');
+        music.volume = 0.3; // Ses seviyesi %30
+        music.play().catch(e => {
+          console.log('Müzik başlatılamadı. M tuşuna basarak başlatabilirsiniz.');
+        });
+      }, 500);
+    }
+
+    // Three.js setup
+    function initThreeJS() {
+      const container = document.getElementById('game-container');
+      
+      scene = new THREE.Scene();
+      
+      // GÜZEL SKYBOX - Altın saatli yumuşak gökyüzü
+      const skyGeo = new THREE.SphereGeometry(500, 32, 15);
+      const skyMat = new THREE.ShaderMaterial({
+        uniforms: {
+          topColor:    { value: new THREE.Color(0x4488ff) },
+          midColor:    { value: new THREE.Color(0x88ccff) },
+          bottomColor: { value: new THREE.Color(0xffd6a0) },
+          offset: { value: 33 },
+          exponent: { value: 0.5 }
+        },
+        vertexShader: `
+          varying vec3 vWorldPosition;
+          void main() {
+            vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+            vWorldPosition = worldPosition.xyz;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          uniform vec3 topColor;
+          uniform vec3 midColor;
+          uniform vec3 bottomColor;
+          uniform float offset;
+          uniform float exponent;
+          varying vec3 vWorldPosition;
+          void main() {
+            float h = normalize(vWorldPosition + offset).y;
+            vec3 col = h > 0.1 ? mix(midColor, topColor, pow(max(h-0.1, 0.0)*1.11, exponent)) 
+                               : mix(bottomColor, midColor, max(h + 0.1, 0.0) * 10.0);
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `,
+        side: THREE.BackSide
+      });
+      const sky = new THREE.Mesh(skyGeo, skyMat);
+      scene.add(sky);
+      
+      scene.fog = new THREE.FogExp2(0xaad4f0, 0.006); // Hafif sis efekti
+
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 2, 15); // Dışarıda başla
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      container.appendChild(renderer.domElement);
+
+      // Lighting - GÜNEŞ IŞIĞI (daha yumuşak)
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6); // Biraz daha parlak
+      scene.add(ambientLight);
+
+      const sunLight = new THREE.DirectionalLight(0xffffff, 1.0); // Daha az yoğun, beyaz ışık
+      sunLight.position.set(30, 50, 30);
+      sunLight.castShadow = true;
+      sunLight.shadow.mapSize.width = 4096;
+      sunLight.shadow.mapSize.height = 4096;
+      sunLight.shadow.camera.left = -60;
+      sunLight.shadow.camera.right = 60;
+      sunLight.shadow.camera.top = 60;
+      sunLight.shadow.camera.bottom = -60;
+      sunLight.shadow.camera.far = 200;
+      scene.add(sunLight);
+
+      // ZENGİN ÇİMEN ZEMİN - yumuşak, göz yormayan
+      const grassCanvas = document.createElement('canvas');
+      grassCanvas.width = 256; grassCanvas.height = 256;
+      const gCtx = grassCanvas.getContext('2d');
+      
+      // Düz yeşil zemin
+      gCtx.fillStyle = '#4e7d28';
+      gCtx.fillRect(0, 0, 256, 256);
+      
+      // Çok az, çok hafif ton farkı
+      const grassTones = ['#456e22','#568530','#4a7826','#527f2c','#3f6a1e'];
+      for (let i = 0; i < 200; i++) {
+        const x = Math.random() * 256;
+        const y = Math.random() * 256;
+        const r = 3 + Math.random() * 14;
+        gCtx.beginPath();
+        gCtx.arc(x, y, r, 0, Math.PI * 2);
+        gCtx.fillStyle = grassTones[Math.floor(Math.random() * grassTones.length)] + '55';
+        gCtx.fill();
+      }
+      
+      const grassTex = new THREE.CanvasTexture(grassCanvas);
+      grassTex.wrapS = grassTex.wrapT = THREE.RepeatWrapping;
+      grassTex.repeat.set(12, 12); // Daha az tile = daha az göz yorgunluğu
+      
+      const groundGeo = new THREE.PlaneGeometry(300, 300, 1, 1);
+      const groundMat = new THREE.MeshStandardMaterial({ 
+        map: grassTex,
+        color: 0x4e7d28, // Base color ile harmanlama
+        roughness: 0.92,
+        metalness: 0.0
+      });
+      const ground = new THREE.Mesh(groundGeo, groundMat);
+      ground.rotation.x = -Math.PI / 2;
+      ground.receiveShadow = true;
+      scene.add(ground);
+      
+
+      // ========================================
+      // 🌿 KENNEY NATURE KIT - TASARLI DÜNYA
+      // ========================================
+      const gltfLoader = new THREE.GLTFLoader();
+      
+      function placeModel(name, x, y, z, scale, rotY) {
+        gltfLoader.load(`/models/${name}.glb`,
+          function(gltf) {
+            const obj = gltf.scene;
+            obj.position.set(x, y, z);
+            obj.scale.setScalar(scale || 1);
+            obj.rotation.y = rotY || 0;
+            obj.traverse(c => { if (c.isMesh) { c.castShadow = true; c.receiveShadow = true; } });
+            scene.add(obj);
+          }, undefined, () => {}
+        );
+      }
+      
+      function scatterModels(names, count, xRange, zRange, minScale, maxScale) {
+        for (let i = 0; i < count; i++) {
+          const name = names[Math.floor(Math.random() * names.length)];
+          let x = (Math.random() - 0.5) * xRange;
+          let z = (Math.random() - 0.5) * zRange;
+          if (Math.abs(x) < 24 && z > -40 && z < 14) x += x > 0 ? 28 : -28;
+          const s = minScale + Math.random() * (maxScale - minScale);
+          placeModel(name, x, 0, z, s, Math.random() * Math.PI * 2);
+        }
+      }
+
+      // ── AĞAÇLAR ──
+      const oakTrees = ['tree_oak', 'tree_detailed', 'tree_default'];
+      const pineTrees = ['tree_pineRoundA', 'tree_pineRoundB', 'tree_pineTallA'];
+      const smallTrees = ['tree_simple', 'tree_small', 'tree_fat', 'tree_tall'];
+      const allTrees = [...oakTrees, ...pineTrees];
+      
+      for (let i = 0; i < 18; i++) {
+        const name = allTrees[Math.floor(Math.random() * allTrees.length)];
+        placeModel(name, 50 + Math.random() * 14, 0, -70 + i * 8, 1.2 + Math.random() * 0.8, Math.random() * Math.PI * 2);
+      }
+      for (let i = 0; i < 18; i++) {
+        const name = oakTrees[Math.floor(Math.random() * oakTrees.length)];
+        placeModel(name, -46 - Math.random() * 12, 0, -70 + i * 8, 1.0 + Math.random() * 1.0, Math.random() * Math.PI * 2);
+      }
+      for (let i = 0; i < 14; i++) {
+        const name = allTrees[Math.floor(Math.random() * allTrees.length)];
+        placeModel(name, -52 + i * 8, 0, -65 - Math.random() * 10, 1.3 + Math.random() * 0.7, Math.random() * Math.PI * 2);
+      }
+      for (let i = 0; i < 10; i++) {
+        const name = smallTrees[Math.floor(Math.random() * smallTrees.length)];
+        const x = -40 + i * 9;
+        if (Math.abs(x) > 18) placeModel(name, x, 0, 52 + Math.random() * 14, 0.8 + Math.random() * 0.6, Math.random() * Math.PI * 2);
+      }
+      scatterModels(smallTrees, 12, 30, 50, 0.7, 1.2);
+
+      // ── ÇİÇEKLER - Bol ve renkli ──
+      const flowers = ['flower_purpleA','flower_purpleB','flower_purpleC','flower_redA','flower_redB','flower_redC','flower_yellowA','flower_yellowB','flower_yellowC'];
+      scatterModels(flowers, 120, 85, 110, 0.8, 1.6); // Daha fazla çiçek
+      // Müze yolu boyunca çiçek şeridi (yeni konumlar - sütunların dışı)
+      for (let z = 15; z <= 58; z += 1.8) {
+        placeModel(flowers[Math.floor(Math.random() * flowers.length)], -5.5 + Math.random()*1.2 - 6, 0, z, 1.1, Math.random()*Math.PI);
+        placeModel(flowers[Math.floor(Math.random() * flowers.length)],  5.5 - Math.random()*1.2 + 6, 0, z, 1.1, Math.random()*Math.PI);
+      }
+      // Nehir kenarı çiçek şeridi
+      for (let z = -55; z <= 55; z += 2.5) {
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], 27+Math.random()*2, 0, z+Math.random()*2, 1.0, Math.random()*Math.PI);
+      }
+      // Kamp etrafı yoğun çiçekler (güzel alan)
+      scatterModels(flowers, 25, 15, 15, 1.0, 1.5); // -30 bölgesi
+
+      // ── ÇIMEN VE ÇALILAR - daha yoğun ──
+      scatterModels(['grass','grass_large','grass_leafs','grass_leafsLarge'], 100, 95, 120, 0.6, 1.4);
+      scatterModels(['plant_bush','plant_bushDetailed','plant_bushLarge','plant_bushSmall'], 50, 85, 95, 0.7, 1.5);
+
+      // ── KAYALAR ──
+      for (let z = -55; z <= 55; z += 8) {
+        placeModel(['rock_smallA','rock_smallB','stone_smallA','stone_smallB'][Math.floor(Math.random()*4)], 30 + Math.random()*3, 0, z + Math.random()*4, 0.8 + Math.random()*0.5, Math.random()*Math.PI*2);
+      }
+      scatterModels(['rock_largeA','rock_largeB','rock_largeC','rock_largeD'], 8, 90, 100, 0.8, 1.5);
+      scatterModels(['rock_tallA','rock_tallB','rock_tallE'], 6, 90, 100, 0.7, 1.2);
+      scatterModels(['rock_smallA','rock_smallC','stone_smallA','stone_smallD'], 20, 80, 90, 0.5, 1.0);
+
+      // ── MANTARLAR ──
+      const mushrooms = ['mushroom_redGroup','mushroom_tanGroup','mushroom_red','mushroom_tan'];
+      for (let i = 0; i < 8; i++) placeModel(mushrooms[Math.floor(Math.random()*mushrooms.length)], -38-Math.random()*8, 0, -40+i*12, 0.8+Math.random()*0.5, Math.random()*Math.PI*2);
+      for (let i = 0; i < 6; i++) placeModel(mushrooms[Math.floor(Math.random()*mushrooms.length)], 50+Math.random()*8, 0, -30+i*14, 0.7+Math.random()*0.4, Math.random()*Math.PI*2);
+
+      // ── KÜTÜKLER ──
+      scatterModels(['stump_roundDetailed','stump_squareDetailed','stump_old'], 10, 80, 90, 0.7, 1.1);
+      scatterModels(['log','log_large','log_stack'], 8, 70, 80, 0.8, 1.2);
+
+      // ── NEHİR (tile tabanlı) ──
+      for (let z = -60; z <= 60; z += 4) placeModel('ground_riverStraight', 33, 0, z, 2.0, 0);
+      for (let i = 0; i < 8; i++) placeModel(i%2===0?'lily_large':'lily_small', 33+(Math.random()-0.5)*4, 0.05, -50+i*14, 0.8, Math.random()*Math.PI*2);
+
+      // ── KÖPRÜ ──
+      placeModel('bridge_wood', 33, 0, 0, 2.0, 0);
+
+      // ── TAŞLI YOL (Müze dışı yakın çevre - kaldırıldı, yeni giriş tasarımı içinde) ──
+      // Müzeden uzakta kalan bölüm yolu
+      for (let z = 40; z <= 55; z += 4) placeModel('ground_pathStraight', 0, 0, z, 2.0, 0);
+
+      // ── MÜZENİN ÖNÜ: HEYKELLİ GİRİŞ ──
+      // Büyük giriş sütunları - yol başında (daha geri)
+      for (const [sx,sz] of [[-12,44],[12,44],[-12,52],[12,52]]) {
+        placeModel('statue_column', sx, 0, sz, 1.8, 0);
+      }
+      // Obelisk'ler - yol girişi anıtsal kapısı
+      placeModel('statue_obelisk', -10, 0, 58, 1.8, 0);
+      placeModel('statue_obelisk',  10, 0, 58, 1.8, 0);
+      // Statue ring (dekoratif)
+      placeModel('statue_ring', 0, 0, 56, 1.2, 0);
+      placeModel('statue_block', -16, 0, 48, 1.2, 0.4);
+      placeModel('statue_block',  16, 0, 48, 1.2, -0.4);
+
+      // ── ÇİT (Müze bahçesi etrafı - daha geniş) ──
+      for (let x = -22; x <= -5; x += 2.5) placeModel('fence_simple', x, 0, 42, 1.1, 0);
+      for (let x =   5; x <=  22; x += 2.5) placeModel('fence_simple', x, 0, 42, 1.1, 0);
+      for (let z = -22; z <= 42; z += 2.5) {
+        placeModel('fence_simple', -23, 0, z, 1.1, Math.PI/2);
+        placeModel('fence_simple',  23, 0, z, 1.1, Math.PI/2);
+      }
+      placeModel('fence_gate', 0, 0, 42, 1.2, 0);
+      // Bahçe köşe direkleri
+      for (const [gx,gz] of [[-23,42],[23,42],[-23,-22],[23,-22]]) {
+        placeModel('statue_column', gx, 0, gz, 0.9, 0);
+      }
+
+      // ── KAMP ATEŞİ (romantik alan) ──
+      placeModel('campfire_stones', -30, 0, 25, 1.6, 0);
+      placeModel('log_large', -28, 0, 25, 1.0, Math.PI*0.1);
+      placeModel('log_large', -32, 0, 25, 1.0, Math.PI*0.9);
+      placeModel('stump_roundDetailed', -30, 0, 23, 0.9, 0);
+      placeModel('stump_roundDetailed', -30, 0, 27, 0.9, 0);
+      placeModel('stump_roundDetailed', -28, 0, 27, 0.8, 0.5);
+      // Kamp etrafı çiçek çemberi
+      for (let i = 0; i < 12; i++) {
+        const a = (i/12)*Math.PI*2;
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], -30+Math.cos(a)*6, 0, 25+Math.sin(a)*6, 1.0, a);
+      }
+      // Kamp yanında çadır
+      placeModel('tent_detailedOpen', -38, 0, 28, 1.2, Math.PI*0.8);
+
+      // ── KÖPRÜ BAŞI KAYALARI ──
+      placeModel('rock_largeA', 29, 0, -4, 0.9, 0.3);
+      placeModel('rock_largeB', 29, 0,  4, 0.8, 1.1);
+      placeModel('stone_largeA', 37, 0, -4, 0.9, 0.5);
+      placeModel('stone_largeB', 37, 0,  4, 0.8, 1.2);
+      // Köprü yanı fenerler (stump ile temsil)
+      placeModel('stump_squareDetailed', 30, 0, -2, 0.7, 0);
+      placeModel('stump_squareDetailed', 30, 0,  2, 0.7, 0);
+      placeModel('stump_squareDetailed', 36, 0, -2, 0.7, 0);
+      placeModel('stump_squareDetailed', 36, 0,  2, 0.7, 0);
+      
+      // ── SAĞ TARAF: PİKNİK ALANI ──
+      placeModel('log_stack', 22, 0, 30, 1.1, 0.2);
+      placeModel('log_stack', 25, 0, 35, 1.0, 1.0);
+      placeModel('campfire_logs', 23, 0, 33, 1.2, 0);
+      for (let i = 0; i < 8; i++) {
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], 18+Math.random()*10, 0, 26+Math.random()*12, 1.0, Math.random()*Math.PI*2);
+      }
+      
+      // ── HAVUZ (geometrik - nehir kenarı) ──
+      placeModel('platform_stone', 22, 0, -15, 1.5, 0);
+      placeModel('pot_large', 20, 0, -13, 1.2, 0);
+      placeModel('pot_large', 24, 0, -13, 1.2, Math.PI*0.5);
+      placeModel('lily_large', 22, 0, -15, 1.0, 0);
+      placeModel('lily_small', 20, 0, -16, 0.9, Math.random()*Math.PI);
+
+      // ── UZAK DAĞLAR - gerçekçi katmanlı ──
+      const mountainColors = [0x5a7040, 0x4a6030, 0x6a8050, 0x3d5228];
+      for (let i = 0; i < 16; i++) {
+        const h = 22 + Math.random()*18;
+        const r = 20 + Math.random()*16;
+        const sides = 5 + Math.floor(Math.random()*3);
+        const col = mountainColors[i%4];
+        const mountain = new THREE.Mesh(
+          new THREE.ConeGeometry(r, h, sides),
+          new THREE.MeshStandardMaterial({color:col, flatShading:true, roughness:0.9})
+        );
+        const angle = (i/16)*Math.PI*2 + Math.random()*0.4;
+        const dist = 110 + Math.random()*30;
+        mountain.position.set(Math.cos(angle)*dist, h/2-5, Math.sin(angle)*dist);
+        scene.add(mountain);
+        // Kar tepesi
+        const snowR = r * 0.28;
+        const snowH = h * 0.22;
+        const snow = new THREE.Mesh(
+          new THREE.ConeGeometry(snowR, snowH, sides),
+          new THREE.MeshStandardMaterial({color:0xf5f5f5, roughness:0.4})
+        );
+        snow.position.copy(mountain.position);
+        snow.position.y += h/2 - snowH*0.3;
+        scene.add(snow);
+        // Dağ önü sis efekti (yoğun ağaç)
+        if (dist < 130 && Math.random() > 0.5) {
+          for (let t = 0; t < 4; t++) {
+            const treeNames = ['tree_pineRoundA','tree_pineTallA','tree_cone','tree_blocks'];
+            const tn = treeNames[Math.floor(Math.random()*treeNames.length)];
+            const tx = mountain.position.x + (Math.random()-0.5)*r*0.8;
+            const tz = mountain.position.z + (Math.random()-0.5)*r*0.8;
+            placeModel(tn, tx, 0, tz, 1.0+Math.random()*0.8, Math.random()*Math.PI*2);
+          }
+        }
+      }
+
+      // ── GÜNEŞ ──
+      const sunSphere = new THREE.Mesh(
+        new THREE.SphereGeometry(4, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfffacd })
+      );
+      sunSphere.position.set(80, 90, -120);
+      scene.add(sunSphere);
+      // Güneş etrafı halo
+      const halo = new THREE.Mesh(
+        new THREE.SphereGeometry(6, 16, 16),
+        new THREE.MeshBasicMaterial({ color: 0xfff0a0, transparent: true, opacity: 0.25 })
+      );
+      halo.position.copy(sunSphere.position);
+      scene.add(halo);
+      
+      // ── BULUTLAR - Büyük ve katmanlı ──
+      for (let i = 0; i < 20; i++) {
+        const cloud = new THREE.Group();
+        const cloudCount = 5 + Math.floor(Math.random() * 5);
+        for (let j = 0; j < cloudCount; j++) {
+          const r = 2.5 + Math.random() * 3.5;
+          const s = new THREE.Mesh(
+            new THREE.SphereGeometry(r, 8, 6),
+            new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.82 })
+          );
+          s.position.set(
+            (Math.random() - 0.5) * 14,
+            (Math.random() - 0.5) * 4,
+            (Math.random() - 0.5) * 8
+          );
+          cloud.add(s);
+        }
+        cloud.position.set(
+          Math.random() * 220 - 110,
+          28 + Math.random() * 25,
+          Math.random() * 220 - 110
+        );
+        cloud.scale.set(1.0 + Math.random() * 0.8, 0.7, 1.0 + Math.random() * 0.5);
+        scene.add(cloud);
+      }
+
+      // ── KELEBEKLER ──
+      window.butterflies = [];
+      for (let i = 0; i < 12; i++) {
+        const bg = new THREE.Group();
+        const wMat = new THREE.MeshBasicMaterial({color: new THREE.Color().setHSL(Math.random(),0.8,0.65), side:THREE.DoubleSide});
+        const lw = new THREE.Mesh(new THREE.CircleGeometry(0.15,6), wMat); lw.position.x=-0.1; bg.add(lw);
+        const rw = new THREE.Mesh(new THREE.CircleGeometry(0.15,6), wMat); rw.position.x= 0.1; bg.add(rw);
+        bg.position.set(Math.random()*50-25, 1.5+Math.random()*2, Math.random()*50-25);
+        bg.userData = {speed:0.02+Math.random()*0.03, wingSpeed:5+Math.random()*5, path:Math.random()*Math.PI*2};
+        scene.add(bg); window.butterflies.push(bg);
+      }
+
+      // ── KUŞLAR ──
+      // ══════════════════════════════════════════
+      // ✈️ UÇAK + PANKART - "Seni çok seviyorum"
+      // ══════════════════════════════════════════
+      const airplaneGroup = new THREE.Group();
+      
+      // Gövde
+      const fuselageMat = new THREE.MeshStandardMaterial({ color: 0xf0f0f0, roughness: 0.3, metalness: 0.4 });
+      const fuselage = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.25, 5, 10), fuselageMat);
+      fuselage.rotation.z = Math.PI/2; airplaneGroup.add(fuselage);
+      // Burun
+      const nose = new THREE.Mesh(new THREE.ConeGeometry(0.35, 1.2, 10), fuselageMat);
+      nose.rotation.z = -Math.PI/2; nose.position.x = 3.1; airplaneGroup.add(nose);
+      // Kuyruk
+      const tailFin = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.0, 0.8), fuselageMat);
+      tailFin.position.set(-2.2, 0.5, 0); airplaneGroup.add(tailFin);
+      const tailH = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.15, 2.2), fuselageMat);
+      tailH.position.set(-2.3, 0, 0); airplaneGroup.add(tailH);
+      // Ana kanatlar
+      const wingMat = new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.3, metalness: 0.5 });
+      const wingL = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.12, 5.5), wingMat);
+      wingL.position.set(0.2, -0.1, 0); airplaneGroup.add(wingL);
+      // Motor
+      const engineMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.4, metalness: 0.6 });
+      [-1.5, 1.5].forEach(ez => {
+        const eng = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.18, 0.7, 8), engineMat);
+        eng.rotation.z = Math.PI/2; eng.position.set(0.5, -0.3, ez); airplaneGroup.add(eng);
+        const prop = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.8, 0.06), engineMat);
+        prop.position.set(0.9, -0.3, ez); prop.userData.isProp = true; airplaneGroup.add(prop);
+      });
+      // Pencereler
+      const winMat = new THREE.MeshBasicMaterial({ color: 0xa8d8f0, transparent: true, opacity: 0.8 });
+      for (let i = 0; i < 4; i++) {
+        const w = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.2, 0.18), winMat);
+        w.position.set(0.37, 0.12, -1.2 + i * 0.7); airplaneGroup.add(w);
+      }
+      
+      // Pankart ipi
+      const bannerRopeMat = new THREE.MeshBasicMaterial({ color: 0x888888 });
+      const bannerRope = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 12, 4), bannerRopeMat);
+      bannerRope.rotation.z = Math.PI/2; bannerRope.position.x = -9; airplaneGroup.add(bannerRope);
+      
+      // Pankart canvas texture — yazı ters çizilir çünkü pano arkadan görünüyor
+      const bannerCanvas = document.createElement('canvas');
+      bannerCanvas.width = 2048; bannerCanvas.height = 384;
+      const bCtx = bannerCanvas.getContext('2d');
+      // Arka plan
+      bCtx.fillStyle = '#fffef0';
+      bCtx.fillRect(0, 0, 2048, 384);
+      // Kenarlık
+      bCtx.strokeStyle = '#ff1493'; bCtx.lineWidth = 18;
+      bCtx.strokeRect(9, 9, 2030, 366);
+      bCtx.strokeStyle = '#ffd700'; bCtx.lineWidth = 7;
+      bCtx.strokeRect(24, 24, 2000, 336);
+      // Yazıyı aynalı çiz → mesh döndürülmeden doğru okunur
+      bCtx.save();
+      bCtx.translate(2048, 0);
+      bCtx.scale(-1, 1);
+      bCtx.fillStyle = 'rgba(220,0,100,0.18)';
+      bCtx.font = 'bold 155px serif'; bCtx.textAlign = 'center';
+      bCtx.fillText('💕 Seni Çok Seviyorum 💕', 1028, 242);
+      bCtx.fillStyle = '#cc0055';
+      bCtx.fillText('💕 Seni Çok Seviyorum 💕', 1024, 238);
+      bCtx.restore();
+      
+      const bannerTex = new THREE.CanvasTexture(bannerCanvas);
+      const bannerMesh = new THREE.Mesh(
+        new THREE.PlaneGeometry(18, 3.2),
+        new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide, transparent: true })
+      );
+      bannerMesh.position.x = -18;
+      bannerMesh.rotation.y = Math.PI; // Aynalı canvas + aynalı mesh = düzgün yazı ✓
+      airplaneGroup.add(bannerMesh);
+      
+      airplaneGroup.position.set(-80, 55, -30);
+      scene.add(airplaneGroup);
+      window.airplane = airplaneGroup;
+      window.airplaneAngle = 0;
+      window.airplaneProps = airplaneGroup.children.filter(c => c.userData.isProp);
+
+      window.birds = [];
+      for (let i = 0; i < 8; i++) {
+        const bg = new THREE.Group();
+        const body = new THREE.Mesh(new THREE.ConeGeometry(0.1,0.3,4), new THREE.MeshBasicMaterial({color:0x444444}));
+        body.rotation.x = Math.PI/2; bg.add(body);
+        bg.position.set(Math.random()*100-50, 12+Math.random()*15, Math.random()*100-50);
+        bg.userData = {speed:0.05+Math.random()*0.05, angle:Math.random()*Math.PI*2, radius:30+Math.random()*20};
+        scene.add(bg); window.birds.push(bg);
+      }
+
+
+      // ══════════════════════════════════════════
+      // 🌊 ŞELALE - Nehir kaynağı kuzeyde
+      // ══════════════════════════════════════════
+      const waterfallGroup = new THREE.Group();
+      waterfallGroup.position.set(33, 0, -48);
+      
+      // Kaya katmanları
+      const wRock = new THREE.MeshStandardMaterial({ color: 0x7a6855, roughness: 0.9 });
+      const wRock2 = new THREE.MeshStandardMaterial({ color: 0x6a5a48, roughness: 0.85 });
+      // Ana kaya bloğu
+      const wBase = new THREE.Mesh(new THREE.BoxGeometry(10, 8, 6), wRock);
+      wBase.position.set(0, 4, 0); wBase.castShadow = true; waterfallGroup.add(wBase);
+      // Katmanlı kayalar
+      [[- 4,1.5,1.5,3,3],[4,1.0,1.2,3,2.5],[0,0.8,1.8,10,1.5],[-3,2,1.2,4,4],[3,2.5,1.0,3.5,5]].forEach(([x,z2,s,w2,h2]) => {
+        const r = new THREE.Mesh(new THREE.BoxGeometry(w2,h2,s*2), Math.random()>0.5?wRock:wRock2);
+        r.position.set(x, h2/2, z2); r.castShadow=true; waterfallGroup.add(r);
+      });
+      // Su akışı (katmanlı şeffaf paneller)
+      const wWaterMat = new THREE.MeshStandardMaterial({ color: 0x4fc3f7, transparent: true, opacity: 0.7, roughness: 0.05, metalness:0.1 });
+      for (let i = 0; i < 5; i++) {
+        const wPanel = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 7 - i*0.3), wWaterMat);
+        wPanel.position.set(-2.5 + i*1.1, 4.5 - i*0.15, 1.8);
+        waterfallGroup.add(wPanel);
+        wPanel.userData.isWaterfall = true;
+        wPanel.userData.offset = i * 0.4;
+      }
+      // Havuz dibinde su
+      const poolMat = new THREE.MeshStandardMaterial({ color: 0x29b6f6, transparent: true, opacity: 0.8, roughness: 0.05 });
+      const pool = new THREE.Mesh(new THREE.CylinderGeometry(4.5, 4.5, 0.3, 16), poolMat);
+      pool.position.set(0, 0.15, 5); waterfallGroup.add(pool);
+      // Su kabarcıkları (küçük küreler)
+      window.waterfallBubbles = [];
+      for (let i = 0; i < 20; i++) {
+        const bub = new THREE.Mesh(new THREE.SphereGeometry(0.08 + Math.random()*0.12, 5, 5),
+          new THREE.MeshBasicMaterial({ color: 0xb3e5fc, transparent: true, opacity: 0.6 }));
+        bub.position.set((Math.random()-0.5)*7, 8 + Math.random()*1.5, 1.5 + Math.random()*0.5);
+        bub.userData = { vy: -0.04 - Math.random()*0.06, startY: 8 + Math.random()*1.5, vx: (Math.random()-0.5)*0.02 };
+        waterfallGroup.add(bub); window.waterfallBubbles.push(bub);
+      }
+      // Etraf kayaları
+      [[6,0,4],[7,0,2],[-6,0,3],[-7,0,1],[4,0,7],[- 4,0,7]].forEach(([rx,ry,rz]) => {
+        placeModel(['cliff_rock','rock_largeA','rock_largeB','cliff_stone'][Math.floor(Math.random()*4)], 33+rx, ry, -48+rz, 0.8+Math.random()*0.5, Math.random()*Math.PI*2);
+      });
+      // Çevre bitkileri
+      for (let i = 0; i < 6; i++) {
+        placeModel('plant_bush', 33+(Math.random()-0.5)*14, 0, -48+(Math.random()-0.5)*10+6, 0.9, Math.random()*Math.PI*2);
+      }
+      scene.add(waterfallGroup);
+      window.waterfallGroup = waterfallGroup;
+      
+      // Şelale nokta ışığı (su mavisi)
+      const wLight = new THREE.PointLight(0x29b6f6, 0.8, 20);
+      wLight.position.set(33, 3, -43); scene.add(wLight);
+
+      // ══════════════════════════════════════════
+      // 🏮 UÇAN FENERLER - Nehir kıyısı boyunca
+      // ══════════════════════════════════════════
+      window.lanterns = [];
+      const lanternPositions = [
+        [10, -10], [15, -25], [5, -35], [-5, -20], [-12, -30],
+        [20, 5], [8, -45], [-8, -10], [18, -40], [-3, -5],
+        [25, -15], [12, 15], [-15, -5], [22, -50]
+      ];
+      lanternPositions.forEach(([lx, lz], i) => {
+        const lg = new THREE.Group();
+        // Fenerin gövdesi (kağıt kutu)
+        const lBody = new THREE.Mesh(
+          new THREE.BoxGeometry(0.4, 0.55, 0.4),
+          new THREE.MeshBasicMaterial({ color: new THREE.Color().setHSL(0.08 + i*0.03, 0.9, 0.7), transparent: true, opacity: 0.85 })
+        );
+        lg.add(lBody);
+        // İç ışık (glowing core)
+        const lCore = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.35, 0.22),
+          new THREE.MeshBasicMaterial({ color: 0xfff3b0, transparent: true, opacity: 0.95 }));
+        lg.add(lCore);
+        // Üst ve alt çerçeve
+        [-0.27, 0.27].forEach(dy => {
+          const frame = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.04, 0.44),
+            new THREE.MeshBasicMaterial({ color: 0x8b4513 }));
+          frame.position.y = dy; lg.add(frame);
+        });
+        // Işık efekti
+        const lPt = new THREE.PointLight(new THREE.Color().setHSL(0.08 + i*0.03, 1, 0.7), 0.5, 6);
+        lg.add(lPt);
+        
+        lg.position.set(lx, 3 + Math.random()*4, lz);
+        lg.userData = {
+          baseX: lx, baseZ: lz,
+          startY: 3 + Math.random()*4,
+          riseSpeed: 0.003 + Math.random()*0.003,
+          swaySpeed: 0.001 + Math.random()*0.002,
+          swayAmt: 0.3 + Math.random()*0.4,
+          swayOffset: Math.random()*Math.PI*2,
+          maxY: 18 + Math.random()*10
+        };
+        scene.add(lg); window.lanterns.push(lg);
+      });
+
+      // ══════════════════════════════════════════
+      // 🌳 DİLEK AĞACI - Nehir yakınında, yalnız ve büyük
+      // ══════════════════════════════════════════
+      const wishTreeGroup = new THREE.Group();
+      wishTreeGroup.position.set(-20, 0, -15);
+      
+      // Gövde - büyük ve kıvrımlı
+      const wtBark = new THREE.MeshStandardMaterial({ color: 0x5c3d1e, roughness: 0.9 });
+      const wtTrunk = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.75, 5, 10), wtBark);
+      wtTrunk.position.y = 2.5; wishTreeGroup.add(wtTrunk);
+      // Eğimli gövde dalları
+      [[0.4,3.5,0.25,0.15,2.5,0.3,-0.4],[- 0.35,3.5,-0.25,0.12,2,0.25,0.4]].forEach(([bx,by,bz,r1,h,r2,rot]) => {
+        const branch = new THREE.Mesh(new THREE.CylinderGeometry(r1,r2,h,8), wtBark);
+        branch.position.set(bx+bx*1.2, by, bz+bz*1.2);
+        branch.rotation.z = rot; wishTreeGroup.add(branch);
+      });
+      // Yaprak kümeleri - mor/pembe çiçekli (dilek ağacı özel)
+      const wtLeafMats = [
+        new THREE.MeshStandardMaterial({ color: 0x7b2d8b, roughness: 0.8 }),
+        new THREE.MeshStandardMaterial({ color: 0x9b59b6, roughness: 0.8 }),
+        new THREE.MeshStandardMaterial({ color: 0xff69b4, roughness: 0.8 }),
+      ];
+      [[0,6,0,2.8],[1.5,5.5,0.8,1.8],[-1.5,5.5,-0.8,1.8],[0.8,7,0.5,1.5],[-0.8,7,-0.5,1.5],[0,8,0,1.2]].forEach(([x,y,z,r],i) => {
+        const leaf = new THREE.Mesh(new THREE.SphereGeometry(r, 8, 6), wtLeafMats[i%3]);
+        leaf.position.set(x,y,z); leaf.castShadow=true; wishTreeGroup.add(leaf);
+      });
+      // Ağaçtan sarkan iplikler (dilek bağlama)
+      const ribbonColors = [0xff1493, 0xffd700, 0xff6347, 0x9b59b6, 0x00bcd4, 0xff69b4];
+      for (let i = 0; i < 10; i++) {
+        const angle = (i/10)*Math.PI*2;
+        const r = 1 + Math.random()*1.5;
+        const ribbon = new THREE.Mesh(
+          new THREE.BoxGeometry(0.04, 0.8 + Math.random()*0.8, 0.04),
+          new THREE.MeshStandardMaterial({ color: ribbonColors[i%ribbonColors.length] })
+        );
+        ribbon.position.set(Math.cos(angle)*r, 4.8 + Math.random()*0.5, Math.sin(angle)*r);
+        ribbon.rotation.z = (Math.random()-0.5)*0.3;
+        ribbon.userData.isRibbon = true;
+        ribbon.userData.sway = Math.random()*Math.PI*2;
+        wishTreeGroup.add(ribbon);
+      }
+      // Tabela
+      const signMesh = new THREE.Mesh(
+        new THREE.BoxGeometry(2.2, 0.7, 0.08),
+        new THREE.MeshStandardMaterial({ color: 0x8b5e3c })
+      );
+      signMesh.position.set(0, 1.2, 0.8); wishTreeGroup.add(signMesh);
+      
+      scene.add(wishTreeGroup);
+      window.wishTreePos = new THREE.Vector3(-20, 0, -15);
+      window.wishTreeGroup = wishTreeGroup;
+      
+      // Işık
+      const wtLight = new THREE.PointLight(0xd4a0ff, 0.6, 12);
+      wtLight.position.set(-20, 5, -15); scene.add(wtLight);
+      
+      // Etraf çiçekleri
+      for (let i = 0; i < 16; i++) {
+        const a = (i/16)*Math.PI*2;
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], -20+Math.cos(a)*4, 0, -15+Math.sin(a)*4, 1.2, a);
+      }
+
+      // ══════════════════════════════════════════
+      // 🧺 PİKNİK ALANI - Açık alanda, güneşli köşe
+      // ══════════════════════════════════════════
+      const picnicGroup = new THREE.Group();
+      picnicGroup.position.set(-35, 0, -5);
+      
+      // Battaniye (renkli kumaş)
+      const blanketMat = new THREE.MeshStandardMaterial({ color: 0xff6b9d, roughness: 0.95 });
+      const blanket = new THREE.Mesh(new THREE.BoxGeometry(4, 0.06, 3), blanketMat);
+      blanket.position.y = 0.03; picnicGroup.add(blanket);
+      // Battaniye deseni (üst şeritler)
+      const stripeColors = [0xffd700, 0xff1493, 0xffffff];
+      for (let i = 0; i < 3; i++) {
+        const stripe = new THREE.Mesh(new THREE.BoxGeometry(4, 0.07, 0.3),
+          new THREE.MeshStandardMaterial({ color: stripeColors[i] }));
+        stripe.position.set(0, 0.04, -0.9 + i*0.9); picnicGroup.add(stripe);
+      }
+      // Sepet
+      const basketMat = new THREE.MeshStandardMaterial({ color: 0xc8a46e, roughness: 0.9 });
+      const basket = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.3, 0.5, 10), basketMat);
+      basket.position.set(1.6, 0.35, 1); picnicGroup.add(basket);
+      const basketLid = new THREE.Mesh(new THREE.SphereGeometry(0.38, 8, 4, 0, Math.PI*2, 0, Math.PI/2), basketMat);
+      basketLid.position.set(1.6, 0.6, 1); picnicGroup.add(basketLid);
+      // Sandviç (kutu)
+      const foodMat = new THREE.MeshStandardMaterial({ color: 0xf5deb3 });
+      const sandwich = new THREE.Mesh(new THREE.BoxGeometry(0.35, 0.12, 0.25), foodMat);
+      sandwich.position.set(0.5, 0.1, 0.8); picnicGroup.add(sandwich);
+      // Elma (kırmızı küre)
+      const apple = new THREE.Mesh(new THREE.SphereGeometry(0.12, 7, 7),
+        new THREE.MeshStandardMaterial({ color: 0xe53935, roughness: 0.4 }));
+      apple.position.set(-0.3, 0.12, 0.7); picnicGroup.add(apple);
+      // Bardaklar
+      [[-0.6, 0.15, -0.5],[0.3, 0.15, -0.5]].forEach(([cx,cy,cz]) => {
+        const cup = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.2, 8),
+          new THREE.MeshStandardMaterial({ color: 0xff69b4, transparent: true, opacity: 0.75 }));
+        cup.position.set(cx, cy, cz); picnicGroup.add(cup);
+      });
+      // Çiçek buketi battaniyede
+      for (let i = 0; i < 4; i++) {
+        const pf = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 6),
+          new THREE.MeshStandardMaterial({ color: [0xff1493,0xffd700,0xff69b4,0x9b59b6][i] }));
+        pf.position.set(-1.2 + i*0.2, 0.2 + Math.random()*0.1, -0.8 + Math.random()*0.2); picnicGroup.add(pf);
+        const ps = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 4),
+          new THREE.MeshStandardMaterial({ color: 0x2d6e1f }));
+        ps.position.set(-1.2 + i*0.2, 0.08, -0.8 + Math.random()*0.2); picnicGroup.add(ps);
+      }
+      scene.add(picnicGroup);
+      // Etraf ağaçları (gölge)
+      placeModel('tree_oak', -40, 0, -8, 1.3, 0.3);
+      placeModel('tree_detailed', -32, 0, -10, 1.1, 1.0);
+      // Çiçek çemberi
+      for (let i = 0; i < 10; i++) {
+        const a = (i/10)*Math.PI*2;
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], -35+Math.cos(a)*6, 0, -5+Math.sin(a)*6, 1.1, a);
+      }
+
+      // ══════════════════════════════════════════
+      // 🌿 SALINCAK - İki büyük ağaç arasında
+      // ══════════════════════════════════════════
+      const swingGroup = new THREE.Group();
+      swingGroup.position.set(-8, 0, -38);
+      
+      // Sol ağaç gövdesi
+      const swTreeMat = new THREE.MeshStandardMaterial({ color: 0x4a2e0a, roughness: 0.9 });
+      const swLeafMat = new THREE.MeshStandardMaterial({ color: 0x2d7a1f, roughness: 0.8 });
+      [-4, 4].forEach((tx, i) => {
+        const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.32, 7, 8), swTreeMat);
+        trunk.position.set(tx, 3.5, 0); swingGroup.add(trunk);
+        // Yapraklar
+        [[0,7.5,0,2.2],[tx>0?1:-1,7,0.5,1.5],[0,8.5,0,1.5]].forEach(([lx,ly,lz,lr]) => {
+          const leaf = new THREE.Mesh(new THREE.SphereGeometry(lr, 8, 6), swLeafMat);
+          leaf.position.set(tx+lx, ly, lz); leaf.castShadow=true; swingGroup.add(leaf);
+        });
+      });
+      // Yatay kiriş (iki ağaç arası)
+      const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 9, 6), swTreeMat);
+      beam.rotation.z = Math.PI/2; beam.position.set(0, 7, 0); swingGroup.add(beam);
+      // İpler
+      const ropeMat = new THREE.MeshStandardMaterial({ color: 0xc4a35a, roughness: 0.9 });
+      [-0.6, 0.6].forEach(rx => {
+        const rope = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 3.5, 5), ropeMat);
+        rope.position.set(rx, 5.25, 0); swingGroup.add(rope);
+      });
+      // Tahta koltuk
+      const seatMat = new THREE.MeshStandardMaterial({ color: 0x8b5e3c, roughness: 0.7 });
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.12, 0.5), seatMat);
+      seat.position.set(0, 3.5, 0); swingGroup.add(seat);
+      // Koltuk kenar çubukları
+      [-0.72, 0.72].forEach(rx => {
+        const bar = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.12, 0.55), seatMat);
+        bar.position.set(rx, 3.5, 0); swingGroup.add(bar);
+      });
+      
+      // Salınan grup (ipler + koltuk)
+      const swingPivot = new THREE.Group();
+      swingPivot.position.set(0, 7, 0);
+      scene.add(swingGroup);
+      window.swingGroup = swingGroup;
+      window.swingAngle = 0;
+      window.swingSeat = seat;
+      window.swingRopes = swingGroup.children.filter(c => c.geometry && c.geometry.type === 'CylinderGeometry' && c.position.y < 6.5 && c.position.y > 4);
+      
+      // Etraf çiçekleri
+      for (let i = 0; i < 12; i++) {
+        const a = (i/12)*Math.PI*2;
+        placeModel(flowers[Math.floor(Math.random()*flowers.length)], -8+Math.cos(a)*7, 0, -38+Math.sin(a)*7, 1.0, a);
+      }
+      placeModel('plant_bushDetailed', -13, 0, -38, 1.1, 0);
+      placeModel('plant_bushDetailed', -3, 0, -38, 1.1, 0);
+
+      // ══════════════════════════════════════════
+      // 🧍 NPC'LER - Geometrik karakterler
+      // ══════════════════════════════════════════
+      window.npcs = [];
+      
+      function createNPC(x, z, config) {
+        const g = new THREE.Group();
+        const skinMat = new THREE.MeshStandardMaterial({ color: config.skin || 0xf4a460, roughness: 0.8 });
+        const bodyMat = new THREE.MeshStandardMaterial({ color: config.bodyColor, roughness: 0.7 });
+        const pantMat = new THREE.MeshStandardMaterial({ color: config.pantColor || 0x2c3e50, roughness: 0.7 });
+        const hairMat = new THREE.MeshStandardMaterial({ color: config.hairColor || 0x2c1810, roughness: 0.9 });
+        
+        // Kafa
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.42, 0.42), skinMat);
+        head.position.y = 1.75; head.castShadow = true; g.add(head);
+        // Saç
+        const hair = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.18, 0.44), hairMat);
+        hair.position.set(0, 1.98, -0.02); g.add(hair);
+        // Gövde
+        const body = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.6, 0.28), bodyMat);
+        body.position.y = 1.18; body.castShadow = true; g.add(body);
+        // Sol kol
+        const lArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.5, 0.18), bodyMat);
+        lArm.position.set(-0.37, 1.18, 0); g.add(lArm);
+        // Sağ kol
+        const rArm = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.5, 0.18), bodyMat);
+        rArm.position.set(0.37, 1.18, 0); g.add(rArm);
+        // Sol bacak
+        const lLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.22), pantMat);
+        lLeg.position.set(-0.15, 0.58, 0); g.add(lLeg);
+        // Sağ bacak
+        const rLeg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.22), pantMat);
+        rLeg.position.set(0.15, 0.58, 0); g.add(rLeg);
+        
+        // Yüz detayları
+        const eyeMat = new THREE.MeshBasicMaterial({ color: 0x1a1a2e });
+        [-0.1, 0.1].forEach(ex => {
+          const eye = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.07, 0.05), eyeMat);
+          eye.position.set(ex, 1.77, 0.22); g.add(eye);
+        });
+        // Gülümseyen ağız
+        const smileMat = new THREE.MeshBasicMaterial({ color: 0xc0392b });
+        const smile = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.04, 0.05), smileMat);
+        smile.position.set(0, 1.66, 0.22); g.add(smile);
+        
+        g.position.set(x, 0, z);
+        g.userData = {
+          ...config,
+          lArm, rArm, lLeg, rLeg, head,
+          walkCycle: Math.random()*Math.PI*2,
+          isNPC: true,
+          dialogShown: false
+        };
+        
+        scene.add(g);
+        window.npcs.push(g);
+        return g;
+      }
+      
+      // NPC 1: Müze bekçisi - müze önünde bekliyor
+      const guard = createNPC(18, 22, {
+        name: 'Bekçi Mehmet',
+        dialog: '🎩 Merhaba! Burası Aşkınızın Müzesi. Müzeye girmek için kapıda sana özel bir soru sorulacak... Kolay gelsin! 😊',
+        skin: 0xd4a574,
+        bodyColor: 0x1a237e,
+        pantColor: 0x0d47a1,
+        hairColor: 0x1a1a1a,
+        type: 'patrol',
+        patrolPoints: [[18,22],[14,26],[10,21],[14,18],[18,22]],
+        patrolIndex: 0, patrolT: 0
+      });
+      
+      // NPC 2: Bahçıvan - bahçede dolaşıyor
+      const gardener = createNPC(-28, 5, {
+        name: 'Bahçıvan Ali',
+        dialog: '🌺 Günaydın! Bu bahçeyi yıllardır bakıyorum. En güzel çiçekleri sizin için yetiştirdim. Şelalenin yanındaki mor çiçeklere mutlaka bakın! 🌸',
+        skin: 0xc8a882,
+        bodyColor: 0x388e3c,
+        pantColor: 0x4e342e,
+        hairColor: 0x3e2723,
+        type: 'patrol',
+        patrolPoints: [[-28,5], [-20,8], [-15,2], [-22,-5], [-30,-3], [-28,5]],
+        patrolIndex: 0, patrolT: 0
+      });
+      
+      // NPC 3: Aşık çift - piknik alanı yanında (idle_sway - yürümüyor)
+      const romantic1 = createNPC(-38, -2, {
+        name: 'Romantik Çift ❤️',
+        dialog: '💕 Ne kadar güzel bir yer burası değil mi? Biz de ilk yıl dönümümüzde geldik. Siz de mi ilk kez buradasınız?',
+        skin: 0xfdbcb4,
+        bodyColor: 0xf06292,
+        pantColor: 0xad1457,
+        hairColor: 0x4a148c,
+        type: 'idle_sway'
+      });
+      romantic1.rotation.y = Math.PI*0.2;
+      
+      const romantic2 = createNPC(-40, -3, {
+        name: 'Romantik Çift ❤️',
+        dialog: '💑 Biz burada saatlerce oturup nehri izledik. Dilek ağacına da gittik — dileğimiz gerçekleşti! 🌳✨',
+        skin: 0xd4a574,
+        bodyColor: 0x1565c0,
+        pantColor: 0x0d47a1,
+        hairColor: 0x1a1a1a,
+        type: 'idle_sway'
+      });
+      romantic2.rotation.y = -Math.PI*0.3;
+      
+      // NPC 4: Şair - Dilek ağacı çevresinde dolaşıyor
+      const poet = createNPC(-22, -18, {
+        name: 'Şair Baba',
+        dialog: '📜 "Sevgi bir ağaçtır,\nkökleri kalpte,\ndallari gökte...\nSen benim baharımsın." \n\n— Sana özel yazdım 🌸',
+        skin: 0xc8a882,
+        bodyColor: 0x6d4c41,
+        pantColor: 0x3e2723,
+        hairColor: 0x757575,
+        type: 'patrol',
+        patrolPoints: [[-22,-18],[-17,-15],[-16,-20],[-20,-24],[-24,-22],[-22,-18]],
+        patrolIndex: 0, patrolT: 0
+      });
+      
+      // NPC 5: Balıkçı - Nehir boyunca dolaşıyor
+      const fisherman = createNPC(26, -20, {
+        name: 'Balıkçı Dede',
+        dialog: '🎣 50 yıldır bu nehirde balık tutarım. Ama en güzel avım karımı buraya getirdiğim gün oldu. Siz de değerli anlar geçirin! 🐟',
+        skin: 0xb07850,
+        bodyColor: 0x546e7a,
+        pantColor: 0x37474f,
+        hairColor: 0xf5f5f5,
+        type: 'patrol',
+        patrolPoints: [[26,-20],[26,-35],[26,-48],[26,-35],[26,-20],[26,-10],[26,-20]],
+        patrolIndex: 0, patrolT: 0
+      });
+      
+      // NPC 6: Fotoğrafçı - avenu boyunca dolaşıyor
+      const photographer = createNPC(3, 50, {
+        name: 'Fotoğrafçı Zeynep',
+        dialog: '📸 Dur dur dur! Tam burada durun — arka plan müthiş! Bu müzenin her köşesi fotoğraf karesine giriyor. Keşke sizi çekebilseydim! 😄',
+        skin: 0xf4c2a1,
+        bodyColor: 0xce93d8,
+        pantColor: 0x7b1fa2,
+        hairColor: 0x1a1a1a,
+        type: 'patrol',
+        patrolPoints: [[3,50],[6,44],[3,38],[-4,44],[3,50]],
+        patrolIndex: 0, patrolT: 0
+      });
+
+      // ══════════════════════════════════════════
+      // MÜZE BİNASI - GERÇEKÇİ NEOKLASİK YAPI
       // ══════════════════════════════════════════
       const museumGroup = new THREE.Group();
       const mWallMat  = new THREE.MeshStandardMaterial({ color: 0xf0e8d8, roughness: 0.55 });
@@ -1243,3 +2676,766 @@
       scene.add(partnerGroup);
     }
 
+    function setupControls() {
+      window.addEventListener('keydown', (e) => {
+        keys[e.key.toLowerCase()] = true;
+      });
+
+      window.addEventListener('keyup', (e) => {
+        keys[e.key.toLowerCase()] = false;
+        if (e.key.toLowerCase() === 'e') window.eKeyUsed = false;
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        if (window.popupOpen) return; // Popup açıkken kamera dönmesin
+        if (document.pointerLockElement === renderer.domElement) {
+          yaw -= e.movementX * 0.002;
+          pitch += e.movementY * 0.002;
+          pitch = Math.max(-Math.PI / 3, Math.min(Math.PI / 3, pitch));
+        } else {
+          mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+          mouseY = (e.clientY / window.innerHeight) * 2 - 1;
+          yaw = -mouseX * Math.PI * 0.5;
+          pitch = -mouseY * 0.3;
+        }
+      });
+
+      // Pointer lock for better camera control
+      renderer.domElement.addEventListener('click', () => {
+        renderer.domElement.requestPointerLock();
+      });
+
+      document.addEventListener('pointerlockchange', () => {
+        if (!document.pointerLockElement) {
+          // Pointer lock exited
+        }
+      });
+
+      window.addEventListener('click', (e) => {
+        const mouse = new THREE.Vector2();
+        mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
+        const raycaster = new THREE.Raycaster();
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(photoFrames);
+
+        if (intersects.length > 0) {
+          const photo = intersects[0].object;
+          showPhoto(photo.userData.index);
+        }
+
+        // Close popups
+        if (e.target.classList.contains('message-popup') || e.target.classList.contains('photo-popup')) {
+          document.getElementById('message-popup').classList.remove('show');
+          document.getElementById('photo-popup').classList.remove('show');
+        }
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+
+    function showPhoto(index) {
+      const colors = ['#ff69b4', '#ffb6c1', '#ffc0cb', '#ff1493', '#db7093'];
+      const color1 = colors[index % colors.length];
+      const color2 = colors[(index + 1) % colors.length];
+      
+      const photoFrame = document.getElementById('photo-frame');
+      photoFrame.style.background = `linear-gradient(135deg, ${color1}, ${color2})`;
+      
+      document.getElementById('photo-number').textContent = index;
+      document.getElementById('photo-popup').classList.add('show');
+    }
+
+    let time = 0;
+    let walkCycle = 0;
+    let currentAnimation = null; // Şu an oynatılan animasyon
+    let isDancingToggle = false; // Dans toggle durumu
+    let lastQKeyState = false; // Q tuşunun önceki durumu
+    
+    // ANİMASYON HIZ AYARLARI - SABİT DEĞERLER
+    let walkAnimSpeed = 1.14;   // Yürüme animasyon hızı
+    let runAnimSpeed = 1.28;    // Koşma animasyon hızı
+    let walkMoveSpeed = 0.016;  // Yürüme hareket hızı
+    let runMoveSpeed = 0.073;   // Koşma hareket hızı
+    let lastSpeedAdjust = 0;    // Son ayarlama zamanı
+    
+    function animate() {
+      requestAnimationFrame(animate);
+      time += 16;
+      walkCycle += 0.1;
+
+      // FBX ANİMASYON GÜNCELLEMESİ
+      const delta = clock.getDelta();
+      if (mixer) mixer.update(delta);
+      if (partnerMixer) partnerMixer.update(delta);
+      
+      // ROOT MOTION: Sadece X ve Z sıfırla, Y'ye ASLA dokunma!
+      // Y'yi sıfırlarsak kalça yere iner, ayaklar yeraltına girer!
+      if (playerGroup.userData.fbxModel) {
+        const fbxModel = playerGroup.userData.fbxModel;
+        fbxModel.position.x = 0;
+        fbxModel.position.z = 0;
+        // fbxModel.position.y → DOKUNMA! Animasyon doğal yüksekliği ayarlar
+        
+        fbxModel.traverse((child) => {
+          if (child.userData.isRootBone) {
+            child.position.x = 0; // Sadece X sıfırla (yan kayma yok)
+            child.position.z = 0; // Sadece Z sıfırla (ileri kayma yok)
+            // child.position.y → DOKUNMA! Kalçanın doğal yüksekliği korunsun
+          }
+        });
+      }
+      if (partnerGroup && partnerGroup.userData.fbxModel) {
+        const fbxModel = partnerGroup.userData.fbxModel;
+        fbxModel.position.x = 0;
+        fbxModel.position.z = 0;
+        
+        fbxModel.traverse((child) => {
+          if (child.userData.isRootBone) {
+            child.position.x = 0;
+            child.position.z = 0;
+            // child.position.y → DOKUNMA!
+          }
+        });
+      }
+
+      
+      // Player movement - KAMERA YÖNÜNE GÖRE
+      const isMoving = keys['w'] || keys['s'] || keys['a'] || keys['d'];
+      const isRunning = keys['shift']; // SHIFT = KOŞMA
+      
+      // Q TUŞU - DANS MENÜSÜ AÇ
+      const qKeyPressed = keys['q'];
+      if (qKeyPressed && !lastQKeyState) {
+        // Q tuşuna basıldı - dans menüsünü aç
+        document.getElementById('dance-menu').style.display = 'flex';
+        // Pointer lock'u kaldır (menüde fare kullanabilsin)
+        if (document.pointerLockElement) {
+          document.exitPointerLock();
+        }
+        console.log('💃 Dans menüsü açıldı');
+      }
+      lastQKeyState = qKeyPressed;
+      
+      // FBX ANİMASYON KONTROLÜ (Her iki karakter için)
+      if (playerGroup.userData.walkAction && playerGroup.userData.runAction) {
+        const walkAction = playerGroup.userData.walkAction;
+        const runAction = playerGroup.userData.runAction;
+        const danceAction = playerGroup.userData.danceAction; // Eski - geriye uyumluluk
+        const idleAction = playerGroup.userData.idleAction; // Opsiyonel
+        
+        // 4 Dans action'ları
+        const danceAction1 = playerGroup.userData.danceAction1;
+        const danceAction2 = playerGroup.userData.danceAction2;
+        const danceAction3 = playerGroup.userData.danceAction3;
+        const danceAction4 = playerGroup.userData.danceAction4;
+        
+        // Tüm temel animasyonlar yüklendiyse devam et
+        if (walkAction && runAction) {
+        
+        // Mevcut oynatılan animasyonun hızını güncelle (runtime ayarlar için)
+        if (walkAction && walkAction.enabled && walkAction.isRunning()) {
+          walkAction.setEffectiveTimeScale(walkAnimSpeed);
+        }
+        if (runAction && runAction.enabled && runAction.isRunning()) {
+          runAction.setEffectiveTimeScale(runAnimSpeed);
+        }
+        
+        // Hangi animasyon oynatılmalı?
+        let targetAnimation = null;
+        
+        if (selectedDance > 0) {
+          // Dans seçilmiş (1-4)
+          targetAnimation = `dance${selectedDance}`;
+          // Dans ederken sadece X/Z sıfırla, Y doğal kalsın
+          const fbxM = playerGroup.userData.fbxModel;
+          if (fbxM) { fbxM.position.x = 0; fbxM.position.z = 0; }
+          // playerGroup.position.y → dokunma
+        } else if (isMoving && isRunning) {
+          targetAnimation = 'run';
+        } else if (isMoving) {
+          targetAnimation = 'walk';
+        } else if (idleAction) {
+          targetAnimation = 'idle';
+        }
+        
+        // EN BASİT SİSTEM - Sadece weight değiştir!
+        if (currentAnimation !== targetAnimation && targetAnimation) {
+          console.log('🎬 Geçiş:', currentAnimation, '→', targetAnimation);
+          
+          // Tüm animasyonların weight'ini 0 yap (gizle)
+          if (walkAction) walkAction.setEffectiveWeight(0);
+          if (runAction) runAction.setEffectiveWeight(0);
+          if (idleAction) idleAction.setEffectiveWeight(0);
+          
+          // 4 Dans weight'lerini 0 yap
+          if (danceAction1) danceAction1.setEffectiveWeight(0);
+          if (danceAction2) danceAction2.setEffectiveWeight(0);
+          if (danceAction3) danceAction3.setEffectiveWeight(0);
+          if (danceAction4) danceAction4.setEffectiveWeight(0);
+          
+          // Hedef animasyonu göster (weight=1)
+          if (targetAnimation === 'walk' && walkAction) {
+            walkAction.setEffectiveWeight(1);
+            walkAction.setEffectiveTimeScale(walkAnimSpeed);
+            console.log('✅ Walk görünür');
+          } else if (targetAnimation === 'run' && runAction) {
+            runAction.setEffectiveWeight(1);
+            runAction.setEffectiveTimeScale(runAnimSpeed);
+            console.log('✅ Run görünür');
+          } else if (targetAnimation === 'dance1' && danceAction1) {
+            danceAction1.setEffectiveWeight(1);
+            console.log('✅ Dans 1 görünür');
+          } else if (targetAnimation === 'dance2' && danceAction2) {
+            danceAction2.setEffectiveWeight(1);
+            console.log('✅ Dans 2 görünür');
+          } else if (targetAnimation === 'dance3' && danceAction3) {
+            danceAction3.setEffectiveWeight(1);
+            console.log('✅ Dans 3 görünür');
+          } else if (targetAnimation === 'dance4' && danceAction4) {
+            danceAction4.setEffectiveWeight(1);
+            console.log('✅ Dans 4 görünür');
+          } else if (targetAnimation === 'idle' && idleAction) {
+            idleAction.setEffectiveWeight(1);
+            console.log('✅ Idle görünür');
+          }
+          
+          currentAnimation = targetAnimation;
+        }
+        } // Animasyonlar yüklü kontrolü sonu
+      }
+      
+      if (isMoving) {
+        // HAREKET HIZI (Ayarlanabilir değerler)
+        const currentSpeed = isRunning ? runMoveSpeed : walkMoveSpeed;
+        
+        // Kamera yönüne göre hareket
+        const forward = new THREE.Vector3();
+        camera.getWorldDirection(forward);
+        forward.y = 0;
+        forward.normalize();
+        
+        const right = new THREE.Vector3();
+        right.crossVectors(forward, new THREE.Vector3(0, 1, 0));
+        
+        if (keys['w']) {
+          playerGroup.position.x += forward.x * currentSpeed;
+          playerGroup.position.z += forward.z * currentSpeed;
+        }
+        if (keys['s']) {
+          playerGroup.position.x -= forward.x * currentSpeed;
+          playerGroup.position.z -= forward.z * currentSpeed;
+        }
+        if (keys['a']) {
+          playerGroup.position.x -= right.x * currentSpeed;
+          playerGroup.position.z -= right.z * currentSpeed;
+        }
+        if (keys['d']) {
+          playerGroup.position.x += right.x * currentSpeed;
+          playerGroup.position.z += right.z * currentSpeed;
+        }
+        
+        // Karakter hareket yönüne dönsün
+        const moveAngle = Math.atan2(forward.x, forward.z);
+        playerGroup.rotation.y = moveAngle;
+      }
+      
+      // ZIPLAMA
+      if (keys[' '] && playerGroup.userData.onGround) {
+        playerGroup.userData.velocityY = 0.15;
+        playerGroup.userData.onGround = false;
+      }
+      
+      // MÜZİK KONTROL (M tuşu)
+      if (keys['m'] && !window.musicToggleCooldown) {
+        const music = document.getElementById('background-music');
+        if (music.paused) {
+          music.play().catch(e => console.log('Müzik çalınamadı:', e));
+          console.log('🎵 Müzik başlatıldı');
+        } else {
+          music.pause();
+          console.log('🔇 Müzik durduruldu');
+        }
+        window.musicToggleCooldown = true;
+        setTimeout(() => {
+          window.musicToggleCooldown = false;
+        }, 500);
+      }
+      
+      // Yerçekimi
+      if (!playerGroup.userData.velocityY) playerGroup.userData.velocityY = 0;
+      if (!playerGroup.userData.onGround) {
+        playerGroup.userData.velocityY -= 0.008;
+        playerGroup.position.y += playerGroup.userData.velocityY;
+        
+        if (playerGroup.position.y <= 0) {
+          playerGroup.position.y = 0;
+          playerGroup.userData.velocityY = 0;
+          playerGroup.userData.onGround = true;
+        }
+      } else {
+        playerGroup.userData.onGround = true;
+      }
+
+      // ── MÜZEİÇİ SINIRLAR ──
+      if (window.insideMuseum) {
+        playerGroup.position.x = Math.max(-12.5, Math.min(12.5, playerGroup.position.x));
+        playerGroup.position.z = Math.max(-17.5, Math.min(17.5, playerGroup.position.z));
+      } else {
+        // ── DIŞ SINIRLAR ──
+        playerGroup.position.x = Math.max(-50, Math.min(50, playerGroup.position.x));
+        playerGroup.position.z = Math.max(-50, Math.min(50, playerGroup.position.z));
+        
+        const px = playerGroup.position.x;
+        const pz = playerGroup.position.z;
+        
+        // ══════════════════════════════════════
+        // MÜZE BİNASI - BULLET-PROOF COLLISION
+        // En yakın duvara it sistemi - geçilemez
+        // ══════════════════════════════════════
+        
+        // Müze bounding box (world space, biraz geniş tutuldu)
+        const musMinX = -15, musMaxX = 15;
+        const musMinZ = -22, musMaxZ = 22;
+        
+        const inMuseumBox = px > musMinX && px < musMaxX && pz > musMinZ && pz < musMaxZ;
+        
+        if (inMuseumBox && !window.insideMuseum) {
+          // Oyuncu dışarıdayken müze kutusuna girdi → en yakın duvara it
+          const dLeft  = px - musMinX;   // Sol duvara mesafe
+          const dRight = musMaxX - px;   // Sağ duvara mesafe
+          const dBack  = pz - musMinZ;   // Arka duvara mesafe
+          const dFront = musMaxZ - pz;   // Ön duvara mesafe (girişten)
+          
+          const minDist = Math.min(dLeft, dRight, dBack, dFront);
+          
+          if (minDist === dFront) {
+            playerGroup.position.z = musMaxZ; // Ön duvarın dışına
+          } else if (minDist === dBack) {
+            playerGroup.position.z = musMinZ; // Arka duvarın dışına
+          } else if (minDist === dLeft) {
+            playerGroup.position.x = musMinX; // Sol duvarın dışına
+          } else {
+            playerGroup.position.x = musMaxX; // Sağ duvarın dışına
+          }
+        }
+        
+        // Nehir geçilmesin
+        if (px > 29 && px < 40 && pz > -65 && pz < 65) {
+          playerGroup.position.x = px < 34.5 ? 29 : 40;
+        }
+        
+        // Çit
+        if (pz > 12.5 && pz < 15.5 && Math.abs(px) < 23 && Math.abs(px) > 4) {
+          playerGroup.position.z = pz < 14 ? 12.5 : 15.5;
+        }
+        if (pz > -38 && pz < 14 && px > 22 && px < 24.5) playerGroup.position.x = 22;
+        if (pz > -38 && pz < 14 && px < -22 && px > -24.5) playerGroup.position.x = -22;
+      }
+
+      // GEOMETRİK KARAKTER ANİMASYONLARI (Sadece Batuhan için)
+      // FBX karakterlerde (Merve) bu animasyonlar kullanılmaz
+      if (playerGroup.leftArm && playerGroup.rightArm && !playerGroup.userData.fbxModel) {
+        // Bu Batuhan (geometrik karakter)
+        if (isMoving) {
+          // YÜRÜME ANİMASYONU
+          playerGroup.leftArm.rotation.x = Math.sin(walkCycle) * 0.5;
+          playerGroup.leftArm.rotation.z = 0;
+          playerGroup.rightArm.rotation.x = Math.sin(walkCycle + Math.PI) * 0.5;
+          playerGroup.rightArm.rotation.z = 0;
+          
+          // BACAK ANİMASYONU
+          if (playerGroup.leftLeg && playerGroup.rightLeg) {
+            playerGroup.leftLeg.rotation.x = Math.sin(walkCycle) * 0.4;
+            playerGroup.rightLeg.rotation.x = Math.sin(walkCycle + Math.PI) * 0.4;
+          }
+        } else {
+          // Durduğunda normal pozisyon
+          playerGroup.leftArm.rotation.x = 0;
+          playerGroup.leftArm.rotation.y = 0;
+          playerGroup.leftArm.rotation.z = 0;
+          playerGroup.rightArm.rotation.x = 0;
+          playerGroup.rightArm.rotation.y = 0;
+          playerGroup.rightArm.rotation.z = 0;
+          
+          if (playerGroup.leftLeg && playerGroup.rightLeg) {
+            playerGroup.leftLeg.rotation.x = 0;
+            playerGroup.rightLeg.rotation.x = 0;
+          }
+        }
+      }
+
+      // Third-person camera - SABİT TAKİP
+      const cameraDistance = 3.5; // Daha yakın
+      const cameraHeight = 2.5;
+      
+      camera.position.x = playerGroup.position.x - Math.sin(yaw) * cameraDistance * Math.cos(pitch);
+      camera.position.y = playerGroup.position.y + cameraHeight + Math.sin(pitch) * 2;
+      camera.position.z = playerGroup.position.z - Math.cos(yaw) * cameraDistance * Math.cos(pitch);
+      
+      // Camera look at player
+      camera.lookAt(playerGroup.position.x, playerGroup.position.y + 0.8, playerGroup.position.z);
+
+      // Send position AND animation state to server
+      socket.emit('update_position', {
+        position: {
+          x: playerGroup.position.x,
+          y: playerGroup.position.y,
+          z: playerGroup.position.z
+        },
+        rotation: playerGroup.rotation.y,
+        animation: currentAnimation, // Şu anki animasyon
+        danceNumber: selectedDance // Seçili dans (0 = yok, 1-4 = dans)
+      });
+
+      // Animate messages
+      messages.forEach((msg, i) => {
+        msg.position.y = msg.userData.baseY + Math.sin(time * 0.002 + i) * 0.1;
+        msg.rotation.y += 0.01;
+      });
+
+      // Her frame başında indicator sıfırla
+      const indicator = document.getElementById('message-indicator');
+      indicator.classList.remove('show');
+      indicator.textContent = '💌 E tuşuna bas ve mesajı oku!';
+
+      // Check near message — dilek panosu bölgesini hariç tut
+      nearMessage = null;
+      const wishStandWorldPos = new THREE.Vector3(-10, 0, -14);
+      const distToWishStand = playerGroup.position.distanceTo(wishStandWorldPos);
+      if (distToWishStand > 2.5) { // Pano yakınında değilse mesaj zarflarını kontrol et
+        messages.forEach((msg) => {
+          const dist = playerGroup.position.distanceTo(msg.position);
+          if (dist < 1.5) nearMessage = msg.userData;
+        });
+      }
+
+      if (nearMessage) {
+        document.getElementById('message-indicator').classList.add('show');
+        document.getElementById('message-indicator').textContent = '💌 E tuşuna bas ve mesajı oku!';
+        if (keys['e'] && !window.eKeyUsed && !window.popupOpen) {
+          window.eKeyUsed = true;
+          window.popupOpen = true;
+          if (document.pointerLockElement) document.exitPointerLock();
+          const popup = document.getElementById('message-popup');
+          popup.querySelector('.icon').textContent = '💕';
+          const titleEl = popup.querySelector('.npc-name');
+          if (titleEl) titleEl.textContent = '';
+          document.getElementById('message-text').textContent = nearMessage.text;
+          popup.classList.add('show');
+          // Tıklayınca kapat
+          function closeMsg() {
+            popup.classList.remove('show');
+            window.popupOpen = false;
+            window.eKeyUsed = false;
+            popup.removeEventListener('click', closeMsg);
+            const btn = popup.querySelector('.npc-close-btn');
+            if (btn) btn.removeEventListener('click', closeMsg);
+            setTimeout(() => { if (renderer && renderer.domElement) renderer.domElement.requestPointerLock(); }, 100);
+          }
+          popup.addEventListener('click', closeMsg);
+          const closeBtn = popup.querySelector('.npc-close-btn');
+          if (closeBtn) closeBtn.addEventListener('click', closeMsg);
+        }
+      }
+
+      // NPC scope için erken tanımla
+      let nearNPC = null;
+
+      // DİLEK AĞACI ETKİLEŞİMİ - Önce input, sonra mesaj
+      if (window.wishTreePos && !window.insideMuseum) {
+        const distToWish = playerGroup.position.distanceTo(window.wishTreePos);
+        if (distToWish < 4 && !nearNPC) {
+          // indicator already declared above
+          indicator.textContent = '🌳 E tuşuna bas - Dilek tut';
+          indicator.classList.add('show');
+          if (keys['e'] && !window.eKeyUsed && !window.popupOpen) {
+            window.eKeyUsed = true;
+            openWishPopup();
+          }
+        }
+      }
+      let nearDoor = false;
+      
+      if (!window.insideMuseum) {
+        // DIŞARIDA: Kapıya yakın mı? (E tuşu ile şifre girişi)
+        const doorPos = new THREE.Vector3(0, 0, 21);
+        const distToDoor = playerGroup.position.distanceTo(doorPos);
+        
+        if (distToDoor < 4) {
+          nearDoor = true;
+          if (keys['e'] && !window.eKeyUsed) {
+            window.eKeyUsed = true;
+            window.popupOpen = true;
+            if (document.pointerLockElement) document.exitPointerLock();
+            document.getElementById('password-popup').style.display = 'flex';
+            setTimeout(() => document.getElementById('password-input').focus(), 100);
+          }
+        }
+      } else {
+        // İÇERİDE: Çıkış kapısına yakın mı? (E tuşu ile çıkış)
+        const exitDoorPos = new THREE.Vector3(0, 0, 16);
+        const distToExit = playerGroup.position.distanceTo(exitDoorPos);
+        
+        if (distToExit < 3.5) {
+          nearDoor = true;
+          if (keys['e'] && !window.eKeyUsed) {
+            window.eKeyUsed = true;
+            exitMuseum();
+          }
+        }
+      }
+
+      if (nearDoor) {
+        indicator.textContent = window.insideMuseum ? '🚪 E tuşuna bas - Müzeden Çık' : '🔐 E tuşuna bas - Müzeye Gir';
+        indicator.classList.add('show');
+      }
+
+      // Animate floating hearts
+      scene.children.forEach((child) => {
+        if (child.userData.floatOffset !== undefined) {
+          child.position.y += Math.sin(time * 0.001 + child.userData.floatOffset) * 0.002;
+          child.rotation.y += 0.01;
+        }
+      });
+
+      // KELEBEK ANİMASYONLARI
+      if (window.butterflies) {
+        window.butterflies.forEach((butterfly, i) => {
+          const data = butterfly.userData;
+          data.path += data.speed;
+          
+          // Sinüs dalgası ile uç
+          butterfly.position.x += Math.cos(data.path) * 0.05;
+          butterfly.position.z += Math.sin(data.path) * 0.05;
+          butterfly.position.y = 1.5 + Math.sin(data.path * 3) * 0.5;
+          
+          // Kanat çırpma
+          if (butterfly.children[0] && butterfly.children[1]) {
+            const wingAngle = Math.sin(time * data.wingSpeed * 0.001) * 0.5;
+            butterfly.children[0].rotation.y = -wingAngle;
+            butterfly.children[1].rotation.y = wingAngle;
+          }
+          
+          // Yönlendir
+          butterfly.rotation.y = data.path;
+          
+          // Sınırlar içinde tut
+          if (Math.abs(butterfly.position.x) > 50) butterfly.position.x *= -0.9;
+          if (Math.abs(butterfly.position.z) > 50) butterfly.position.z *= -0.9;
+        });
+      }
+
+      // ŞELALe ANİMASYONU
+      if (window.waterfallBubbles && window.waterfallGroup) {
+        window.waterfallBubbles.forEach(bub => {
+          bub.position.y -= bub.userData.vy * (-1); // düşüyor
+          bub.position.x += bub.userData.vx;
+          if (bub.position.y < 0.5) {
+            bub.position.y = bub.userData.startY;
+            bub.position.x = (Math.random()-0.5)*7;
+          }
+        });
+        // Su paneli dalgalanma
+        window.waterfallGroup.children.forEach(c => {
+          if (c.userData.isWaterfall) {
+            c.material.opacity = 0.5 + Math.sin(time*0.003 + c.userData.offset)*0.2;
+          }
+        });
+      }
+      
+      // UÇAN FENER ANİMASYONU
+      if (window.lanterns) {
+        window.lanterns.forEach(ln => {
+          const d = ln.userData;
+          ln.position.y += d.riseSpeed;
+          ln.position.x = d.baseX + Math.sin(time*d.swaySpeed + d.swayOffset) * d.swayAmt;
+          ln.rotation.z = Math.sin(time*d.swaySpeed*0.7 + d.swayOffset)*0.08;
+          ln.rotation.x = Math.sin(time*d.swaySpeed*0.5)*0.05;
+          // Tepeye ulaşınca aşağıya reset
+          if (ln.position.y > d.maxY) {
+            ln.position.y = 1.5 + Math.random()*2;
+            ln.position.x = d.baseX;
+            ln.position.z = d.baseZ;
+          }
+        });
+      }
+      
+      // DİLEK AĞACI - kurdeleler sallanıyor
+      if (window.wishTreeGroup) {
+        window.wishTreeGroup.children.forEach(c => {
+          if (c.userData.isRibbon) {
+            c.rotation.z = Math.sin(time*0.001 + c.userData.sway)*0.15;
+            c.rotation.x = Math.sin(time*0.0013 + c.userData.sway*0.7)*0.1;
+          }
+        });
+      }
+      
+      // SALINCAK ANİMASYONU
+      if (window.swingGroup) {
+        window.swingAngle = Math.sin(time * 0.0015) * 0.35;
+        // Koltuk ve ipler birlikte sallanıyor
+        window.swingGroup.children.forEach(c => {
+          if (c.position && c.position.y >= 3.3 && c.position.y <= 6.5 && c.position.x === 0) {
+            c.rotation.x = window.swingAngle;
+          }
+          // İpler
+          if (c.geometry && c.position.y > 4 && c.position.y < 6.5 && Math.abs(c.position.x) > 0.3) {
+            c.rotation.x = window.swingAngle;
+          }
+        });
+      }
+      
+      // NPC ANİMASYONLARI + ETKİLEŞİM MESAFESI
+      if (window.npcs && playerGroup) {
+        nearNPC = null;
+        let nearNPCDist = 999;
+        
+        window.npcs.forEach((npc, idx) => {
+          const d = npc.userData;
+          const t = time * 0.001;
+          
+          // Patrol tipi
+          if (d.type === 'patrol' && d.patrolPoints) {
+            d.patrolT += 0.004;
+            const pts = d.patrolPoints;
+            const from = pts[d.patrolIndex % pts.length];
+            const to = pts[(d.patrolIndex + 1) % pts.length];
+            if (d.patrolT >= 1) {
+              d.patrolT = 0;
+              d.patrolIndex = (d.patrolIndex + 1) % pts.length;
+            }
+            const newX = from[0] + (to[0]-from[0]) * d.patrolT;
+            const newZ = from[1] + (to[1]-from[1]) * d.patrolT;
+            const dx = newX - npc.position.x;
+            const dz = newZ - npc.position.z;
+            if (Math.abs(dx) + Math.abs(dz) > 0.01) {
+              npc.rotation.y = Math.atan2(dx, dz);
+            }
+            npc.position.x = newX;
+            npc.position.z = newZ;
+            // Yürüme animasyonu
+            d.lArm.rotation.x = Math.sin(t*4 + idx) * 0.45;
+            d.rArm.rotation.x = -Math.sin(t*4 + idx) * 0.45;
+            d.lLeg.rotation.x = -Math.sin(t*4 + idx) * 0.35;
+            d.rLeg.rotation.x = Math.sin(t*4 + idx) * 0.35;
+          } else if (d.type === 'idle_sway' || d.type === 'static') {
+            // Hafif sallanma (nefes efekti)
+            npc.position.y = Math.sin(t * 0.8 + idx) * 0.015;
+            d.lArm.rotation.z = Math.sin(t*0.6 + idx)*0.06;
+            d.rArm.rotation.z = -Math.sin(t*0.6 + idx)*0.06;
+          }
+          
+          // Mesafe kontrolü
+          const dist = playerGroup.position.distanceTo(npc.position);
+          if (dist < 3.5 && dist < nearNPCDist) {
+            nearNPCDist = dist;
+            nearNPC = npc;
+          }
+        });
+        
+        // NPC yakınsa göster
+        if (nearNPC && !window.insideMuseum) {
+          // indicator already declared above
+          indicator.textContent = `💬 E tuşuna bas - ${nearNPC.userData.name} ile konuş`;
+          indicator.classList.add('show');
+          
+          if (keys['e'] && !window.eKeyUsed && !window.popupOpen) {
+            window.eKeyUsed = true;
+            window.popupOpen = true;
+            if (document.pointerLockElement) document.exitPointerLock();
+            showNPCDialog(nearNPC.userData.name, nearNPC.userData.dialog);
+          }
+        }
+      }
+
+      // KUŞ ANİMASYONLARI
+      if (window.birds) {
+        window.birds.forEach((bird) => {
+          const data = bird.userData;
+          data.angle += data.speed * 0.01;
+          
+          // Dairesel uçuş
+          bird.position.x = Math.cos(data.angle) * data.radius;
+          bird.position.z = Math.sin(data.angle) * data.radius;
+          bird.position.y = 15 + Math.sin(data.angle * 3) * 3;
+          
+          // Yönlendir
+          bird.rotation.y = data.angle + Math.PI / 2;
+        });
+      }
+
+      // ✈️ UÇAK ANİMASYONU
+      if (window.airplane) {
+        window.airplaneAngle += 0.0008;
+        const radius = 120;
+        const height = 55 + Math.sin(window.airplaneAngle * 0.5) * 5;
+        window.airplane.position.x = Math.cos(window.airplaneAngle) * radius;
+        window.airplane.position.z = Math.sin(window.airplaneAngle) * radius;
+        window.airplane.position.y = height;
+        // Doğru yön: burun (local +X) hareket yönüne baksın
+        // Hareket yönü: d/dt(cos(a), 0, sin(a)) = (-sin(a), 0, cos(a))
+        // Local +X'i bu vektöre hizalamak için: rotation.y = -a - PI/2
+        window.airplane.rotation.y = -window.airplaneAngle - Math.PI / 2;
+        // Hafif yalpalama
+        window.airplane.rotation.z = Math.sin(window.airplaneAngle * 2) * 0.04;
+        // Pervane dönüşü
+        if (window.airplaneProps) {
+          window.airplaneProps.forEach(p => { p.rotation.x += 0.4; });
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // Event Listeners - DOM yüklendikten sonra
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('✅ DOM yüklendi, event listener\'lar ekleniyor...');
+      
+      // Menu butonları
+      const createBtn = document.getElementById('create-room-btn');
+      const joinBtn = document.getElementById('join-room-btn');
+      const submitBtn = document.getElementById('join-submit-btn');
+      
+      if (createBtn) {
+        createBtn.addEventListener('click', createRoom);
+        console.log('✅ Create button listener eklendi');
+      }
+      
+      if (joinBtn) {
+        joinBtn.addEventListener('click', showJoinInput);
+        console.log('✅ Join button listener eklendi');
+      }
+      
+      if (submitBtn) {
+        submitBtn.addEventListener('click', joinRoom);
+        console.log('✅ Submit button listener eklendi');
+      }
+      
+      // Enter tuşu ile oda kodunu gönder
+      const roomInput = document.getElementById('room-code-input');
+      if (roomInput) {
+        roomInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') joinRoom();
+        });
+      }
+      
+      // Karakter seçimi
+      const batuhanBtn = document.getElementById('select-batuhan');
+      const merveBtn = document.getElementById('select-merve');
+      
+      if (batuhanBtn) {
+        batuhanBtn.addEventListener('click', () => selectCharacter('batuhan'));
+        console.log('✅ Batuhan button listener eklendi');
+      }
+      
+      if (merveBtn) {
+        merveBtn.addEventListener('click', () => selectCharacter('merve'));
+        console.log('✅ Merve button listener eklendi');
+      }
+    });

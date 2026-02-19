@@ -1,4 +1,3 @@
-  <style>
     * {
       margin: 0;
       padding: 0;
@@ -384,4 +383,3 @@
       25% { transform: translateX(-10px); }
       75% { transform: translateX(10px); }
     }
-  </style>
