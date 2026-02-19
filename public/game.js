@@ -2083,13 +2083,22 @@
       // ====== YENİ TEK SIRA, BÜYÜK, SÜSLÜ ÇERÇEVELER ======
       // Sol duvar: 8 fotoğraf, sağ duvar: 8 fotoğraf - tek sıra yan yana
       const FW = 2.9;  // çerçeve genişliği
-      const FH = 2.25; // çerçeve yüksekliği
-      const frameY = 3.6; // tek sıra merkezi
-      const frameZPositions = [-15, -11, -7, -3, 1, 5, 9, 13]; // 8 konum
+      // ── BÜYÜK / ORTA DÖNÜŞÜMLÜ ÇERÇEVE DÜZENİ (gerçek müze stili) ──
+      // Büyük: 2.6 × 3.8  (dikey, gösterişli)
+      // Orta:  2.2 × 2.4  (standart, daha alçak)
+      // Sıra: B - O - B - O - B (5 çerçeve × 2 duvar = 10)
+      const SIZES = [
+        { fw: 2.6, fh: 3.8, y: 4.3 },  // Büyük
+        { fw: 2.2, fh: 2.4, y: 3.2 },  // Orta
+        { fw: 2.6, fh: 3.8, y: 4.3 },  // Büyük
+        { fw: 2.2, fh: 2.4, y: 3.2 },  // Orta
+        { fw: 2.6, fh: 3.8, y: 4.3 },  // Büyük
+      ];
+      const FRAME_Z = [-13, -7, -1, 5, 11]; // 5 konum, geniş aralıklı
 
       const framePositions = [
-        ...frameZPositions.map(z => ({x:-12.68, y:frameY, z, ry:Math.PI/2})),
-        ...frameZPositions.map(z => ({x:12.68,  y:frameY, z, ry:-Math.PI/2})),
+        ...FRAME_Z.map((z, i) => ({ x: -12.68, z, ry:  Math.PI/2, ...SIZES[i] })),
+        ...FRAME_Z.map((z, i) => ({ x:  12.68, z, ry: -Math.PI/2, ...SIZES[i] })),
       ];
 
       // Çerçeve malzemeleri - lüks müze stili
@@ -2100,23 +2109,24 @@
       framePositions.forEach((pos, idx) => {
         if (idx >= photoData.length) return;
         const outDir = pos.x < 0 ? 1 : -1;
-        const d = outDir * 0.01; // duvardan hafif dışarı
+        const FW = pos.fw;
+        const FH = pos.fh;
 
         // ── KATMANLI ÇERÇEVE SİSTEMİ ──
 
-        // Katman 1: Koyu ahşap dış çerçeve (en arkada, duvara yapışık)
+        // Katman 1: Koyu ahşap dış çerçeve
         const woodFrame = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.30, FH + 0.30, 0.10), darkWoodMat);
-        woodFrame.position.set(pos.x + d*0, pos.y, pos.z);
+        woodFrame.position.set(pos.x, pos.y, pos.z);
         woodFrame.rotation.y = pos.ry;
         window.museumInterior.add(woodFrame);
 
-        // Katman 2: Altın dış bordür şerit
+        // Katman 2: Altın dış bordür
         const goldOuter = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.18, FH + 0.18, 0.11), goldMoldMat);
         goldOuter.position.set(pos.x + outDir*0.005, pos.y, pos.z);
         goldOuter.rotation.y = pos.ry;
         window.museumInterior.add(goldOuter);
 
-        // Katman 3: İkinci koyu ahşap şerit (iç)
+        // Katman 3: İç ahşap şerit
         const woodInner = new THREE.Mesh(new THREE.BoxGeometry(FW + 0.06, FH + 0.06, 0.12), darkWoodMat);
         woodInner.position.set(pos.x + outDir*0.01, pos.y, pos.z);
         woodInner.rotation.y = pos.ry;
@@ -2134,7 +2144,7 @@
         matMesh.rotation.y = pos.ry;
         window.museumInterior.add(matMesh);
 
-        // Katman 6: Fotoğraf (mat üzerinde)
+        // Katman 6: Fotoğraf
         const img = new Image();
         img.onload = function() {
           const tex = new THREE.Texture(img);
@@ -2150,43 +2160,37 @@
         };
         img.src = photoData[idx];
 
-        // ── KÖŞE ROZET SÜSLER (4 köşe) ──
+        // ── KÖŞE ROZET SÜSLER ──
         const rozetGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.97, roughness: 0.03 });
-        const cornerOffsets = [
+        [
           [-(FW/2+0.09), +(FH/2+0.09)],
           [+(FW/2+0.09), +(FH/2+0.09)],
           [-(FW/2+0.09), -(FH/2+0.09)],
           [+(FW/2+0.09), -(FH/2+0.09)],
-        ];
-        cornerOffsets.forEach(([dz, dy]) => {
-          // Büyük köşe gül
+        ].forEach(([dz, dy]) => {
           const rose = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.05, 10), rozetGold);
           rose.rotation.x = Math.PI / 2;
           rose.position.set(pos.x + outDir*0.06, pos.y + dy, pos.z + dz);
           rose.rotation.y = pos.ry;
           window.museumInterior.add(rose);
-          // Merkez top
           const top = new THREE.Mesh(new THREE.SphereGeometry(0.055, 8, 8), rozetGold);
           top.position.set(pos.x + outDir*0.09, pos.y + dy, pos.z + dz);
           window.museumInterior.add(top);
         });
 
-        // ── ALTIN ASKı KANCASI (üstte) ──
+        // ── ALTIN KANCA + ZİNCİR ──
         const hookMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.95, roughness: 0.05 });
         const hook = new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.018, 8, 14, Math.PI), hookMat);
         hook.position.set(pos.x + outDir*0.12, pos.y + FH/2 + 0.20, pos.z);
         hook.rotation.y = pos.ry;
         window.museumInterior.add(hook);
-        // İnce zincir/ip (kancadan resim rayına)
-        const wireGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.38, 6);
-        const wire = new THREE.Mesh(wireGeo, hookMat);
+        const wire = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.38, 6), hookMat);
         wire.position.set(pos.x + outDir*0.10, pos.y + FH/2 + 0.40, pos.z);
         window.museumInterior.add(wire);
 
-        // Plaket kaldırıldı
-
-        // ── SPOT IŞIK ──
-        const spot = new THREE.SpotLight(0xfff5e0, 0.85, 9, Math.PI/9, 0.35);
+        // ── SPOT IŞIK (büyük çerçeveye daha güçlü) ──
+        const isLarge = FH > 3;
+        const spot = new THREE.SpotLight(0xfff5e0, isLarge ? 1.1 : 0.75, 10, Math.PI / (isLarge ? 8 : 10), 0.35);
         spot.position.set(pos.x + outDir*5, pos.y + 3.5, pos.z);
         spot.target.position.set(pos.x, pos.y, pos.z);
         window.museumInterior.add(spot);
