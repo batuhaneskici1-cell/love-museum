@@ -265,6 +265,11 @@
     // Müzeye ilk girilince sunucudaki tüm dilekleri al (geçmiş)
     socket.on('wish_history', (data) => {
       if (!data || !data.wishes) return;
+      // Mevcut notları temizle (çift not önleme)
+      if (window.wishNotes && window.wishNotes.length > 0) {
+        window.wishNotes.forEach(n => { if (n.parent) n.parent.remove(n); });
+        window.wishNotes = [];
+      }
       data.wishes.forEach(w => {
         if (window.addWishToWall) window.addWishToWall(w.text, w.owner);
       });
@@ -2193,9 +2198,7 @@
 
       const labels = ['🌨️ Kış Günü', '🌅 Gün Batımı', '🎉 Özel Gece', '🚂 Yolculuk', '🍽️ Akşam Yemeği', '🌄 Doğa', '🌙 Gece Out', '🍜 Restoran', '📸 Balık Tutma', '🌊 Deniz', '☀️ Güneşli', '🎱 Bilardo', '💑 İkimiz', '✈️ Seyahat', '☕ Kafe', '🌇 Şehir'];
 
-      // ====== TEK SIRA, 8+8 SÜSLÜ ÇERÇEVELER (16 fotoğraf) ======
-      // Sol duvar: 8 fotoğraf, sağ duvar: 8 fotoğraf
-      // Doğal müze ritmi: dikey büyük - yatay orta - kare - dikey küçük karışık
+      // ====== 16 FOTOĞRAF: 8 sol + 8 sağ duvar ======
       const SIZES = [
         { fw: 2.4, fh: 3.4, y: 4.1 },  // 1 - Dikey büyük (portre)
         { fw: 2.8, fh: 2.0, y: 3.3 },  // 2 - Yatay geniş (manzara)
@@ -2206,7 +2209,6 @@
         { fw: 3.0, fh: 2.2, y: 3.4 },  // 7 - Yatay geniş
         { fw: 2.2, fh: 3.0, y: 4.0 },  // 8 - Dikey orta-büyük
       ];
-      // 8 konum: arka duvardan (z=-14) ön kapıya (z=16) doğru eşit aralık
       const FRAME_Z = [-14, -10, -6.5, -3, 0.5, 4.5, 9, 13.5];
 
       const framePositions = [
@@ -2257,29 +2259,46 @@
         matMesh.rotation.y = pos.ry;
         window.museumInterior.add(matMesh);
 
-        // Katman 6: Fotoğraf - canvas ile texture (THREE.CanvasTexture)
-        const _fw = FW, _fh = FH, _pos = pos, _outDir = outDir, _idx = idx;
-        const img = new Image();
-        img.onload = function() {
-          const canvas = document.createElement('canvas');
-          const maxSide = 1024;
-          const aspect = img.width / img.height;
-          canvas.width  = aspect >= 1 ? maxSide : Math.round(maxSide * aspect);
-          canvas.height = aspect >= 1 ? Math.round(maxSide / aspect) : maxSide;
-          const ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-          const tex = new THREE.CanvasTexture(canvas);
-          const photoMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(_fw - 0.22, _fh - 0.22),
-            new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
-          );
-          photoMesh.position.set(_pos.x + _outDir*0.075, _pos.y, _pos.z);
-          photoMesh.rotation.y = _pos.ry;
-          photoMesh.userData.index = _idx;
-          window.museumInterior.add(photoMesh);
-          photoFrames.push(photoMesh);
-        };
-        img.src = photoData[idx];
+        // Katman 6: Fotoğraf (canvas texture — data URL ile güvenilir)
+        (function(fw, fh, p, od, pidx) {
+          const img = new Image();
+          img.decode().then(() => {
+            const canvas = document.createElement('canvas');
+            const maxSide = 1024;
+            const aspect = img.naturalWidth / img.naturalHeight;
+            canvas.width  = aspect >= 1 ? maxSide : Math.round(maxSide * aspect);
+            canvas.height = aspect >= 1 ? Math.round(maxSide / aspect) : maxSide;
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            const tex = new THREE.CanvasTexture(canvas);
+            const photoMesh = new THREE.Mesh(
+              new THREE.PlaneGeometry(fw - 0.22, fh - 0.22),
+              new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+            );
+            photoMesh.position.set(p.x + od*0.075, p.y, p.z);
+            photoMesh.rotation.y = p.ry;
+            photoMesh.userData.index = pidx;
+            window.museumInterior.add(photoMesh);
+            photoFrames.push(photoMesh);
+          }).catch(() => {
+            // onload fallback
+            img.onload = function() {
+              const canvas = document.createElement('canvas');
+              canvas.width = 512; canvas.height = 512;
+              canvas.getContext('2d').drawImage(img, 0, 0, 512, 512);
+              const tex = new THREE.CanvasTexture(canvas);
+              const photoMesh = new THREE.Mesh(
+                new THREE.PlaneGeometry(fw - 0.22, fh - 0.22),
+                new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+              );
+              photoMesh.position.set(p.x + od*0.075, p.y, p.z);
+              photoMesh.rotation.y = p.ry;
+              photoMesh.userData.index = pidx;
+              window.museumInterior.add(photoMesh);
+              photoFrames.push(photoMesh);
+            };
+          });
+          img.src = photoData[pidx];
+        })(FW, FH, pos, outDir, idx);
 
         // ── KÖŞE ROZET SÜSLER ──
         const rozetGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.97, roughness: 0.03 });
