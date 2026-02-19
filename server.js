@@ -136,7 +136,8 @@ io.on('connection', (socket) => {
     if (!room) return;
 
     if (!room.wishes) room.wishes = [];
-    room.wishes.push({ text: data.text, ownerName: data.ownerName });
+    // sentByHost kaydediyoruz — history'de kimin notu olduğunu bileceğiz
+    room.wishes.push({ text: data.text, ownerName: data.ownerName, sentByHost: socket.isHost });
 
     socket.to(roomCode).emit('partner_wish', data);
   });
@@ -145,7 +146,15 @@ io.on('connection', (socket) => {
   socket.on('get_wish_history', () => {
     const roomCode = socket.roomCode;
     const room = rooms.get(roomCode);
-    const wishes = room?.wishes || [];
+    const rawWishes = room?.wishes || [];
+
+    // Her dilek için isteği yapan kişinin bakış açısından 'self'/'partner' hesapla
+    const wishes = rawWishes.map(w => ({
+      text: w.text,
+      ownerName: w.ownerName,
+      owner: (w.sentByHost === socket.isHost) ? 'self' : 'partner'
+    }));
+
     socket.emit('wish_history', { wishes });
   });
 

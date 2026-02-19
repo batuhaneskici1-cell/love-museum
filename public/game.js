@@ -265,6 +265,13 @@
     // Müzeye ilk girilince sunucudaki tüm dilekleri al (geçmiş)
     socket.on('wish_history', (data) => {
       if (!data || !data.wishes) return;
+
+      // Mevcut notları temizle (çiftlenmeyi önler)
+      if (window.wishNotes && window.wishNotes.length > 0) {
+        window.wishNotes.forEach(n => n.parent && n.parent.remove(n));
+        window.wishNotes = [];
+      }
+
       data.wishes.forEach(w => {
         if (window.addWishToWall) window.addWishToWall(w.text, w.owner);
       });
