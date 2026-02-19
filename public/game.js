@@ -3090,8 +3090,8 @@
         const danceAction3 = playerGroup.userData.danceAction3;
         const danceAction4 = playerGroup.userData.danceAction4;
         
-        // Tüm temel animasyonlar yüklendiyse devam et
-        if (walkAction && runAction) {
+        // En az walk varsa devam et
+        if (walkAction) {
         
         // Mevcut oynatılan animasyonun hızını güncelle (runtime ayarlar için)
         if (walkAction && walkAction.enabled && walkAction.isRunning()) {
