@@ -2490,6 +2490,42 @@
           });
           
           // Animation mixer oluştur
+          // Walk modelindeki kemik isimlerini topla
+          const modelBoneNames = new Set();
+          fbxModel.traverse(child => { if (child.isBone) modelBoneNames.add(child.name); });
+          console.log('🦴 Model kemikleri:', [...modelBoneNames].slice(0, 5));
+          
+          // Animasyon clip'ini model kemikleriyle uyumlu hale getir
+          function retargetClip(clip) {
+            if (modelBoneNames.size === 0) return clip;
+            
+            // İlk track'ten prefix tespit et
+            const sampleTrack = clip.tracks[0];
+            if (!sampleTrack) return clip;
+            
+            const trackBoneName = sampleTrack.name.split('.')[0];
+            
+            // Model kemiklerinde direkt eşleşme varsa sorun yok
+            if (modelBoneNames.has(trackBoneName)) return clip;
+            
+            // Prefix farklıysa: model kemik adlarından eşleştirmeyi bul
+            clip.tracks.forEach(track => {
+              const parts = track.name.split('.');
+              const boneName = parts[0];
+              const prop = parts.slice(1).join('.');
+              
+              // mixamorig: prefix eklemeyi dene
+              if (modelBoneNames.has('mixamorig:' + boneName)) {
+                track.name = 'mixamorig:' + boneName + '.' + prop;
+              }
+              // mixamorig: prefix çıkarmayı dene
+              else if (boneName.startsWith('mixamorig:') && modelBoneNames.has(boneName.replace('mixamorig:', ''))) {
+                track.name = boneName.replace('mixamorig:', '') + '.' + prop;
+              }
+            });
+            return clip;
+          }
+          
           const animMixer = new THREE.AnimationMixer(fbxModel);
           
           // Root motion track'lerini filtrele (X/Z pozisyon hareketi yok)
@@ -2529,7 +2565,7 @@
               console.log(`✅ ${prefix}Run.fbx yüklendi!`);
               if (runFbx.animations && runFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
-                const runClip = runFbx.animations[0];
+                let runClip = retargetClip(runFbx.animations[0]);
                 runClip.tracks = runClip.tracks.filter(track => {
                   return !track.name.includes('.position');
                 });
@@ -2563,14 +2599,11 @@
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance1.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
-                const danceClip = danceFbx.animations[0];
+                let danceClip = retargetClip(danceFbx.animations[0]);
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  // Tüm position track'lerini kaldır (yükselme sorunu)
                   if (track.name.includes('.position')) return false;
                   return true;
                 });
-                
-
                 
                 danceAction1 = animMixer.clipAction(danceClip);
                 danceAction1.setLoop(THREE.LoopRepeat);
@@ -2598,14 +2631,11 @@
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance2.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
-                const danceClip = danceFbx.animations[0];
+                let danceClip = retargetClip(danceFbx.animations[0]);
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  // Tüm position track'lerini kaldır (yükselme sorunu)
                   if (track.name.includes('.position')) return false;
                   return true;
                 });
-                
-
                 
                 danceAction2 = animMixer.clipAction(danceClip);
                 danceAction2.setLoop(THREE.LoopRepeat);
@@ -2633,14 +2663,11 @@
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance3.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
-                const danceClip = danceFbx.animations[0];
+                let danceClip = retargetClip(danceFbx.animations[0]);
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  // Tüm position track'lerini kaldır (yükselme sorunu)
                   if (track.name.includes('.position')) return false;
                   return true;
                 });
-                
-
                 
                 danceAction3 = animMixer.clipAction(danceClip);
                 danceAction3.setLoop(THREE.LoopRepeat);
@@ -2668,14 +2695,11 @@
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance4.fbx yüklendi!`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
-                const danceClip = danceFbx.animations[0];
+                let danceClip = retargetClip(danceFbx.animations[0]);
                 danceClip.tracks = danceClip.tracks.filter(track => {
-                  // Tüm position track'lerini kaldır (yükselme sorunu)
                   if (track.name.includes('.position')) return false;
                   return true;
                 });
-                
-
                 
                 danceAction4 = animMixer.clipAction(danceClip);
                 danceAction4.setLoop(THREE.LoopRepeat);
@@ -2711,7 +2735,7 @@
               console.log(`✅ ${prefix}Idle.fbx yüklendi!`);
               if (idleFbx.animations && idleFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
-                const idleClip = idleFbx.animations[0];
+                let idleClip = retargetClip(idleFbx.animations[0]);
                 idleClip.tracks = idleClip.tracks.filter(track => {
                   return !track.name.includes('.position');
                 });
@@ -2883,7 +2907,7 @@
         loadFBXCharacter(playerGroup, true, true); // true = Batuhan
       }
 
-      playerGroup.position.set(0, 0, 5); // Müze içinde başla
+      playerGroup.position.set(0, 0, 55); // Dışarıda başla
       scene.add(playerGroup);
 
       // PARTNER CHARACTER
