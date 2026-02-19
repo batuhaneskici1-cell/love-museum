@@ -2510,6 +2510,11 @@
               return clip;
             }
             
+            // Model kemiklerinden prefix tespit et (mixamorig9 veya mixamorig vs)
+            const modelPrefix = [...modelBoneNames][0].replace(/Hips.*/, '').replace(/hips.*/, '');
+            const trackPrefix = trackBoneName.replace(/Hips.*/, '').replace(/hips.*/, '');
+            console.log('🔧 Model prefix:', modelPrefix, '| Track prefix:', trackPrefix);
+            
             // Tüm track isimlerini düzelt
             let fixed = 0;
             clip.tracks.forEach(track => {
@@ -2517,12 +2522,13 @@
               const boneName = parts[0];
               const prop = parts.slice(1).join('.');
               
-              if (modelBoneNames.has('mixamorig:' + boneName)) {
-                track.name = 'mixamorig:' + boneName + '.' + prop;
-                fixed++;
-              } else if (boneName.startsWith('mixamorig:') && modelBoneNames.has(boneName.replace('mixamorig:', ''))) {
-                track.name = boneName.replace('mixamorig:', '') + '.' + prop;
-                fixed++;
+              // Track'teki prefix'i model prefix'iyle değiştir
+              if (boneName.startsWith(trackPrefix) && !modelBoneNames.has(boneName)) {
+                const newName = modelPrefix + boneName.slice(trackPrefix.length);
+                if (modelBoneNames.has(newName)) {
+                  track.name = newName + '.' + prop;
+                  fixed++;
+                }
               }
             });
             console.log('🔧 Retarget tamamlandı:', fixed, 'track düzeltildi');
