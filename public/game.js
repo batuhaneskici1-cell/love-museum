@@ -586,6 +586,15 @@
       // YÜKLEME EKRANINI GÖSTER
       loadingManager.show();
       
+      // Güvenlik: 90 saniye sonra yükleme takılırsa zorla kapat
+      setTimeout(() => {
+        const screen = document.getElementById('loading-screen');
+        if (screen && screen.style.display !== 'none') {
+          console.warn('⚠️ Yükleme zaman aşımı - zorla kapatılıyor');
+          loadingManager.hide();
+        }
+      }, 90000);
+      
       // Kısa bir süre sonra yüklemeyi başlat (ekran görünsün diye)
       setTimeout(() => {
         const gameContainer = document.getElementById('game-container');
@@ -2538,8 +2547,8 @@
             },
             undefined,
             function(error) {
-              console.error(`❌ ${prefix}Run.fbx YÜKLEME HATASI!`, error);
-              alert(`❌ HATA: ${prefix}Run.fbx dosyası bulunamadı!\n\nDosya: public/${prefix}Run.fbx`);
+              console.warn(`⚠️ ${prefix}Run.fbx yüklenemedi, devam ediliyor`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Koşma`);
             }
           );
           
@@ -2579,6 +2588,7 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance1.fbx bulunamadı`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 1`);
             }
           );
           
@@ -2615,6 +2625,7 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance2.fbx bulunamadı`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 2`);
             }
           );
           
@@ -2651,6 +2662,7 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance3.fbx bulunamadı`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 3`);
             }
           );
           
@@ -2687,6 +2699,7 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance4.fbx bulunamadı`);
+              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 4`);
             }
           );
           
@@ -2818,7 +2831,7 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Idle.fbx bulunamadı (opsiyonel)`);
-              console.log('💡 Idle animasyonu olmadan da çalışabilir');
+              if (isPlayer) loadingManager.completeItem(`${charName} - Bekle`);
             }
           );
           
@@ -2856,7 +2869,7 @@
           console.error('  1. Dosya public/mWalk.fbx konumunda mı?');
           console.error('  2. Dosya adı tam olarak "mWalk.fbx" mi? (küçük m, büyük W)');
           console.error('  3. Sunucu çalışıyor mu? (npm start)');
-          alert('❌ HATA: mWalk.fbx dosyası bulunamadı!\n\nDosyanın public/ klasöründe olduğundan emin olun.\nDosya adı: mWalk.fbx');
+          if (isPlayer) { loadingManager.completeItem(`${charName} - Yürüme`); loadingManager.completeItem(`${charName} - Koşma`); loadingManager.completeItem(`${charName} - Bekle`); loadingManager.completeItem(`${charName} - Dans 1`); loadingManager.completeItem(`${charName} - Dans 2`); loadingManager.completeItem(`${charName} - Dans 3`); loadingManager.completeItem(`${charName} - Dans 4`); }
         }
       );
     }
