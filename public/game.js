@@ -2485,12 +2485,28 @@
         // Diğer animasyonlar arka planda yüklenir, ekranı bloklamaz
       }
       
+      // Walk timeout - 30sn içinde gelmezse oyunu yine de aç
+      if (isPlayer) {
+        const walkTimeoutId = setTimeout(() => {
+          console.warn('⏱️ Walk.fbx 30sn içinde gelmedi - oyun yine de açılıyor');
+          if (loadingManager._fakeInterval) clearInterval(loadingManager._fakeInterval);
+          const bar = document.getElementById('loading-bar');
+          if (bar) bar.style.width = '100%';
+          const perc = document.getElementById('loading-percentage');
+          if (perc) perc.textContent = '100%';
+          loadingManager.hide();
+        }, 30000);
+        // Walk gelince timeout'u iptal et
+        parentGroup.userData._walkTimeoutId = walkTimeoutId;
+      }
+      
       // İlk olarak yürüme animasyonlu karakteri yükle
       loader.load(`/${prefix}Walk.fbx`, 
         function(fbxModel) {
           console.log(`✅ ${prefix}Walk.fbx yüklendi!`);
           // Walk yüklenince loading ekranını direkt kapat - başka hiçbir şeye bağlı değil
           if (isPlayer) {
+            if (parentGroup.userData._walkTimeoutId) clearTimeout(parentGroup.userData._walkTimeoutId);
             console.log('🚪 Loading ekranı kapatılıyor...');
             if (loadingManager._fakeInterval) clearInterval(loadingManager._fakeInterval);
             const bar = document.getElementById('loading-bar');
