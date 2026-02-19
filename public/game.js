@@ -2274,7 +2274,7 @@
               new THREE.PlaneGeometry(fw - 0.22, fh - 0.22),
               new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
             );
-            photoMesh.position.set(p.x + od*0.075, p.y, p.z);
+            photoMesh.position.set(p.x + od*0.09, p.y, p.z);
             photoMesh.rotation.y = p.ry;
             photoMesh.userData.index = pidx;
             window.museumInterior.add(photoMesh);
@@ -2290,7 +2290,7 @@
                 new THREE.PlaneGeometry(fw - 0.22, fh - 0.22),
                 new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
               );
-              photoMesh.position.set(p.x + od*0.075, p.y, p.z);
+              photoMesh.position.set(p.x + od*0.09, p.y, p.z);
               photoMesh.rotation.y = p.ry;
               photoMesh.userData.index = pidx;
               window.museumInterior.add(photoMesh);
