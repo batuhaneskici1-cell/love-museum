@@ -154,8 +154,22 @@ io.on('connection', (socket) => {
   });
 });
 
+socket.on('add_wish', (data) => {
+  // Odadaki dileği kaydet (geçmiş için)
+  if (!rooms[roomCode]) rooms[roomCode].wishes = [];
+  rooms[roomCode].wishes.push({ text: data.text, ownerName: data.ownerName, owner: 'partner' });
+  // Diğer kişiye gönder
+  socket.to(roomCode).emit('partner_wish', data);
+});
+
+socket.on('get_wish_history', () => {
+  const wishes = rooms[roomCode]?.wishes || [];
+  socket.emit('wish_history', { wishes });
+});
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`🎮 Multiplayer server running on port ${PORT}`);
   console.log(`🌐 Open http://localhost:${PORT} in your browser`);
 });
+

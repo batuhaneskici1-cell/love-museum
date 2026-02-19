@@ -251,6 +251,28 @@
       }
     });
 
+
+    // ── DİLEK SENKRONIZASYONU ──
+    // Partner dilek yazdığında bize gelir
+    socket.on('partner_wish', (data) => {
+      if (window.addWishToWall) {
+        // ownerName'i window.partnerCharacter olarak kaydet
+        if (data.ownerName) window.partnerCharacter = data.ownerName;
+        window.addWishToWall(data.text, 'partner');
+      }
+    });
+
+    // Müzeye ilk girilince sunucudaki tüm dilekleri al (geçmiş)
+    socket.on('wish_history', (data) => {
+      if (!data || !data.wishes) return;
+      data.wishes.forEach(w => {
+        if (window.addWishToWall) window.addWishToWall(w.text, w.owner);
+      });
+    });
+
+    // Müzeye her girişte wish_history isteği gönder
+    window._requestWishHistory = function() { socket.emit('get_wish_history'); };
+
     socket.on('partner_disconnected', () => {
       partnerConnected = false;
       document.getElementById('partner-status').textContent = 'Ayrıldı 💔';
@@ -386,6 +408,8 @@
       }, 200);
       
       console.log('Müzeye hoş geldiniz!');
+      // Panodaki dileклeri senkronize et (sunucudan geçmiş al)
+      socket.emit('get_wish_history');
     }
     
     function exitMuseum() {
@@ -477,8 +501,10 @@
         if (document.pointerLockElement) document.exitPointerLock();
         showNPCDialog('🌳 Dilek Ağacı', wish + '\n\n📜 Dileğin müze duvarına işlendi!');
         
-        // Müze duvarına ekle (hemen)
-        if (window.addWishToWall) window.addWishToWall(text);
+        // Müze duvarına ekle (kendi notumuz)
+        if (window.addWishToWall) window.addWishToWall(text, 'self');
+        // Partnere gönder — sunucu 'partner_wish' olarak relay eder
+        socket.emit('add_wish', { text, ownerName: selectedCharacter || 'Ben' });
       }, 200);
     }
     
@@ -1920,114 +1946,201 @@
       const iAmb = new THREE.AmbientLight(0xffffff, 0.75);
       window.museumInterior.add(iAmb);
       
-      // ── DİLEK TABELASI - Taşınabilir mantar pano (köşede) ──
-      const wishStandGroup = new THREE.Group();
-      wishStandGroup.position.set(-10, 0, -14); // Köşede, duvardan uzakta
-      wishStandGroup.rotation.y = Math.PI * 0.25; // Hafif açılı
-      
-      const standMat = new THREE.MeshStandardMaterial({ color: 0x5c3317, roughness: 0.8 });
-      const corkMat = new THREE.MeshStandardMaterial({ color: 0xc8956a, roughness: 0.95 });
-      const frameGoldMat = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.7, roughness: 0.3 });
-      
-      // Sehpa ayakları (A çerçeve)
-      [[-0.55, 0.35], [0.55, 0.35], [-0.3, -0.25], [0.3, -0.25]].forEach(([lx, lz]) => {
-        const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.04, 2.2, 7), standMat);
-        leg.position.set(lx, 1.1, lz);
-        leg.rotation.z = lx > 0 ? -0.13 : 0.13;
-        leg.rotation.x = lz > 0 ? 0.12 : -0.05;
-        wishStandGroup.add(leg);
+      // ── DİLEK PANOSU - BOYDAN BOYA DUVAR PANOSU (kapıdan girince tam karşı duvar) ──
+      // Arka duvar z=-18, x: -13..+13, yükseklik 7
+      // Pano boyutları: genişlik 24, yükseklik 5.5, z=-17.7 (duvardan 0.3 önde)
+      const WALL_BOARD_W = 24;    // pano genişliği
+      const WALL_BOARD_H = 5.5;   // pano yüksekliği
+      const WALL_BOARD_Z = -17.72; // arka duvardan biraz önde
+      const WALL_BOARD_Y = 3.7;   // orta noktası (zemin~0.6, tavan~7)
+
+      const wishWallGroup = new THREE.Group();
+      wishWallGroup.position.set(0, 0, 0); // dünya koordinatlarında museumInterior altında
+
+      // ── Altın dış çerçeve ──
+      const wfGold = new THREE.MeshStandardMaterial({ color: 0xffd700, metalness: 0.85, roughness: 0.15 });
+      const wfWood = new THREE.MeshStandardMaterial({ color: 0x3b1f0a, roughness: 0.8 });
+      const wfCork = new THREE.MeshStandardMaterial({ color: 0xbb7a40, roughness: 0.97 });
+
+      // Dış kalın ahşap çerçeve (arka)
+      const wFrameOuter = new THREE.Mesh(new THREE.BoxGeometry(WALL_BOARD_W + 1.0, WALL_BOARD_H + 1.0, 0.14), wfWood);
+      wFrameOuter.position.set(0, WALL_BOARD_Y, WALL_BOARD_Z - 0.01);
+      wishWallGroup.add(wFrameOuter);
+
+      // Altın iç bordür (4 kenar)
+      const goldBorderThick = 0.22;
+      // Üst & alt
+      [[0, WALL_BOARD_H/2 + goldBorderThick/2], [0, -WALL_BOARD_H/2 - goldBorderThick/2]].forEach(([ox, oy]) => {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(WALL_BOARD_W + goldBorderThick*2, goldBorderThick, 0.18), wfGold);
+        b.position.set(ox, WALL_BOARD_Y + oy, WALL_BOARD_Z + 0.02);
+        wishWallGroup.add(b);
       });
-      // Yatay destek çubuğu
-      const crossBar = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.3, 6), standMat);
-      crossBar.rotation.z = Math.PI / 2; crossBar.position.set(0, 0.7, 0.3);
-      wishStandGroup.add(crossBar);
-      
-      // Pano çerçevesi
-      const boardFrame = new THREE.Mesh(new THREE.BoxGeometry(2.2, 1.6, 0.08), standMat);
-      boardFrame.position.set(0, 2.3, 0); wishStandGroup.add(boardFrame);
-      // Altın çerçeve kenarlar
-      [[0,0.82,0.05,2.3,0.1],[0,-0.82,0.05,2.3,0.1],[1.12,0,0.05,0.1,1.7],[-1.12,0,0.05,0.1,1.7]].forEach(([bx,by,bz,bw,bh]) => {
-        const b = new THREE.Mesh(new THREE.BoxGeometry(bw,bh,0.06), frameGoldMat);
-        b.position.set(bx, 2.3+by, bz); wishStandGroup.add(b);
+      // Sol & sağ
+      [[-WALL_BOARD_W/2 - goldBorderThick/2, 0], [WALL_BOARD_W/2 + goldBorderThick/2, 0]].forEach(([ox, oy]) => {
+        const b = new THREE.Mesh(new THREE.BoxGeometry(goldBorderThick, WALL_BOARD_H, 0.18), wfGold);
+        b.position.set(ox, WALL_BOARD_Y + oy, WALL_BOARD_Z + 0.02);
+        wishWallGroup.add(b);
       });
-      // Mantar dolgu
-      const cork = new THREE.Mesh(new THREE.BoxGeometry(1.95, 1.3, 0.05), corkMat);
-      cork.position.set(0, 2.3, 0.055); wishStandGroup.add(cork);
-      
-      // Tabela başlığı (küçük)
-      const tCanvas = document.createElement('canvas');
-      tCanvas.width = 512; tCanvas.height = 128;
-      const tCtx = tCanvas.getContext('2d');
-      tCtx.fillStyle = '#7a4520'; tCtx.fillRect(0,0,512,128);
-      tCtx.fillStyle = '#ffd700'; tCtx.font = 'bold 44px serif';
-      tCtx.textAlign = 'center'; tCtx.fillText('🌟 Dilek Panosu', 256, 78);
-      const tTex = new THREE.CanvasTexture(tCanvas);
-      const tLabel = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 0.4),
-        new THREE.MeshBasicMaterial({ map: tTex, side: THREE.DoubleSide }));
-      tLabel.position.set(0, 2.72, 0.12); wishStandGroup.add(tLabel);
-      
-      window.museumInterior.add(wishStandGroup);
-      window.wishStandGroup = wishStandGroup;
-      
-      // Not kağıdı pozisyonları - mantar pano üzerinde
+      // Köşe topları (dekoratif)
+      [[1,1],[-1,1],[1,-1],[-1,-1]].forEach(([sx,sy]) => {
+        const corner = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 10), wfGold);
+        corner.position.set(sx*(WALL_BOARD_W/2 + goldBorderThick/2), WALL_BOARD_Y + sy*(WALL_BOARD_H/2 + goldBorderThick/2), WALL_BOARD_Z + 0.05);
+        wishWallGroup.add(corner);
+      });
+
+      // Mantar/pano yüzeyi (tüm iç alan)
+      const wCorkBoard = new THREE.Mesh(new THREE.BoxGeometry(WALL_BOARD_W, WALL_BOARD_H, 0.07), wfCork);
+      wCorkBoard.position.set(0, WALL_BOARD_Y, WALL_BOARD_Z + 0.04);
+      wishWallGroup.add(wCorkBoard);
+
+      // ── Başlık tabelası (pano üstünde) ──
+      const titleCanvas = document.createElement('canvas');
+      titleCanvas.width = 2048; titleCanvas.height = 256;
+      const tCtx = titleCanvas.getContext('2d');
+      // Koyu ahşap arka plan
+      const titleGrad = tCtx.createLinearGradient(0, 0, 0, 256);
+      titleGrad.addColorStop(0, '#4a2408');
+      titleGrad.addColorStop(1, '#2e1405');
+      tCtx.fillStyle = titleGrad;
+      tCtx.fillRect(0, 0, 2048, 256);
+      // Altın çizgiler
+      tCtx.strokeStyle = '#ffd700'; tCtx.lineWidth = 6;
+      tCtx.strokeRect(18, 18, 2012, 220);
+      tCtx.strokeStyle = 'rgba(255,215,0,0.35)'; tCtx.lineWidth = 2;
+      tCtx.strokeRect(28, 28, 1992, 200);
+      // Başlık yazısı
+      tCtx.fillStyle = '#ffd700';
+      tCtx.font = 'bold 130px serif';
+      tCtx.textAlign = 'center';
+      tCtx.shadowColor = 'rgba(255,200,0,0.5)';
+      tCtx.shadowBlur = 20;
+      tCtx.fillText('✨ Dilekler Duvarı ✨', 1024, 170);
+      const titleTex = new THREE.CanvasTexture(titleCanvas);
+      const titleSign = new THREE.Mesh(
+        new THREE.PlaneGeometry(WALL_BOARD_W * 0.9, 0.95),
+        new THREE.MeshBasicMaterial({ map: titleTex, transparent: true, side: THREE.DoubleSide })
+      );
+      titleSign.position.set(0, WALL_BOARD_Y + WALL_BOARD_H/2 + 0.82, WALL_BOARD_Z + 0.1);
+      wishWallGroup.add(titleSign);
+
+      // Tabela altındaki küçük alt çizgi süsü
+      const subLineGeo = new THREE.BoxGeometry(WALL_BOARD_W * 0.55, 0.06, 0.06);
+      const subLine = new THREE.Mesh(subLineGeo, wfGold);
+      subLine.position.set(0, WALL_BOARD_Y + WALL_BOARD_H/2 + 0.3, WALL_BOARD_Z + 0.05);
+      wishWallGroup.add(subLine);
+
+      // Tabela için spot ışık
+      const boardSpot = new THREE.SpotLight(0xfffde7, 1.2, 20, Math.PI * 0.28, 0.3);
+      boardSpot.position.set(0, 6.8, -12);
+      boardSpot.target.position.set(0, WALL_BOARD_Y, WALL_BOARD_Z);
+      wishWallGroup.add(boardSpot);
+      wishWallGroup.add(boardSpot.target);
+
+      // ── Dekoratif ip/sicim çizgileri (pano üzerinde) ──
+      for (let row = 0; row < 3; row++) {
+        const ropeY = WALL_BOARD_Y - WALL_BOARD_H/2 + 1.0 + row * 1.6;
+        const rope = new THREE.Mesh(
+          new THREE.BoxGeometry(WALL_BOARD_W - 0.5, 0.025, 0.025),
+          new THREE.MeshStandardMaterial({ color: 0x8b6914, roughness: 0.9 })
+        );
+        rope.position.set(0, ropeY, WALL_BOARD_Z + 0.1);
+        wishWallGroup.add(rope);
+      }
+
+      window.museumInterior.add(wishWallGroup);
+      window.wishStandGroup = wishWallGroup; // eski referanslar için alias
+
+      // ── Not kağıdı pozisyonları - büyük duvar panosu için ──
+      // 6 sütun × 3 satır = 18 not pozisyonu
       window.wishNotes = [];
-      window.wishNotePositions = [
-        // [localX, localY, localZ] — wishStandGroup'a göre relative
-        [-0.62, 2.45, 0.13], [0.0, 2.45, 0.13], [0.62, 2.45, 0.13],
-        [-0.62, 2.1, 0.13],  [0.0, 2.1, 0.13],  [0.62, 2.1, 0.13],
-        [-0.62, 1.78, 0.13], [0.0, 1.78, 0.13],  [0.62, 1.78, 0.13],
-      ];
-      window.wishNoteColors = ['#fff9c4','#fce4ec','#e8f5e9','#e3f2fd','#fff3e0','#f3e5f5','#ffe0b2'];
-      
-      function addWishToWall(text) {
+      window.wishNotePositions = [];
+      const cols = 6, rows = 3;
+      const startX = -(WALL_BOARD_W/2 - 1.8);
+      const stepX  = (WALL_BOARD_W - 3.6) / (cols - 1);
+      const startY = WALL_BOARD_Y - WALL_BOARD_H/2 + 0.9;
+      const stepY  = (WALL_BOARD_H - 1.8) / (rows - 1);
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          window.wishNotePositions.push([
+            startX + c * stepX + (Math.random()-0.5)*0.25,
+            startY + r * stepY + (Math.random()-0.5)*0.15,
+            WALL_BOARD_Z + 0.13
+          ]);
+        }
+      }
+      window.wishNoteColors = ['#fff9c4','#fce4ec','#e8f5e9','#e3f2fd','#fff3e0','#f3e5f5','#ffe0b2','#fde0dc','#d8f5e9'];
+
+      // owner: 'self' = benim dilek (sarı tonlar), 'partner' = partner dilek (pembe/mor tonlar)
+      function addWishToWall(text, owner) {
         const idx = window.wishNotes.length % window.wishNotePositions.length;
         const pos = window.wishNotePositions[idx];
-        const col = window.wishNoteColors[window.wishNotes.length % window.wishNoteColors.length];
-        
+
+        // Renk paletleri: self = sıcak, partner = soğuk/pembe
+        const selfColors   = ['#fff9c4','#fff3e0','#ffe0b2','#fffde7','#f9fbe7'];
+        const partnerColors = ['#fce4ec','#f3e5f5','#e3f2fd','#e8f5e9','#fde0dc'];
+        const palette = (owner === 'partner') ? partnerColors : selfColors;
+        const col = palette[window.wishNotes.length % palette.length];
+
+        // İsim etiketi - karakter adını düzgün göster
+        const selfName    = selectedCharacter ? (selectedCharacter.charAt(0).toUpperCase() + selectedCharacter.slice(1)) : 'Ben';
+        const partnerName = window.partnerCharacter ? (window.partnerCharacter.charAt(0).toUpperCase() + window.partnerCharacter.slice(1)) : 'Sevgilim';
+        const ownerLabel  = (owner === 'partner') ? partnerName : selfName;
+        const labelColor  = (owner === 'partner') ? '#c2185b' : '#e65100';
+
         const nc = document.createElement('canvas');
-        nc.width = 256; nc.height = 220;
+        nc.width = 512; nc.height = 460;
         const nCtx = nc.getContext('2d');
-        // Not kağıdı arka planı - hafif gölgeli
-        nCtx.fillStyle = col; nCtx.fillRect(0,0,256,220);
-        // Alt gölge efekti
-        nCtx.fillStyle = 'rgba(0,0,0,0.08)'; nCtx.fillRect(4,4,252,216);
-        nCtx.fillStyle = col; nCtx.fillRect(0,0,252,216);
-        // Çizgiler (not defteri çizgileri)
-        nCtx.strokeStyle = 'rgba(100,120,200,0.2)'; nCtx.lineWidth = 1;
-        for (let ln = 55; ln < 210; ln += 28) {
-          nCtx.beginPath(); nCtx.moveTo(15, ln); nCtx.lineTo(241, ln); nCtx.stroke();
+
+        // Gölge efekti
+        nCtx.fillStyle = 'rgba(0,0,0,0.18)'; nCtx.fillRect(8, 8, 504, 452);
+        // Kağıt zemini
+        nCtx.fillStyle = col; nCtx.fillRect(0, 0, 504, 452);
+        // Üst renkli başlık şeridi
+        nCtx.fillStyle = (owner === 'partner') ? 'rgba(194,24,91,0.15)' : 'rgba(230,81,0,0.13)';
+        nCtx.fillRect(0, 0, 504, 62);
+        // Üst çizgi ayracı
+        nCtx.strokeStyle = labelColor; nCtx.lineWidth = 2.5; nCtx.globalAlpha = 0.4;
+        nCtx.beginPath(); nCtx.moveTo(24, 65); nCtx.lineTo(480, 65); nCtx.stroke();
+        nCtx.globalAlpha = 1;
+        // Satır çizgileri
+        nCtx.strokeStyle = 'rgba(100,120,200,0.15)'; nCtx.lineWidth = 1.2;
+        for (let ln = 100; ln < 430; ln += 46) {
+          nCtx.beginPath(); nCtx.moveTo(24, ln); nCtx.lineTo(480, ln); nCtx.stroke();
         }
-        // Yazı
-        nCtx.fillStyle = '#2c2c2c';
-        nCtx.font = 'bold 24px sans-serif'; nCtx.textAlign = 'center';
+        // İsim/sahip etiketi (üstte)
+        nCtx.fillStyle = labelColor; nCtx.font = 'bold 32px sans-serif'; nCtx.textAlign = 'left';
+        nCtx.fillText((owner === 'partner' ? '💌 ' : '✏️ ') + ownerLabel + "'in dileği", 24, 44);
+        // Ana yazı
+        nCtx.fillStyle = '#1a1a2e'; nCtx.font = '34px sans-serif'; nCtx.textAlign = 'center';
         const words = text.split(' ');
-        let line = '', lines2 = [], maxW = 210;
+        let line = '', lines2 = [], maxW = 420;
         for (const w of words) {
           const test = line + w + ' ';
           if (nCtx.measureText(test).width > maxW && line) { lines2.push(line); line = w + ' '; }
           else line = test;
         }
         lines2.push(line);
-        const startY = lines2.length > 2 ? 60 : 75;
-        lines2.forEach((l, i) => nCtx.fillText(l.trim(), 128, startY + i*32));
-        // Küçük kalp
-        nCtx.font = '28px serif'; nCtx.fillText('💕', 128, 195);
-        
+        const startTY = Math.max(115, 230 - (lines2.length * 46) / 2);
+        lines2.forEach((l, i) => nCtx.fillText(l.trim(), 256, startTY + i * 46));
+        // Alt kalp
+        nCtx.font = '44px serif'; nCtx.fillText(owner === 'partner' ? '💜' : '💛', 256, 418);
+
         const nTex = new THREE.CanvasTexture(nc);
         const note = new THREE.Mesh(
-          new THREE.PlaneGeometry(0.48, 0.42),
+          new THREE.PlaneGeometry(1.55, 1.38),  // daha büyük not kağıdı
           new THREE.MeshBasicMaterial({ map: nTex, side: THREE.DoubleSide })
         );
         note.position.set(pos[0], pos[1], pos[2]);
         note.rotation.z = (Math.random()-0.5)*0.18;
-        wishStandGroup.add(note);
+        wishWallGroup.add(note);
         window.wishNotes.push(note);
-        
-        // Raptiye (iğne başı)
-        const pinMat = new THREE.MeshBasicMaterial({ color: [0xff4444,0x4444ff,0x44bb44,0xffaa00][Math.floor(Math.random()*4)] });
-        const pin = new THREE.Mesh(new THREE.SphereGeometry(0.04, 6, 6), pinMat);
-        pin.position.set(pos[0], pos[1]+0.19, pos[2]+0.01);
-        wishStandGroup.add(pin);
+
+        // Raptiye - owner'a göre renk
+        const pinColor = (owner === 'partner') ? 0xd81b60 : 0xff6f00;
+        const pinMat = new THREE.MeshStandardMaterial({ color: pinColor, metalness: 0.6, roughness: 0.2 });
+        const pin = new THREE.Mesh(new THREE.SphereGeometry(0.085, 10, 10), pinMat);
+        pin.position.set(pos[0], pos[1] + 0.68, pos[2] + 0.02);
+        wishWallGroup.add(pin);
       }
       window.addWishToWall = addWishToWall;
       
