@@ -2442,6 +2442,36 @@
 
 
     // FBX KARAKTER YÜKLEME - TÜM ANİMASYONLARLA
+    
+    // Timeout'lu FBX yükleme wrapper'ı - yavaş/donuk bağlantılarda dosyayı atlar
+    function loadFBXWithTimeout(loader, url, onLoad, onError, timeoutMs = 20000) {
+      let done = false;
+      const timer = setTimeout(() => {
+        if (!done) {
+          done = true;
+          console.warn(`⏱️ Timeout: ${url} ${timeoutMs/1000}sn içinde gelmedi, atlanıyor`);
+          onError(new Error('timeout'));
+        }
+      }, timeoutMs);
+      
+      loader.load(url,
+        function(fbx) {
+          if (!done) { done = true; clearTimeout(timer); onLoad(fbx); }
+        },
+        function(xhr) {
+          // progress - timeout'u sıfırla (dosya geliyor)
+          if (xhr.loaded > 0) {
+            clearTimeout(timer);
+            // Yeni timeout koy - ilerleme durdu mu diye
+          }
+          console.log(`📦 ${url}: ${xhr.loaded} byte`);
+        },
+        function(err) {
+          if (!done) { done = true; clearTimeout(timer); onError(err); }
+        }
+      );
+    }
+    
     function loadFBXCharacter(parentGroup, isPlayer, isBatuhan) {
       const loader = new THREE.FBXLoader();
       
@@ -2449,22 +2479,26 @@
       const prefix = isBatuhan ? 'b' : 'm';
       const charName = isBatuhan ? 'Batuhan' : 'Merve';
       
-      // YÜKLEME EKRANI - Dosyaları ekle
+      // YÜKLEME EKRANI - Sadece Walk zorunlu, diğerleri arka planda
       if (isPlayer) {
         loadingManager.addItem(`${charName} - Yürüme`);
-        loadingManager.addItem(`${charName} - Koşma`);
-        loadingManager.addItem(`${charName} - Bekle`);
-        loadingManager.addItem(`${charName} - Dans 1`);
-        loadingManager.addItem(`${charName} - Dans 2`);
-        loadingManager.addItem(`${charName} - Dans 3`);
-        loadingManager.addItem(`${charName} - Dans 4`);
+        // Diğer animasyonlar arka planda yüklenir, ekranı bloklamaz
       }
       
       // İlk olarak yürüme animasyonlu karakteri yükle
       loader.load(`/${prefix}Walk.fbx`, 
         function(fbxModel) {
           console.log(`✅ ${prefix}Walk.fbx yüklendi!`);
-          if (isPlayer) loadingManager.completeItem(`${charName} - Yürüme`);
+          // Walk yüklenince loading ekranını direkt kapat - başka hiçbir şeye bağlı değil
+          if (isPlayer) {
+            console.log('🚪 Loading ekranı kapatılıyor...');
+            if (loadingManager._fakeInterval) clearInterval(loadingManager._fakeInterval);
+            const bar = document.getElementById('loading-bar');
+            if (bar) bar.style.width = '100%';
+            const perc = document.getElementById('loading-percentage');
+            if (perc) perc.textContent = '100%';
+            setTimeout(() => loadingManager.hide(), 600);
+          }
           fbxModel.scale.set(0.01, 0.01, 0.01);
           fbxModel.position.set(0, 0, 0);
           fbxModel.userData.yOffset = 0;
@@ -2519,10 +2553,9 @@
           }
           
           // KOŞMA animasyonunu yükle
-          loader.load(`/${prefix}Run.fbx`,
+          loadFBXWithTimeout(loader, `/${prefix}Run.fbx`,
             function(runFbx) {
               console.log(`✅ ${prefix}Run.fbx yüklendi!`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Koşma`);
               if (runFbx.animations && runFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
                 const runClip = runFbx.animations[0];
@@ -2548,7 +2581,6 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Run.fbx yüklenemedi, devam ediliyor`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Koşma`);
             }
           );
           
@@ -2556,10 +2588,9 @@
           let danceAction1, danceAction2, danceAction3, danceAction4;
           
           // Dans 1
-          loader.load(`/${prefix}Dance1.fbx`,
+          loadFBXWithTimeout(loader, `/${prefix}Dance1.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance1.fbx yüklendi!`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 1`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2588,15 +2619,13 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance1.fbx bulunamadı`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 1`);
             }
           );
           
           // Dans 2
-          loader.load(`/${prefix}Dance2.fbx`,
+          loadFBXWithTimeout(loader, `/${prefix}Dance2.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance2.fbx yüklendi!`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 2`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2625,15 +2654,13 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance2.fbx bulunamadı`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 2`);
             }
           );
           
           // Dans 3
-          loader.load(`/${prefix}Dance3.fbx`,
+          loadFBXWithTimeout(loader, `/${prefix}Dance3.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance3.fbx yüklendi!`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 3`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2662,15 +2689,13 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance3.fbx bulunamadı`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 3`);
             }
           );
           
           // Dans 4
-          loader.load(`/${prefix}Dance4.fbx`,
+          loadFBXWithTimeout(loader, `/${prefix}Dance4.fbx`,
             function(danceFbx) {
               console.log(`✅ ${prefix}Dance4.fbx yüklendi!`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 4`);
               if (danceFbx.animations && danceFbx.animations.length > 0) {
                 const danceClip = danceFbx.animations[0];
                 danceClip.tracks = danceClip.tracks.filter(track => {
@@ -2699,7 +2724,6 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Dance4.fbx bulunamadı`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Dans 4`);
             }
           );
           
@@ -2711,10 +2735,9 @@
           }
           
           // IDLE animasyonunu yükle (OPSİYONEL)
-          loader.load(`/${prefix}Idle.fbx`,
+          loadFBXWithTimeout(loader, `/${prefix}Idle.fbx`,
             function(idleFbx) {
               console.log(`✅ ${prefix}Idle.fbx yüklendi!`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Bekle`);
               if (idleFbx.animations && idleFbx.animations.length > 0) {
                 // ROOT MOTION TRACK'İNİ KALDIR!
                 const idleClip = idleFbx.animations[0];
@@ -2831,7 +2854,6 @@
             undefined,
             function(error) {
               console.warn(`⚠️ ${prefix}Idle.fbx bulunamadı (opsiyonel)`);
-              if (isPlayer) loadingManager.completeItem(`${charName} - Bekle`);
             }
           );
           
@@ -2890,7 +2912,7 @@
         loadFBXCharacter(playerGroup, true, true); // true = Batuhan
       }
 
-      playerGroup.position.set(0, 0, 55); // AVENU GİRİŞİNDE BAŞLA - OHAAA MOOMENTİ!
+      playerGroup.position.set(0, 0, 5); // Müze içinde başla
       scene.add(playerGroup);
 
       // PARTNER CHARACTER
