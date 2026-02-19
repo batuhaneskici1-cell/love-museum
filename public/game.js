@@ -265,13 +265,6 @@
     // Müzeye ilk girilince sunucudaki tüm dilekleri al (geçmiş)
     socket.on('wish_history', (data) => {
       if (!data || !data.wishes) return;
-
-      // Mevcut notları temizle (çiftlenmeyi önler)
-      if (window.wishNotes && window.wishNotes.length > 0) {
-        window.wishNotes.forEach(n => n.parent && n.parent.remove(n));
-        window.wishNotes = [];
-      }
-
       data.wishes.forEach(w => {
         if (window.addWishToWall) window.addWishToWall(w.text, w.owner);
       });
@@ -2200,21 +2193,21 @@
 
       const labels = ['🌨️ Kış Günü', '🌅 Gün Batımı', '🎉 Özel Gece', '🚂 Yolculuk', '🍽️ Akşam Yemeği', '🌄 Doğa', '🌙 Gece Out', '🍜 Restoran', '📸 Balık Tutma', '🌊 Deniz', '☀️ Güneşli', '🎱 Bilardo', '💑 İkimiz', '✈️ Seyahat', '☕ Kafe', '🌇 Şehir'];
 
-      // ====== YENİ TEK SIRA, BÜYÜK, SÜSLÜ ÇERÇEVELER ======
-      // Sol duvar: 8 fotoğraf, sağ duvar: 8 fotoğraf - tek sıra yan yana
-      const FW = 2.9;  // çerçeve genişliği
-      // ── BÜYÜK / ORTA DÖNÜŞÜMLÜ ÇERÇEVE DÜZENİ (gerçek müze stili) ──
-      // Büyük: 2.6 × 3.8  (dikey, gösterişli)
-      // Orta:  2.2 × 2.4  (standart, daha alçak)
-      // Sıra: B - O - B - O - B (5 çerçeve × 2 duvar = 10)
+      // ====== TEK SIRA, 8+8 SÜSLÜ ÇERÇEVELER (16 fotoğraf) ======
+      // Sol duvar: 8 fotoğraf, sağ duvar: 8 fotoğraf
+      // Doğal müze ritmi: dikey büyük - yatay orta - kare - dikey küçük karışık
       const SIZES = [
-        { fw: 2.6, fh: 3.8, y: 4.3 },  // Büyük
-        { fw: 2.2, fh: 2.4, y: 3.2 },  // Orta
-        { fw: 2.6, fh: 3.8, y: 4.3 },  // Büyük
-        { fw: 2.2, fh: 2.4, y: 3.2 },  // Orta
-        { fw: 2.6, fh: 3.8, y: 4.3 },  // Büyük
+        { fw: 2.4, fh: 3.4, y: 4.1 },  // 1 - Dikey büyük (portre)
+        { fw: 2.8, fh: 2.0, y: 3.3 },  // 2 - Yatay geniş (manzara)
+        { fw: 2.0, fh: 2.8, y: 3.8 },  // 3 - Dikey orta
+        { fw: 2.4, fh: 2.4, y: 3.6 },  // 4 - Kare
+        { fw: 2.6, fh: 3.6, y: 4.2 },  // 5 - Dikey büyük
+        { fw: 1.8, fh: 2.6, y: 3.7 },  // 6 - Dikey küçük
+        { fw: 3.0, fh: 2.2, y: 3.4 },  // 7 - Yatay geniş
+        { fw: 2.2, fh: 3.0, y: 4.0 },  // 8 - Dikey orta-büyük
       ];
-      const FRAME_Z = [-13, -7, -1, 5, 11]; // 5 konum, geniş aralıklı
+      // 8 konum: arka duvardan (z=-14) ön kapıya (z=16) doğru eşit aralık
+      const FRAME_Z = [-14, -10, -6.5, -3, 0.5, 4.5, 9, 13.5];
 
       const framePositions = [
         ...FRAME_Z.map((z, i) => ({ x: -12.68, z, ry:  Math.PI/2, ...SIZES[i] })),
@@ -2264,17 +2257,25 @@
         matMesh.rotation.y = pos.ry;
         window.museumInterior.add(matMesh);
 
-        // Katman 6: Fotoğraf
+        // Katman 6: Fotoğraf - canvas ile texture (THREE.CanvasTexture)
+        const _fw = FW, _fh = FH, _pos = pos, _outDir = outDir, _idx = idx;
         const img = new Image();
         img.onload = function() {
-          const tex = new THREE.Texture(img);
-          tex.needsUpdate = true;
+          const canvas = document.createElement('canvas');
+          const maxSide = 1024;
+          const aspect = img.width / img.height;
+          canvas.width  = aspect >= 1 ? maxSide : Math.round(maxSide * aspect);
+          canvas.height = aspect >= 1 ? Math.round(maxSide / aspect) : maxSide;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          const tex = new THREE.CanvasTexture(canvas);
           const photoMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(FW - 0.22, FH - 0.22),
+            new THREE.PlaneGeometry(_fw - 0.22, _fh - 0.22),
             new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
           );
-          photoMesh.position.set(pos.x + outDir*0.075, pos.y, pos.z);
-          photoMesh.rotation.y = pos.ry;
+          photoMesh.position.set(_pos.x + _outDir*0.075, _pos.y, _pos.z);
+          photoMesh.rotation.y = _pos.ry;
+          photoMesh.userData.index = _idx;
           window.museumInterior.add(photoMesh);
           photoFrames.push(photoMesh);
         };
