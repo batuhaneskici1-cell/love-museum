@@ -132,7 +132,7 @@
     let keys = {};
     let mouseX = 0;
     let mouseY = 0;
-    let yaw = 0;
+    let yaw = Math.PI; // Müzeye doğru bak
     let pitch = 0.3; // Kamera açısı (yukarı/aşağı)
     let isHost = false;
     let roomCode = '';
@@ -658,7 +658,7 @@
       scene.fog = new THREE.FogExp2(0xaad4f0, 0.006); // Hafif sis efekti
 
       camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-      camera.position.set(0, 2, 15); // Dışarıda başla
+      camera.position.set(0, 2, 58); // Oyuncu spawn noktasının arkası
 
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
@@ -2497,32 +2497,35 @@
           
           // Animasyon clip'ini model kemikleriyle uyumlu hale getir
           function retargetClip(clip) {
-            if (modelBoneNames.size === 0) return clip;
+            if (!clip || !clip.tracks || clip.tracks.length === 0) return clip;
             
-            // İlk track'ten prefix tespit et
             const sampleTrack = clip.tracks[0];
-            if (!sampleTrack) return clip;
-            
             const trackBoneName = sampleTrack.name.split('.')[0];
+            console.log('🔍 Retarget - Track kemik örneği:', trackBoneName);
+            console.log('🔍 Retarget - Model kemik örneği:', [...modelBoneNames][0]);
             
-            // Model kemiklerinde direkt eşleşme varsa sorun yok
-            if (modelBoneNames.has(trackBoneName)) return clip;
+            // Direkt eşleşme - sorun yok
+            if (modelBoneNames.has(trackBoneName)) {
+              console.log('✅ Kemik isimleri eşleşiyor, retarget gerekmez');
+              return clip;
+            }
             
-            // Prefix farklıysa: model kemik adlarından eşleştirmeyi bul
+            // Tüm track isimlerini düzelt
+            let fixed = 0;
             clip.tracks.forEach(track => {
               const parts = track.name.split('.');
               const boneName = parts[0];
               const prop = parts.slice(1).join('.');
               
-              // mixamorig: prefix eklemeyi dene
               if (modelBoneNames.has('mixamorig:' + boneName)) {
                 track.name = 'mixamorig:' + boneName + '.' + prop;
-              }
-              // mixamorig: prefix çıkarmayı dene
-              else if (boneName.startsWith('mixamorig:') && modelBoneNames.has(boneName.replace('mixamorig:', ''))) {
+                fixed++;
+              } else if (boneName.startsWith('mixamorig:') && modelBoneNames.has(boneName.replace('mixamorig:', ''))) {
                 track.name = boneName.replace('mixamorig:', '') + '.' + prop;
+                fixed++;
               }
             });
+            console.log('🔧 Retarget tamamlandı:', fixed, 'track düzeltildi');
             return clip;
           }
           
