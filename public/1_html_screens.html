@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aşkımızın Müzesi 💕</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Crimson+Text:ital@0;1&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/fflate@0.7.4/umd/index.js"></script>
+  <script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/mrdoob/three.js@r128/examples/js/loaders/FBXLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Playfair Display', serif;
+      overflow: hidden;
+      background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 50%, #ffecd2 100%);
+    }
+
+    #menu-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, rgba(255, 105, 180, 0.95), rgba(255, 182, 193, 0.95));
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    #menu-screen.hidden {
+      display: none;
+    }
+
+    .menu-title {
+      font-size: 72px;
+      font-weight: 900;
+      color: white;
+      text-shadow: 4px 4px 20px rgba(0, 0, 0, 0.3);
+      margin-bottom: 20px;
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .menu-subtitle {
+      font-size: 28px;
+      color: rgba(255, 255, 255, 0.9);
+      margin-bottom: 60px;
+      font-style: italic;
+    }
+
+    .menu-buttons {
+      display: flex;
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+
+    .menu-btn {
+      padding: 20px 50px;
+      font-size: 24px;
+      font-family: 'Playfair Display', serif;
+      font-weight: 700;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .menu-btn:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+    }
+
+    .btn-create {
+      background: linear-gradient(135deg, #ff1493, #ff69b4);
+      color: white;
+    }
+
+    .btn-join {
+      background: white;
+      color: #ff1493;
+    }
+
+    .room-input-container {
+      display: none;
+      margin-top: 20px;
+    }
+
+    .room-input-container.active {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .room-code-input {
+      padding: 15px 30px;
+      font-size: 32px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      text-align: center;
+      border: 4px solid white;
+      border-radius: 15px;
+      background: rgba(255, 255, 255, 0.9);
+      color: #ff1493;
+      letter-spacing: 5px;
+      text-transform: uppercase;
+      width: 300px;
+    }
+
+    .room-code-display {
+      background: white;
+      padding: 30px 50px;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .room-code-display h3 {
+      color: #ff1493;
+      font-size: 24px;
+      margin-bottom: 15px;
+    }
+
+    .room-code {
+      font-size: 56px;
+      font-family: 'Courier New', monospace;
+      font-weight: bold;
+      color: #ff1493;
+      letter-spacing: 8px;
+      margin-bottom: 15px;
+    }
+
+    .waiting-text {
+      font-size: 18px;
+      color: #666;
+      font-style: italic;
+    }
+
+    .error-message {
+      background: rgba(255, 50, 50, 0.9);
+      color: white;
+      padding: 15px 30px;
+      border-radius: 10px;
+      font-size: 18px;
+      margin-top: 20px;
+      display: none;
+    }
+
+    .error-message.show {
+      display: block;
+      animation: shake 0.5s;
+    }
+
+    #game-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      display: none;
+    }
+
+    #game-container.active {
+      display: block;
+    }
+
+    .hud {
+      position: absolute;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(255, 105, 180, 0.82);
+      padding: 8px 22px;
+      border-radius: 30px;
+      text-align: center;
+      color: white;
+      box-shadow: 0 4px 15px rgba(255, 105, 180, 0.35);
+      backdrop-filter: blur(8px);
+      z-index: 100;
+      white-space: nowrap;
+    }
+
+    .hud h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+
+    .hud p {
+      margin: 0;
+      font-size: 11px;
+      opacity: 0.9;
+    }
+
+    .controls {
+      position: absolute;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 10px 14px;
+      border-radius: 12px;
+      max-width: 190px;
+      z-index: 100;
+      backdrop-filter: blur(6px);
+    }
+
+    .controls h3 {
+      margin: 0 0 6px 0;
+      color: #ff9ec8;
+      font-size: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .controls p {
+      margin: 2px 0;
+      color: rgba(255,255,255,0.85);
+      font-size: 11px;
+      font-family: monospace;
+    }
+
+    .message-indicator {
+      position: absolute;
+      bottom: 30px;
+      right: 30px;
+      background: rgba(255, 105, 180, 0.95);
+      padding: 15px 25px;
+      border-radius: 15px;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      box-shadow: 0 5px 20px rgba(255, 105, 180, 0.5);
+      display: none;
+      z-index: 100;
+    }
+
+    .message-indicator.show {
+      display: block;
+      animation: pulse 2s infinite;
+    }
+
+    .message-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+    }
+
+    .message-popup.show {
+      display: flex;
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    .message-content {
+      background: linear-gradient(135deg, #ff69b4, #ffb6c1);
+      padding: 50px;
+      border-radius: 30px;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(255, 105, 180, 0.6);
+    }
+
+    .message-content .icon {
+      font-size: 60px;
+      margin-bottom: 20px;
+    }
+
+    .message-content p {
+      font-size: 28px;
+      color: white;
+      margin: 0;
+      line-height: 1.6;
+      font-style: italic;
+    }
+
+    .message-content .close-hint {
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.8);
+      margin-top: 30px;
+    }
+
+    .photo-popup {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.9);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      cursor: pointer;
+    }
+
+    .photo-popup.show {
+      display: flex;
+    }
+
+    .photo-content {
+      background: white;
+      padding: 30px;
+      border-radius: 20px;
+      max-width: 80vw;
+      max-height: 80vh;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+    }
+
+    .photo-frame {
+      width: 600px;
+      height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      font-size: 24px;
+      color: white;
+      font-weight: bold;
+      flex-direction: column;
+    }
+
+    .photo-frame .hint {
+      font-size: 14px;
+      margin-top: 10px;
+      opacity: 0.8;
+    }
+
+    .partner-status {
+      position: absolute;
+      top: 120px;
+      right: 30px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 15px 25px;
+      border-radius: 15px;
+      box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+      z-index: 100;
+    }
+
+    .partner-status h4 {
+      margin: 0 0 10px 0;
+      color: #ff1493;
+      font-size: 16px;
+    }
+
+    .partner-status .status {
+      color: #666;
+      font-size: 14px;
+    }
+
+    .partner-status .connected {
+      color: #00cc00;
+    }
+
+    .partner-status .waiting {
+      color: #ff9900;
+    }
+
+    .character-card:hover > div {
+      transform: scale(1.05);
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-20px); }
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-10px); }
+      75% { transform: translateX(10px); }
+    }
+  </style>
+</head>
+<body>
+  <!-- YÜKLEME EKRANI - ROMANTİK -->
+  <div id="loading-screen" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #ffc3a0 100%);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    font-family: 'Arial', sans-serif;
+    color: white;
+    overflow: hidden;
+  ">
+    <!-- Kalpler animasyonu -->
+    <div style="position: absolute; width: 100%; height: 100%; overflow: hidden; opacity: 0.3;">
+      <div class="heart" style="position: absolute; left: 10%; animation: float 6s infinite; animation-delay: 0s;">💕</div>
+      <div class="heart" style="position: absolute; left: 20%; animation: float 7s infinite; animation-delay: 1s;">❤️</div>
+      <div class="heart" style="position: absolute; left: 30%; animation: float 5s infinite; animation-delay: 2s;">💖</div>
+      <div class="heart" style="position: absolute; left: 40%; animation: float 8s infinite; animation-delay: 0.5s;">💗</div>
+      <div class="heart" style="position: absolute; left: 50%; animation: float 6s infinite; animation-delay: 1.5s;">💓</div>
+      <div class="heart" style="position: absolute; left: 60%; animation: float 7s infinite; animation-delay: 2.5s;">💝</div>
+      <div class="heart" style="position: absolute; left: 70%; animation: float 5s infinite; animation-delay: 3s;">💞</div>
+      <div class="heart" style="position: absolute; left: 80%; animation: float 6s infinite; animation-delay: 1s;">💟</div>
+      <div class="heart" style="position: absolute; left: 90%; animation: float 7s infinite; animation-delay: 2s;">❣️</div>
+    </div>
+    
+    <!-- Ana içerik -->
+    <div style="position: relative; z-index: 1; text-align: center;">
+      <h1 style="
+        font-size: 48px;
+        margin-bottom: 30px;
+        text-shadow: 2px 2px 10px rgba(0,0,0,0.2);
+        animation: pulse 2s infinite;
+      ">💕 Aşkımızın Müzesi 💕</h1>
+      
+      <div id="loading-messages" style="
+        font-size: 24px;
+        margin: 40px 0;
+        min-height: 80px;
+        text-shadow: 1px 1px 5px rgba(0,0,0,0.2);
+        animation: fadeIn 1s;
+      ">
+        Seni düşünüyorum... 💭
+      </div>
+      
+      <!-- Yükleme barı -->
+      <div style="
+        width: 400px;
+        height: 30px;
+        background: rgba(255,255,255,0.3);
+        border-radius: 15px;
+        overflow: hidden;
+        margin: 30px auto;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+      ">
+        <div id="loading-bar" style="
+          width: 0%;
+          height: 100%;
+          background: linear-gradient(90deg, #ff6b9d, #fec5bb);
+          border-radius: 15px;
+          transition: width 0.3s;
+          box-shadow: 0 0 20px rgba(255,107,157,0.5);
+        "></div>
+      </div>
+      
+      <div id="loading-percentage" style="
+        font-size: 20px;
+        margin-top: 15px;
+        font-weight: bold;
+      ">0%</div>
+      
+      <!-- Yüklenen şeyler - GİZLİ -->
+      <div id="loading-items" style="display:none;"></div>
+    </div>
+    
+    <style>
+      @keyframes float {
+        0%, 100% { transform: translateY(100vh) scale(1); opacity: 0; }
+        10% { opacity: 1; }
+        90% { opacity: 1; }
+        100% { transform: translateY(-100px) scale(1.5); opacity: 0; }
+      }
+      
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+      }
+      
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      
+      .heart {
+        font-size: 40px;
+      }
+    </style>
+  </div>
+  
+  <!-- Menu Screen -->
+  <!-- Menu Screen - GÜZELLEŞTİRİLMİŞ -->
+  <div id="menu-screen" style="
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  ">
+    <!-- Uçan kalpler arka plan -->
+    <div style="position: absolute; width: 100%; height: 100%; overflow: hidden; opacity: 0.15;">
+      <div class="heart-bg" style="position: absolute; left: 5%; animation: floatSlow 15s infinite; animation-delay: 0s;">💕</div>
+      <div class="heart-bg" style="position: absolute; left: 15%; animation: floatSlow 18s infinite; animation-delay: 3s;">❤️</div>
+      <div class="heart-bg" style="position: absolute; left: 25%; animation: floatSlow 20s infinite; animation-delay: 6s;">💖</div>
+      <div class="heart-bg" style="position: absolute; left: 35%; animation: floatSlow 17s infinite; animation-delay: 2s;">💗</div>
+      <div class="heart-bg" style="position: absolute; left: 45%; animation: floatSlow 19s infinite; animation-delay: 5s;">💓</div>
+      <div class="heart-bg" style="position: absolute; left: 55%; animation: floatSlow 16s infinite; animation-delay: 8s;">💝</div>
+      <div class="heart-bg" style="position: absolute; left: 65%; animation: floatSlow 21s infinite; animation-delay: 4s;">💞</div>
+      <div class="heart-bg" style="position: absolute; left: 75%; animation: floatSlow 18s infinite; animation-delay: 7s;">💟</div>
+      <div class="heart-bg" style="position: absolute; left: 85%; animation: floatSlow 22s infinite; animation-delay: 1s;">❣️</div>
+      <div class="heart-bg" style="position: absolute; left: 95%; animation: floatSlow 19s infinite; animation-delay: 9s;">💘</div>
+    </div>
+    
+    <style>
+      @keyframes floatSlow {
+        0% { transform: translateY(100vh) scale(0.8) rotate(0deg); opacity: 0; }
+        5% { opacity: 1; }
+        95% { opacity: 1; }
+        100% { transform: translateY(-20vh) scale(1.5) rotate(360deg); opacity: 0; }
+      }
+      
+      .heart-bg {
+        font-size: 60px;
+      }
+      
+      @keyframes glow {
+        0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.5), 0 0 40px rgba(255, 105, 180, 0.3); }
+        50% { box-shadow: 0 0 40px rgba(255, 255, 255, 0.8), 0 0 80px rgba(255, 105, 180, 0.5); }
+      }
+      
+      @keyframes titlePulse {
+        0%, 100% { transform: scale(1); text-shadow: 0 0 20px rgba(255,255,255,0.5); }
+        50% { transform: scale(1.05); text-shadow: 0 0 40px rgba(255,255,255,0.8); }
+      }
+    </style>
+    
+    <!-- Ana içerik -->
+    <div style="position: relative; z-index: 1; text-align: center; background: rgba(255,255,255,0.1); padding: 60px 80px; border-radius: 30px; backdrop-filter: blur(10px); box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+      <h1 style="
+        font-size: 64px;
+        margin-bottom: 20px;
+        color: white;
+        text-shadow: 2px 2px 20px rgba(0,0,0,0.3);
+        animation: titlePulse 3s infinite;
+        font-family: 'Arial Black', sans-serif;
+        letter-spacing: 2px;
+      ">💕 Aşkımızın Müzesi 💕</h1>
+      
+      <p style="color: rgba(255,255,255,0.95); font-size: 22px; margin-bottom: 50px; text-shadow: 1px 1px 10px rgba(0,0,0,0.2);">
+        Sevgililer Günü'müze Özel 💖
+      </p>
+    
+      <div style="display: flex; gap: 30px; justify-content: center; margin-bottom: 30px;">
+        <button id="create-room-btn" style="
+          padding: 20px 50px;
+          font-size: 24px;
+          background: linear-gradient(135deg, #ff6b9d, #c44569);
+          color: white;
+          border: none;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s;
+          font-weight: bold;
+          box-shadow: 0 10px 30px rgba(255, 107, 157, 0.4);
+          animation: glow 2s infinite;
+        " onmouseover="this.style.transform='scale(1.1) translateY(-5px)'" onmouseout="this.style.transform='scale(1)'">
+          🏠 Oda Oluştur
+        </button>
+        <button id="join-room-btn" style="
+          padding: 20px 50px;
+          font-size: 24px;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s;
+          font-weight: bold;
+          box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        " onmouseover="this.style.transform='scale(1.1) translateY(-5px)'" onmouseout="this.style.transform='scale(1)'">
+          🚪 Odaya Katıl
+        </button>
+      </div>
+
+      <div id="join-input" style="display: none; margin-top: 30px;">
+        <input type="text" id="room-code-input" placeholder="ODA KODU GİR" maxlength="6" style="
+          padding: 20px 30px;
+          font-size: 28px;
+          border: none;
+          border-radius: 50px;
+          text-align: center;
+          background: rgba(255,255,255,0.95);
+          color: #667eea;
+          font-weight: bold;
+          letter-spacing: 8px;
+          box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+          width: 300px;
+          margin-bottom: 20px;
+        ">
+        <br>
+        <button id="join-submit-btn" style="
+          padding: 15px 60px;
+          font-size: 22px;
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          border: none;
+          border-radius: 50px;
+          cursor: pointer;
+          transition: all 0.3s;
+          font-weight: bold;
+          box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        " onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+          ✨ Katıl
+        </button>
+      </div>
+
+      <div id="room-display" style="display: none; margin-top: 30px;">
+        <h3 style="color: white; font-size: 28px; margin-bottom: 15px; text-shadow: 1px 1px 10px rgba(0,0,0,0.2);">
+          🎉 Oda Kodun:
+        </h3>
+        <div id="room-code-text" style="
+          font-size: 48px;
+          font-weight: bold;
+          color: #FFD700;
+          background: rgba(0,0,0,0.3);
+          padding: 20px 40px;
+          border-radius: 20px;
+          letter-spacing: 12px;
+          text-shadow: 2px 2px 15px rgba(0,0,0,0.5);
+          box-shadow: 0 5px 25px rgba(255, 215, 0, 0.3);
+          margin-bottom: 20px;
+        "></div>
+        <p style="color: rgba(255,255,255,0.95); font-size: 20px; text-shadow: 1px 1px 10px rgba(0,0,0,0.2); animation: titlePulse 2s infinite;">
+          💖 Sevgilinin katılmasını bekliyorsun... 💖
+        </p>
+      </div>
+
+      <div id="error-msg" style="
+        margin-top: 20px;
+        padding: 15px 30px;
+        background: rgba(255, 59, 48, 0.9);
+        color: white;
+        border-radius: 15px;
+        font-size: 18px;
+        display: none;
+        box-shadow: 0 5px 20px rgba(255, 59, 48, 0.4);
+      "></div>
+    </div>
+  </div>
+
+  <!-- Character Selection Screen - GÜZELLEŞTİRİLMİŞ -->
+  <div id="character-screen" style="
+    position: fixed;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #a8edea 0%, #fed6e3 50%, #ffd1ff 100%);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  ">
+    <!-- Yıldızlar arka plan -->
+    <div style="position: absolute; width: 100%; height: 100%; overflow: hidden; opacity: 0.2;">
+      <div style="position: absolute; left: 10%; top: 10%; font-size: 40px; animation: twinkle 3s infinite;">⭐</div>
+      <div style="position: absolute; left: 80%; top: 15%; font-size: 30px; animation: twinkle 4s infinite; animation-delay: 1s;">✨</div>
+      <div style="position: absolute; left: 20%; top: 80%; font-size: 35px; animation: twinkle 3.5s infinite; animation-delay: 2s;">🌟</div>
+      <div style="position: absolute; left: 70%; top: 75%; font-size: 25px; animation: twinkle 5s infinite; animation-delay: 0.5s;">💫</div>
+      <div style="position: absolute; left: 50%; top: 5%; font-size: 45px; animation: twinkle 4.5s infinite; animation-delay: 1.5s;">⭐</div>
+      <div style="position: absolute; left: 90%; top: 50%; font-size: 30px; animation: twinkle 3s infinite; animation-delay: 2.5s;">✨</div>
+    </div>
+    
+    <style>
+      @keyframes twinkle {
+        0%, 100% { opacity: 0.3; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.3); }
+      }
+      
+      @keyframes float3d {
+        0%, 100% { transform: translateY(0px) rotateY(0deg); }
+        50% { transform: translateY(-20px) rotateY(10deg); }
+      }
+      
+      .character-card {
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        cursor: pointer;
+      }
+      
+      .character-card:hover {
+        transform: scale(1.15) translateY(-15px) rotateY(5deg);
+        filter: brightness(1.2);
+      }
+      
+      .character-card:active {
+        transform: scale(1.05);
+      }
+    </style>
+    
+    <!-- Ana içerik -->
+    <div style="position: relative; z-index: 1; text-align: center;">
+      <h1 style="
+        font-size: 56px;
+        margin-bottom: 30px;
+        color: white;
+        text-shadow: 3px 3px 20px rgba(0,0,0,0.3);
+        animation: titlePulse 2.5s infinite;
+        font-family: 'Arial Black', sans-serif;
+      ">✨ Karakterini Seç ✨</h1>
+      
+      <p style="color: rgba(255,255,255,0.95); font-size: 24px; margin-bottom: 60px; text-shadow: 1px 1px 10px rgba(0,0,0,0.2);">
+        Kim olarak aşk müzenizi keşfedeceksiniz? 💕
+      </p>
+    
+      <div style="display: flex; gap: 80px; justify-content: center; align-items: center;">
+        <!-- Batuhan Character -->
+        <div class="character-card" id="select-batuhan">
+          <div style="
+            width: 280px;
+            height: 380px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(102, 126, 234, 0.5);
+            border: 5px solid rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+            animation: float3d 4s ease-in-out infinite;
+          ">
+            <!-- Parlama efekti -->
+            <div style="
+              position: absolute;
+              top: -50%;
+              left: -50%;
+              width: 200%;
+              height: 200%;
+              background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+              animation: shine 3s infinite;
+            "></div>
+            
+            <div style="font-size: 140px; margin-bottom: 20px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3)); animation: float3d 3s ease-in-out infinite;">🧑</div>
+            <h2 style="color: white; font-size: 42px; margin: 0; text-shadow: 2px 2px 15px rgba(0,0,0,0.4); font-family: 'Arial Black', sans-serif;">Batuhan</h2>
+            <p style="color: rgba(255,255,255,0.9); font-size: 20px; margin-top: 15px; text-shadow: 1px 1px 10px rgba(0,0,0,0.3);">🖤 Siyah Saç</p>
+            <div style="margin-top: 20px; background: rgba(255,255,255,0.2); padding: 10px 25px; border-radius: 20px;">
+              <span style="color: white; font-size: 16px;">👔 Erkek Karakteri</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Merve Character -->
+        <div class="character-card" id="select-merve">
+          <div style="
+            width: 280px;
+            height: 380px;
+            background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+            border-radius: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 20px 60px rgba(255, 107, 157, 0.5);
+            border: 5px solid rgba(255,255,255,0.3);
+            position: relative;
+            overflow: hidden;
+            animation: float3d 4s ease-in-out infinite;
+            animation-delay: 0.5s;
+          ">
+            <!-- Parlama efekti -->
+            <div style="
+              position: absolute;
+              top: -50%;
+              left: -50%;
+              width: 200%;
+              height: 200%;
+              background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+              animation: shine 3s infinite;
+              animation-delay: 0.5s;
+            "></div>
+            
+            <div style="font-size: 140px; margin-bottom: 20px; filter: drop-shadow(0 10px 20px rgba(0,0,0,0.3)); animation: float3d 3s ease-in-out infinite; animation-delay: 0.5s;">👧</div>
+            <h2 style="color: white; font-size: 42px; margin: 0; text-shadow: 2px 2px 15px rgba(0,0,0,0.4); font-family: 'Arial Black', sans-serif;">Merve</h2>
+            <p style="color: rgba(255,255,255,0.9); font-size: 20px; margin-top: 15px; text-shadow: 1px 1px 10px rgba(0,0,0,0.3);">🤎 Kahverengi Saç</p>
+            <div style="margin-top: 20px; background: rgba(255,255,255,0.2); padding: 10px 25px; border-radius: 20px;">
+              <span style="color: white; font-size: 16px;">👗 Kadın Karakteri</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p style="
+        color: white;
+        font-size: 22px;
+        margin-top: 70px;
+        text-align: center;
+        text-shadow: 2px 2px 15px rgba(0,0,0,0.3);
+        background: rgba(255,255,255,0.15);
+        padding: 20px 40px;
+        border-radius: 25px;
+        backdrop-filter: blur(10px);
+        display: inline-block;
+      ">
+        💝 Karakterini seç ve birlikte aşk müzenizi keşfedin! 💝
+      </p>
+    </div>
+    
+    <style>
+      @keyframes shine {
+        0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+        100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+      }
+    </style>
+  </div>
+
+  <!-- Game Container -->
+  <div id="game-container">
+    <div class="hud">
+      <h1>Aşkımızın Müzesi ❤️</h1>
+      <p>Mutlu Sevgililer Günü, Canım! 💕</p>
+    </div>
+
+    <!-- Speed Adjustment HUD -->
+    <div class="controls">
+      <h3>Kontroller 🎮</h3>
+      <p><strong>W A S D</strong> - Hareket Et</p>
+      <p><strong>SHIFT</strong> - Koş 🏃‍♀️</p>
+      <p><strong>Fare</strong> - Kamera Döndür (Ekrana tıkla)</p>
+      <p><strong>SPACE</strong> - Zıpla</p>
+      <p><strong>Q</strong> - Dans Seç 💃</p>
+      <p><strong>E</strong> - Mesajı Oku / Kapıya Gir</p>
+      <p><strong>M</strong> - Müzik Aç/Kapat 🎵</p>
+      <p><strong>Tıkla</strong> - Fotoğrafa Yakından Bak</p>
+      <p><strong>ESC</strong> - Fareyi Serbest Bırak</p>
+    </div>
+
+    <!-- Background Music -->
+    <audio id="background-music" loop>
+      <source src="music/piano.mp3" type="audio/mpeg">
+    </audio>
+
+    <div class="partner-status">
+      <h4>Partner Durumu:</h4>
+      <p class="status waiting" id="partner-status">Bekleniyor...</p>
+    </div>
+
+    <div class="message-indicator" id="message-indicator">
+      💌 E tuşuna bas ve mesajı oku!
+    </div>
+
+    <div class="message-popup" id="message-popup">
+      <div class="message-content">
+        <div class="icon">💕</div>
+        <p id="message-text"></p>
+        <p class="close-hint">(Kapatmak için tıkla)</p>
+      </div>
+    </div>
+
+    <div class="photo-popup" id="photo-popup">
+      <div class="photo-content">
+        <div class="photo-frame" id="photo-frame">
+          <div>📷 Fotoğraf #<span id="photo-number"></span></div>
+          <div class="hint">(Kendi fotoğrafını buraya ekleyebilirsin)</div>
+        </div>
+        <p style="text-align: center; margin-top: 20px; color: #666; font-size: 14px;">
+          Kapatmak için tıkla
+        </p>
+      </div>
+    </div>
+
+    <!-- DİLEK GİRİŞ POPUP -->
+    <div id="wish-popup" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 2000; align-items: center; justify-content: center;">
+      <div style="background: linear-gradient(135deg, #2d1b4e, #4a1942); padding: 50px; border-radius: 30px; max-width: 580px; width: 90%; text-align: center; box-shadow: 0 0 60px rgba(180,100,255,0.5); border: 2px solid rgba(255,215,0,0.4);">
+        <div style="font-size: 60px; margin-bottom: 10px;">🌳</div>
+        <h2 style="color: #ffd700; font-size: 28px; margin: 0 0 8px 0; font-family: serif;">Dilek Ağacı</h2>
+        <p style="color: rgba(255,255,255,0.8); font-size: 16px; margin-bottom: 25px; font-style: italic;">Dileğini yaz — sonsuza dek bu ağaçta saklı kalacak 🌟</p>
+        <textarea id="wish-input" placeholder="Dileğini buraya yaz..." maxlength="120" style="
+          width: 100%; padding: 16px; font-size: 18px; font-family: serif;
+          border: 2px solid rgba(255,215,0,0.5); border-radius: 15px;
+          background: rgba(255,255,255,0.1); color: white;
+          resize: none; height: 100px; outline: none; box-sizing: border-box;
+          placeholder-color: rgba(255,255,255,0.4);
+        " oninput="document.getElementById('wish-char-count').textContent = (120 - this.value.length) + ' karakter kaldı'"></textarea>
+        <p id="wish-char-count" style="color: rgba(255,255,255,0.5); font-size: 13px; margin: 5px 0 20px 0;">120 karakter kaldı</p>
+        <div style="display: flex; gap: 15px; justify-content: center;">
+          <button onclick="submitWish()" style="padding: 14px 40px; font-size: 18px; background: linear-gradient(135deg, #ffd700, #ffaa00); color: #2d1b4e; border: none; border-radius: 50px; cursor: pointer; font-weight: bold; font-family: serif; box-shadow: 0 5px 20px rgba(255,215,0,0.4);">✨ Dileğimi Yap</button>
+          <button onclick="closeWishPopup()" style="padding: 14px 30px; font-size: 16px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 50px; cursor: pointer; font-family: serif;">İptal</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Password Popup for Museum Door -->
+    <div id="password-popup" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+      <div style="background: linear-gradient(135deg, #ff69b4, #ffb6c1); padding: 50px; border-radius: 30px; max-width: 600px; text-align: center; box-shadow: 0 20px 60px rgba(255, 105, 180, 0.6);">
+        <div style="font-size: 60px; margin-bottom: 20px;">🔐</div>
+        <h2 style="color: white; font-size: 32px; margin: 0 0 30px 0;">Müze Girişi</h2>
+        <p style="color: white; font-size: 24px; margin-bottom: 30px;">Kocanın adı ne?</p>
+        <input type="text" id="password-input" placeholder="Cevap..." style="padding: 15px 30px; font-size: 24px; border: 3px solid white; border-radius: 15px; width: 80%; text-align: center; margin-bottom: 20px;" onkeypress="if(event.key==='Enter') checkPassword()">
+        <div style="display: flex; gap: 20px; justify-content: center; margin-top: 20px;">
+          <button onclick="checkPassword()" style="padding: 15px 40px; font-size: 20px; background: white; color: #ff1493; border: none; border-radius: 50px; cursor: pointer; font-weight: bold;">Giriş Yap</button>
+          <button onclick="closePasswordPopup()" style="padding: 15px 40px; font-size: 20px; background: rgba(255,255,255,0.3); color: white; border: none; border-radius: 50px; cursor: pointer; font-weight: bold;">İptal</button>
+        </div>
+        <p id="password-error" style="color: #ffeeee; margin-top: 20px; font-size: 18px; display: none;"></p>
+      </div>
+    </div>
+
+    <!-- DANS SEÇİM MENÜSÜ -->
+    <div id="dance-menu" style="display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.8); z-index: 2000; align-items: center; justify-content: center;">
+      <div style="background: linear-gradient(135deg, rgba(255, 105, 180, 0.98), rgba(255, 182, 193, 0.98)); padding: 40px; border-radius: 25px; box-shadow: 0 10px 40px rgba(0,0,0,0.4); backdrop-filter: blur(10px);">
+        <h2 style="color: white; text-align: center; margin-bottom: 25px; font-size: 36px; text-shadow: 2px 2px 4px rgba(0,0,0,0.2);">💃 Dans Seç 🕺</h2>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+          <button onclick="selectDance(1)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            🎵 Dans 1
+          </button>
+          <button onclick="selectDance(2)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            💃 Dans 2
+          </button>
+          <button onclick="selectDance(3)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            🕺 Dans 3
+          </button>
+          <button onclick="selectDance(4)" style="padding: 25px; font-size: 22px; background: white; border: 3px solid #ff69b4; border-radius: 15px; cursor: pointer; transition: all 0.3s; font-weight: bold; box-shadow: 0 4px 10px rgba(0,0,0,0.2);" onmouseover="this.style.background='#ff69b4'; this.style.color='white'; this.style.transform='scale(1.05)';" onmouseout="this.style.background='white'; this.style.color='black'; this.style.transform='scale(1)';">
+            🎉 Dans 4
+          </button>
+        </div>
+        <button onclick="closeDanceMenu()" style="padding: 18px; width: 100%; font-size: 20px; background: rgba(255,255,255,0.3); border: 2px solid white; border-radius: 12px; color: white; cursor: pointer; font-weight: bold; transition: all 0.3s;" onmouseover="this.style.background='rgba(255,255,255,0.5)';" onmouseout="this.style.background='rgba(255,255,255,0.3)';">
+          ❌ İptal
+        </button>
+      </div>
+    </div>
+  </div>
