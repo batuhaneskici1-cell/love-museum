@@ -129,6 +129,26 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Add wish
+  socket.on('add_wish', (data) => {
+    const roomCode = socket.roomCode;
+    const room = rooms.get(roomCode);
+    if (!room) return;
+
+    if (!room.wishes) room.wishes = [];
+    room.wishes.push({ text: data.text, ownerName: data.ownerName });
+
+    socket.to(roomCode).emit('partner_wish', data);
+  });
+
+  // Get wish history
+  socket.on('get_wish_history', () => {
+    const roomCode = socket.roomCode;
+    const room = rooms.get(roomCode);
+    const wishes = room?.wishes || [];
+    socket.emit('wish_history', { wishes });
+  });
+
   // Disconnect
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
@@ -152,31 +172,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-});
-
-// Wish ekleme
-socket.on('add_wish', (data) => {
-  const room = rooms.get(socket.roomCode);
-  if (!room) return;
-
-  if (!room.wishes) room.wishes = [];
-
-  room.wishes.push({
-    text: data.text,
-    ownerName: data.ownerName,
-    owner: socket.isHost ? 'host' : 'guest'
-  });
-
-  socket.to(socket.roomCode).emit('partner_wish', data);
-});
-
-// Wish geçmişi
-socket.on('get_wish_history', () => {
-  const room = rooms.get(socket.roomCode);
-  if (!room) return;
-
-  const wishes = room.wishes || [];
-  socket.emit('wish_history', { wishes });
 });
 
 
