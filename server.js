@@ -154,18 +154,31 @@ io.on('connection', (socket) => {
   });
 });
 
+// Wish ekleme
 socket.on('add_wish', (data) => {
-  // Odadaki dileği kaydet (geçmiş için)
-  if (!rooms[roomCode]) rooms[roomCode].wishes = [];
-  rooms[roomCode].wishes.push({ text: data.text, ownerName: data.ownerName, owner: 'partner' });
-  // Diğer kişiye gönder
-  socket.to(roomCode).emit('partner_wish', data);
+  const room = rooms.get(socket.roomCode);
+  if (!room) return;
+
+  if (!room.wishes) room.wishes = [];
+
+  room.wishes.push({
+    text: data.text,
+    ownerName: data.ownerName,
+    owner: socket.isHost ? 'host' : 'guest'
+  });
+
+  socket.to(socket.roomCode).emit('partner_wish', data);
 });
 
+// Wish geçmişi
 socket.on('get_wish_history', () => {
-  const wishes = rooms[roomCode]?.wishes || [];
+  const room = rooms.get(socket.roomCode);
+  if (!room) return;
+
+  const wishes = room.wishes || [];
   socket.emit('wish_history', { wishes });
 });
+
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
